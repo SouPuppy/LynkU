@@ -2,7 +2,6 @@
   <img alt="LynkU"
        src="./assets/logo.png"
        width="100">
-  <h1>LynkU</h1>
 
   **UNNC Unofficial Discourse**
 
