@@ -1,0 +1,2 @@
+<!-- topic-chip -->
+<text wx:if="{{name}}" class="cat-tag" style="background: {{color}}18; color: {{color}};">{{name}}</text>

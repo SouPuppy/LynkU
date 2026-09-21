@@ -1,0 +1,54 @@
+{
+  "problem_domain": "Migrate Lucky BBS from FastAPI+PostgreSQL+WebSocket backend to WeChat CloudBase (serverless BaaS): cloud functions for business logic, document DB for storage, watch() for real-time messaging. Replace all mock data with live database. Deep refactor of frontend to remove REST/WebSocket client layer in favor of wx.cloud SDK.",
+  "references": [
+    {
+      "name": "WeChat Cloud Development (CloudBase) — Deep Research",
+      "url": "docs/research/wechat-cloud-development.md",
+      "relevance": "Comprehensive CloudBase capabilities, pricing, architecture mapping. Source: official WeChat docs + Tencent Cloud docs.",
+      "architecture_pattern": "Serverless BaaS — client calls cloud functions (Node.js) + direct document DB access with permission rules",
+      "interface_style": "wx.cloud.callFunction() for writes/complex queries, wx.cloud.database() for simple reads, db.collection().watch() for real-time push",
+      "extension_strategy": "Cloud functions as single-responsibility handlers with action-based routing. Collection permissions control read/write boundaries. Workflow for visual orchestration.",
+      "error_handling": "Cloud functions return {data, error} envelope. Client handles network errors + cloud function business errors. watch() onError for subscription failures. CloudBase auto-retry on transient failures.",
+      "key_tradeoffs": [
+        {"decision": "CloudBase document DB vs PostgreSQL", "alternative": "Keep PostgreSQL on Tencent Cloud", "reason": "No server to manage. Native WeChat auth integration. watch() replaces WebSocket. Cost: ~50 RMB/month vs server ops."},
+        {"decision": "context.OPENID vs JWT", "alternative": "Keep JWT auth flow", "reason": "CloudBase automatically injects user identity. No token storage, no refresh logic. Simpler. Trust boundary is the WeChat runtime."},
+        {"decision": "watch() vs WebSocket", "alternative": "Keep FastAPI WebSocket server", "reason": "watch() is built into the client SDK. No server-side session management. Database IS the message queue for offline delivery. Trade: 1-2s latency vs true real-time."}
+      ]
+    },
+    {
+      "name": "Frontend Design Principles — Lucky BBS",
+      "url": "docs/research/frontend-design-principles.md",
+      "relevance": "14 production-grade frontend principles for CloudBase-powered mini-program. Covers layered data access, component split, watch lifecycle, setData discipline, error states, Skyline constraints.",
+      "architecture_pattern": "Layered: Pages → Services (data access layer) → CloudBase SDK. Presentation/Container component split. Service layer as single data boundary.",
+      "interface_style": "TypeScript-typed service modules. pages/ call services/; services/ call wx.cloud. Components receive data via properties, emit events via triggerEvent. Chaining API for Glass-Easel components.",
+      "extension_strategy": "New pages in pages/, new components in components/. Service modules per domain (posts.ts, comments.ts, messages.ts). Subpackage for chat module.",
+      "error_handling": "Four-state per view: loading/empty/error/loaded. Shared <empty> and <error> components. watch() onError handler mandatory. Network status monitoring via wx.onNetworkStatusChange.",
+      "key_tradeoffs": [
+        {"decision": "Service layer vs direct DB in pages", "alternative": "Call wx.cloud.database() directly in page code", "reason": "Single point of change for data access. Testable. Mock-swappable during development."},
+        {"decision": "No state management library", "alternative": "MobX or Redux for mini-program", "reason": "setData + service layer sufficient for BBS complexity. Auth is the only global state. Add when page count >20 AND cross-page state bugs appear."},
+        {"decision": "Denormalized author data in posts/comments", "alternative": "Separate user lookup per post", "reason": "Avoid N+1 queries. Author data changes rarely. Cloud function syncs profile changes to all posts."}
+      ]
+    },
+    {
+      "name": "WeChat Mini-Program Frontend Tech Stack",
+      "url": "docs/research/frontend-tech-stack.md",
+      "relevance": "Tech stack decision: WeChat Native (TypeScript + Skyline + Glass-Easel) over Taro/Uni-app. Confirmed for CloudBase project.",
+      "architecture_pattern": "WeChat Native: WXML/WXSS/TS compile directly to native render calls via Skyline. Glass-Easel component framework with Chaining API + init function.",
+      "interface_style": "Component() chaining API: .property(), .data(), .methods(), .lifetime(), .init(), .register(). setData for reactivity. WXSS with CSS variables for theming.",
+      "extension_strategy": "Subpackages for code splitting. Custom components in components/. WeChat plugin system. No third-party framework dependency.",
+      "error_handling": "wx.onError for global errors. Component detached() for resource cleanup. wx.reportEvent for analytics. Lifecycle-aware timer/request management.",
+      "key_tradeoffs": [
+        {"decision": "WeChat Native vs Taro/Uni-app", "alternative": "Taro (React) or Uni-app (Vue)", "reason": "Zero framework overhead. Full Skyline compatibility. No cross-platform requirement. Existing scaffold already native. Bundle size matters for 2MB limit."},
+        {"decision": "No component library vs Vant Weapp", "alternative": "Vant Weapp (~500KB)", "reason": "WeUI covers basics. Skyline compatibility issues with Vant. Add individual components only if WeUI falls short."}
+      ]
+    }
+  ],
+  "comparison_matrix": {
+    "dimensions": ["Architecture", "Data Access", "Auth", "Real-time", "Search", "Ops Burden"],
+    "scores": {
+      "CloudBase": {"Architecture": "Serverless BaaS", "Data Access": "Document DB + direct client reads", "Auth": "Automatic via context.OPENID", "Real-time": "db.watch() push", "Search": "db.RegExp() keyword match", "Ops Burden": "Zero — platform managed"},
+      "FastAPI+PostgreSQL (old)": {"Architecture": "Monolith server", "Data Access": "REST API + SQLAlchemy ORM", "Auth": "Manual wx.login + JWT", "Real-time": "WebSocket server", "Search": "PostgreSQL TSVECTOR full-text", "Ops Burden": "Server deployment, DB backups, scaling"}
+    }
+  },
+  "conclusion": "CloudBase is the correct choice for Lucky BBS at UNNC scale (~10k users). The key architectural shifts: (1) cloud functions replace FastAPI services with action-based routing, (2) document DB replaces PostgreSQL with denormalized reads, (3) watch() replaces WebSocket for real-time messaging, (4) context.OPENID replaces JWT auth flow, (5) service layer (services/) wraps all CloudBase SDK calls. Main risk: full-text search is significantly weaker (RegExp vs TSVECTOR). Acceptable for MVP; add search index collection or external search if needed. All existing frontend design principles (14 principles doc) apply directly."
+}

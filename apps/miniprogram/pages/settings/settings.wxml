@@ -1,0 +1,49 @@
+<nav-bar title="设置" showBack="{{true}}" />
+<view wx:if="{{user}}" class="page">
+
+  <view class="section">
+    <view class="settings-list">
+      <view class="setting-row" bindtap="onVerifyEmail">
+        <text>学校邮箱</text>
+        <view class="setting-value flex-row">
+          <text class="text-xs {{user.verified ? 'text-secondary' : 'setting-warn'}}">{{user.verified ? user.email : (verificationEnabled ? '未认证' : '认证暂不可用')}}</text>
+          <view class="setting-arrow"></view>
+        </view>
+      </view>
+      <view class="setting-row" bindtap="onEditProfile">
+        <text>修改昵称</text>
+        <view class="setting-value flex-row">
+          <text class="text-xs text-secondary">{{user.nickname}}</text>
+          <view class="setting-arrow"></view>
+        </view>
+      </view>
+      <view class="setting-row" bindtap="onAbout">
+        <text>关于 {{appName}}</text>
+        <view class="setting-arrow"></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="settings-list">
+      <view class="setting-row logout-row" bindtap="handleLogout">
+        <text>清理本地会话</text>
+        <view class="setting-arrow"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- Edit nickname overlay -->
+  <view wx:if="{{editing}}" class="edit-overlay" bindtap="onEditCancel">
+    <view class="edit-card" catchtap="">
+      <text class="edit-title">修改昵称</text>
+      <input class="edit-input" value="{{editValue}}" bindinput="onEditInput" maxlength="30" focus="{{true}}" />
+      <view class="edit-actions flex-row">
+        <button class="edit-cancel-btn" bindtap="onEditCancel">取消</button>
+        <button class="edit-save-btn" bindtap="onEditSave" disabled="{{saving}}" loading="{{saving}}">保存</button>
+      </view>
+    </view>
+  </view>
+</view>
+
+<view wx:else class="access-state"><text class="access-title">登录后管理个人资料</text><button class="access-button" bindtap="onLogin">微信登录</button></view>

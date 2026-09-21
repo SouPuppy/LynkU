@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "lib": ["ES2020"]
+  },
+  "include": ["src/**/*.ts"]
+}

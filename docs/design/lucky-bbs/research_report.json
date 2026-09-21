@@ -1,0 +1,66 @@
+{
+  "problem_domain": "UNNC student BBS forum + private messaging platform as WeChat mini-program, replacing alink. Must be open-source, non-profit, WeChat-login-only, with category-based threaded discussion and real-time direct messaging.",
+  "references": [
+    {
+      "name": "july_client / july_server (WeChat native BBS + chat)",
+      "url": "https://git-stars.org/it/blog/summaries/YYJeffrey/july_client",
+      "relevance": "Closest architectural match: WeChat native mini-program BBS with WebSocket real-time chat, Lin UI components, category-based posting, and subscription message templates. Demonstrates the WeChat-native + WebSocket pattern in production.",
+      "architecture_pattern": "Client-server with WebSocket push channel. WeChat native frontend (Lin UI), Node.js backend with WebSocket for real-time messaging.",
+      "interface_style": "REST API for CRUD operations (posts, comments, users), WebSocket for real-time messaging channel. JSON payloads throughout.",
+      "extension_strategy": "WeChat mini-program subpackage loading for modules >2MB. Backend routes organized by domain module.",
+      "error_handling": "WeChat native error callbacks (fail/complete) on frontend. Backend returns structured error JSON with codes.",
+      "key_tradeoffs": [
+        {"decision": "WeChat native over Uni-app", "alternative": "Uni-app cross-platform", "reason": "Better WeChat ecosystem integration, Skyline render engine, smaller bundle size"},
+        {"decision": "Single WebSocket connection", "alternative": "Multiple SocketTask connections", "reason": "Resource efficiency in mini-program sandbox, multiplexed message routing"},
+        {"decision": "WebSocket for real-time only", "alternative": "WebSocket for everything", "reason": "REST simpler for CRUD, cacheable, easier to debug"}
+      ]
+    },
+    {
+      "name": "FastAPI Forum Backend (2025 best practices)",
+      "url": "https://dev.to/leapcell/build-your-own-forum-with-fastapi-step-1-a-minimal-forum-1apg",
+      "relevance": "Direct technical reference for building a BBS backend in Python FastAPI with async SQLAlchemy, JWT auth, Pydantic v2 validation. Matches the project's Python constraint from .claude/ tooling.",
+      "architecture_pattern": "Layered: Routes → Services → Repositories → Models. Strict inward-pointing dependencies. Application factory pattern with lifespan management.",
+      "interface_style": "RESTful JSON API with FastAPI auto-generated OpenAPI docs. JWT Bearer auth. Async PostgreSQL via SQLAlchemy 2.0 + asyncpg.",
+      "extension_strategy": "Modular route registration. Pydantic v2 for request/response schemas enables versioning. Alembic for schema migrations.",
+      "error_handling": "Custom exception hierarchy → FastAPI exception handlers → structured JSON error responses. Validation errors caught at Pydantic layer before reaching business logic.",
+      "key_tradeoffs": [
+        {"decision": "Async SQLAlchemy 2.0", "alternative": "Synchronous SQLAlchemy + thread pool", "reason": "Full async stack avoids thread overhead, matches FastAPI async model"},
+        {"decision": "JWT stateless auth", "alternative": "Server-side sessions (Redis)", "reason": "Simpler to deploy, no Redis dependency needed for MVP, WeChat code exchange provides initial trust"},
+        {"decision": "Cursor-based pagination", "alternative": "Offset-based pagination", "reason": "Stable under concurrent inserts, better performance for infinite scroll patterns"},
+        {"decision": "Self-referencing comments (parent_id)", "alternative": "Closure table for threaded comments", "reason": "Simpler model, sufficient for typical forum thread depths. Closure table added if nested threading needed."}
+      ]
+    },
+    {
+      "name": "WeChat Mini-Program WebSocket IM Architecture",
+      "url": "https://developers.weixin.qq.com/miniprogram/en/dev/framework/performance/network.html",
+      "relevance": "Official WeChat documentation on WebSocket constraints, SocketTask API, and lifecycle management for real-time messaging in mini-programs.",
+      "architecture_pattern": "Client-side: SocketTask with state machine (idle→connecting→connected→reconnecting→failed). Server-side: WebSocket endpoint + session manager + message router + offline queue.",
+      "interface_style": "WSS protocol (mandatory for production). JSON message frames with type/from/to/content/timestamp/msgId fields. Heartbeat PING/PONG every 30s.",
+      "extension_strategy": "Message types extensible via JSON 'type' discriminator field. STOMP sub-protocol optional for pub/sub routing.",
+      "error_handling": "Exponential backoff reconnection (1s→2s→4s→8s, max 5 retries). Offline message queue on server with delivery confirmation on reconnect. ACK protocol for guaranteed delivery.",
+      "key_tradeoffs": [
+        {"decision": "Single WebSocket connection multiplexed", "alternative": "Multiple SocketTask objects", "reason": "WeChat resource constraints, simpler state management"},
+        {"decision": "Application-layer ACK", "alternative": "Raw WebSocket fire-and-forget", "reason": "Mobile network reliability requires delivery confirmation"},
+        {"decision": "Lifecycle-aware reconnection", "alternative": "Aggressive keepalive", "reason": "WeChat onHide/onShow events are reliable signals; aggressive keepalive drains battery"}
+      ]
+    },
+    {
+      "name": "linfeng-community (SpringBoot full-stack social forum)",
+      "url": "https://gitee.com/virus010101/linfeng-community",
+      "relevance": "Feature-complete reference for BBS domain modeling: posts, comments, categories, private messages, user roles, moderation. Provides the feature taxonomy to match or simplify.",
+      "architecture_pattern": "SpringBoot monolith with module separation. REST API + WebSocket IM. Redis for caching and message queue. Frontend via Uni-app (multi-platform).",
+      "interface_style": "RESTful with JWT. WebSocket for IM. Redis pub/sub for async task decoupling.",
+      "extension_strategy": "Role-based access control (admin/moderator/user). Plugin-like module structure for extensibility.",
+      "error_handling": "Global exception handler with structured error codes. Transaction rollback on service-layer failures.",
+      "key_tradeoffs": [
+        {"decision": "Monolith over microservices", "alternative": "Microservice per domain", "reason": "Small user base (UNNC students only), monolith simpler to deploy and maintain, split later if needed"},
+        {"decision": "Redis as message queue", "alternative": "Dedicated MQ (RabbitMQ)", "reason": "Already needed for caching; dual-use avoids extra infrastructure for MVP"}
+      ]
+    }
+  ],
+  "comparison_matrix": {
+    "dimensions": ["Architecture", "Extensibility", "Error Handling", "Testing", "Performance"],
+    "scores": {}
+  },
+  "conclusion": "Consensus: REST + WebSocket hybrid with JWT auth. Python FastAPI chosen over Node.js/PHP alternatives because: (1) matches existing .claude/ Python tooling, (2) FastAPI's async model handles WebSocket + HTTP on same server, (3) Pydantic v2 provides request validation equivalent to TypeScript-level safety. WeChat native (not Uni-app) for frontend — already scaffolded, Skyline render engine, best platform integration. PostgreSQL for relational data (users, posts, comments, messages). Single WebSocket connection for real-time messaging with heartbeat + exponential backoff reconnection. Layered backend (Routes → Services → Repositories) with async SQLAlchemy. Monolith deployment — UNNC student scale (~10k users) doesn't justify microservices overhead."
+}

@@ -1,0 +1,16 @@
+<view wx:if="{{post}}" class="post-item" hover-class="post-item-pressed">
+  <view class="post-title-row">
+    <text class="post-title" max-lines="2" overflow="ellipsis">{{post.title}}</text>
+    <text class="post-time">{{displayTime}}</text>
+  </view>
+
+  <text wx:if="{{displayExcerpt}}" class="post-excerpt" max-lines="2" overflow="ellipsis">{{displayExcerpt}}</text>
+
+  <view class="post-foot">
+    <text class="post-author">{{displayAuthorName}}</text>
+    <view class="post-stats">
+      <text>{{commentCountText}}</text>
+      <text>{{viewCountText}}</text>
+    </view>
+  </view>
+</view>

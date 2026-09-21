@@ -1,0 +1,9 @@
+{
+  "name": "cf-comments",
+  "version": "1.0.0",
+  "description": "Comment CRUD with nesting depth enforcement (max 2 levels)",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "4.0.2"
+  }
+}

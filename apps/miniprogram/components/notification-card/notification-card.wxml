@@ -1,0 +1,26 @@
+<!-- notification-card: single notification event -->
+<view class="notif-card" hover-class="notif-card-pressed">
+  <view data-author="{{notification.actor}}" catchtap="onActorTap">
+    <avatar src="{{notification.actor.avatar_url}}" anonymous="{{notification.anonymous}}" size="md" />
+  </view>
+  <view class="notif-body" bindtap="onTap">
+    <view class="notif-text">
+      <text class="notif-actor" data-author="{{notification.actor}}" catchtap="onActorTap">{{notification.actor.nickname}}</text>
+      <text class="notif-action"> {{actionLabel}}</text>
+    </view>
+    <text
+      wx:if="{{targetPreviewText}}"
+      class="notif-target text-sm text-secondary text-ellipsis"
+    >
+      "{{targetPreviewText}}"
+    </text>
+    <text
+      wx:if="{{sourceText}}"
+      class="notif-source text-xs text-secondary text-ellipsis"
+    >
+      {{sourceText}}
+    </text>
+    <text class="notif-time text-xs text-secondary">{{displayTime}}</text>
+  </view>
+  <view wx:if="{{!notification.read}}" class="notif-dot"></view>
+</view>

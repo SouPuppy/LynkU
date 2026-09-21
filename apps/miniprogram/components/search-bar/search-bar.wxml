@@ -1,0 +1,52 @@
+<!-- search-bar: search input + category filter + history overlay -->
+<view class="search-bar">
+  <!-- Search box + history dropdown wrapper (positioned container) -->
+  <view class="search-box-wrapper" style="padding-right: {{capsuleRight}}px;">
+    <view class="search-box">
+      <text class="search-label">搜索</text>
+      <input
+        class="search-input"
+        value="{{keyword}}"
+        placeholder="{{placeholder}}"
+        bindinput="onInput"
+        bindfocus="onFocus"
+        bindblur="onBlur"
+        bindconfirm="onConfirm"
+        confirm-type="search"
+      />
+      <text wx:if="{{keyword}}" class="search-cancel" bindtap="onClear">取消</text>
+    </view>
+
+    <!-- History overlay: positioned below search box, floats above category row -->
+    <view wx:if="{{showHistory && history.length}}" class="history-panel" catchtap="">
+      <view class="history-header">
+        <text class="history-title">搜索历史</text>
+        <text class="history-clear" bindtap="onClearHistory">清除</text>
+      </view>
+      <view class="history-list">
+        <view
+          class="history-item"
+          wx:for="{{history}}"
+          wx:key="*this"
+          data-key="{{item}}"
+          bindtap="onHistoryTap"
+        >
+          {{item}}
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- Category chips — always visible below search box -->
+  <scroll-view wx:if="{{categories.length}}" class="category-row" scroll-x>
+    <view
+      class="category-chip {{activeCategoryId === item._id ? 'active' : ''}}"
+      wx:for="{{categories}}"
+      wx:key="_id"
+      data-id="{{item._id}}"
+      bindtap="onCategoryTap"
+    >
+      {{item.name}}
+    </view>
+  </scroll-view>
+</view>

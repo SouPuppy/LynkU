@@ -1,0 +1,73 @@
+.profile-page { background: var(--color-bg, #f5f5f5); }
+
+.profile-header {
+  background: var(--color-bg-white, #fff);
+  padding: 48rpx var(--spacing-md, 24rpx) 32rpx;
+  display: flex; flex-direction: column; align-items: center; gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+.profile-name { font-size: var(--font-xl, 36rpx); font-weight: 600; }
+.profile-handle { font-family: monospace; }
+.profile-stats { gap: 12rpx; }
+.profile-contact {
+  margin-top: 6rpx;
+  height: 56rpx;
+  padding: 0 22rpx;
+  border-radius: var(--radius-round, 999px);
+  border: 1rpx solid var(--color-border, #ebedf0);
+  color: var(--color-text, #333);
+  background: var(--color-bg-white, #fff);
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  font-size: var(--font-sm, 26rpx);
+}
+.profile-contact-pressed {
+  background: var(--color-bg, #f5f5f5);
+}
+.contact-mark {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: var(--color-primary, #1E4D8C);
+  box-shadow: 16rpx 0 0 var(--color-primary, #1E4D8C);
+  margin-right: 16rpx;
+}
+
+.section-divider {
+  padding: var(--spacing-md, 24rpx); background: var(--color-bg-white, #fff);
+  border-bottom: 1rpx solid var(--color-border, #ebedf0);
+}
+
+.profile-empty { padding: 120rpx var(--spacing-md, 24rpx); text-align: center; }
+.list-footer { padding: var(--spacing-md, 24rpx); text-align: center; }
+.user-skeleton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+  padding: var(--spacing-lg) var(--spacing-md);
+  background: var(--color-bg-white);
+}
+.user-sk-avatar { width: 120rpx; height: 120rpx; }
+.user-sk-name { width: 220rpx; }
+.user-sk-stats {
+  display: flex;
+  justify-content: center;
+  gap: 24rpx;
+  width: 100%;
+}
+.user-sk-button {
+  width: 180rpx;
+  height: 60rpx;
+  border-radius: var(--radius-round);
+  margin-top: 8rpx;
+}
+.user-posts-skeleton { padding: 0 var(--spacing-md); background: var(--color-bg-white); }
+.user-post-sk-row {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  padding: var(--spacing-md) 0;
+  border-bottom: 1rpx solid var(--color-border);
+}

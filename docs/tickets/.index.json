@@ -1,0 +1,1072 @@
+{
+  "updated": "2026-07-23T12:00:00.000000+00:00",
+  "version": 2,
+  "tickets": {
+    "EPIC-001": {
+      "id": "EPIC-001",
+      "title": "Lucky BBS — UNNC Student Forum + Private Messaging Platform",
+      "status": "superseded",
+      "type": "epic",
+      "priority": "high",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-21T04:00:00.000000+00:00"
+    },
+    "FEAT-001": {
+      "id": "FEAT-001",
+      "title": "Backend: Core infrastructure + database models + schema",
+      "status": "superseded",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-001",
+      "dependencies": [],
+      "updated": "2026-07-21T04:00:00.000000+00:00"
+    },
+    "FEAT-002": {
+      "id": "FEAT-002",
+      "title": "Backend: WeChat authentication (login + JWT)",
+      "status": "superseded",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-001",
+      "dependencies": [],
+      "updated": "2026-07-21T04:00:00.000000+00:00"
+    },
+    "FEAT-003": {
+      "id": "FEAT-003",
+      "title": "Backend: Category + Post CRUD with search",
+      "status": "superseded",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-001",
+      "dependencies": [],
+      "updated": "2026-07-21T04:00:00.000000+00:00"
+    },
+    "FEAT-004": {
+      "id": "FEAT-004",
+      "title": "Backend: Comments with nested threading",
+      "status": "superseded",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-001",
+      "dependencies": [],
+      "updated": "2026-07-21T04:00:00.000000+00:00"
+    },
+    "FEAT-005": {
+      "id": "FEAT-005",
+      "title": "Backend: WebSocket messaging infrastructure",
+      "status": "superseded",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-001",
+      "dependencies": [],
+      "updated": "2026-07-21T04:00:00.000000+00:00"
+    },
+    "FEAT-006": {
+      "id": "FEAT-006",
+      "title": "Frontend: Navigation shell + auth flow",
+      "status": "superseded",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-001",
+      "dependencies": [],
+      "updated": "2026-07-21T04:00:00.000000+00:00"
+    },
+    "FEAT-007": {
+      "id": "FEAT-007",
+      "title": "Frontend: Post browsing + creation",
+      "status": "superseded",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-001",
+      "dependencies": [],
+      "updated": "2026-07-21T04:00:00.000000+00:00"
+    },
+    "FEAT-008": {
+      "id": "FEAT-008",
+      "title": "Frontend: Real-time messaging UI",
+      "status": "superseded",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-001",
+      "dependencies": [],
+      "updated": "2026-07-21T04:00:00.000000+00:00"
+    },
+    "FEAT-009": {
+      "id": "FEAT-009",
+      "title": "Frontend: Backend environment config (dev/prod URL switch)",
+      "status": "superseded",
+      "type": "feature",
+      "priority": "medium",
+      "assignee": null,
+      "parent": "EPIC-001",
+      "dependencies": [],
+      "updated": "2026-07-21T04:00:00.000000+00:00"
+    },
+    "EPIC-002": {
+      "id": "EPIC-002",
+      "title": "CloudBase Migration — Full backend replacement + frontend refactor + mock removal",
+      "status": "done",
+      "type": "epic",
+      "priority": "high",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "design_dir": "docs/design/cloudbase-migration/",
+      "design_verdict": "PROCEED",
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "CLOUD-001": {
+      "id": "CLOUD-001",
+      "title": "CloudBase: Environment setup + database collections + indexes + permissions",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-002",
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "CLOUD-002": {
+      "id": "CLOUD-002",
+      "title": "Cloud functions: cf-login + cf-users + cf-utils shared layer",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-002",
+      "dependencies": [
+        "CLOUD-001"
+      ],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "CLOUD-003": {
+      "id": "CLOUD-003",
+      "title": "Cloud functions: cf-posts + cf-comments + cf-categories (content CRUD + moderation)",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-002",
+      "dependencies": [
+        "CLOUD-002"
+      ],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "CLOUD-004": {
+      "id": "CLOUD-004",
+      "title": "Cloud functions: cf-messages (send + conversation list + history + markRead)",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-002",
+      "dependencies": [
+        "CLOUD-002"
+      ],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "CLOUD-005": {
+      "id": "CLOUD-005",
+      "title": "Frontend: Service layer refactor — services/db.ts, services/cloud.ts, services/*.ts replacing mp-api-client + mp-auth JWT",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-002",
+      "dependencies": [
+        "CLOUD-003",
+        "CLOUD-004"
+      ],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "CLOUD-006": {
+      "id": "CLOUD-006",
+      "title": "Frontend: Page refactor — wire all pages to services/, remove mock data, add LoadState coverage (loading/empty/error/loaded)",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-002",
+      "dependencies": [
+        "CLOUD-005"
+      ],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "CLOUD-007": {
+      "id": "CLOUD-007",
+      "title": "Frontend: Real-time messaging with mp-watch (db.watch() + polling fallback), replace mp-ws-client",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-002",
+      "dependencies": [
+        "CLOUD-005"
+      ],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "CLOUD-008": {
+      "id": "CLOUD-008",
+      "title": "Cleanup: Remove old backend docs referencing FastAPI/PostgreSQL, delete mock/ directory, update README + DEVELOPMENT.md",
+      "status": "done",
+      "type": "feature",
+      "priority": "medium",
+      "assignee": null,
+      "parent": "EPIC-002",
+      "dependencies": [
+        "CLOUD-006",
+        "CLOUD-007"
+      ],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "FLAT-001": {
+      "id": "FLAT-001",
+      "title": "Flat UI: text-only TabBar + logout redesign + remove arrow icons",
+      "status": "done",
+      "type": "feature",
+      "priority": "medium",
+      "assignee": null,
+      "parent": "EPIC-002",
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "EPIC-003": {
+      "id": "EPIC-003",
+      "title": "Comment System Completion — wire UI, reply, delete, real-time, cleanup",
+      "status": "done",
+      "type": "epic",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-002",
+      "dependencies": [
+        "CLOUD-003",
+        "CLOUD-005",
+        "CLOUD-006"
+      ],
+      "design_dir": "docs/design/comment-system/",
+      "design_verdict": "PROCEED",
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "COMM-001": {
+      "id": "COMM-001",
+      "title": "Wire comment input bar on post page",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-003",
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "COMM-002": {
+      "id": "COMM-002",
+      "title": "Add reply UI to comment-item component",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-003",
+      "dependencies": [
+        "COMM-001"
+      ],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "COMM-003": {
+      "id": "COMM-003",
+      "title": "Add delete with long-press gesture",
+      "status": "done",
+      "type": "feature",
+      "priority": "medium",
+      "assignee": null,
+      "parent": "EPIC-003",
+      "dependencies": [
+        "COMM-001"
+      ],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "COMM-004": {
+      "id": "COMM-004",
+      "title": "Integrate real-time comment watch on post page",
+      "status": "done",
+      "type": "feature",
+      "priority": "medium",
+      "assignee": null,
+      "parent": "EPIC-003",
+      "dependencies": [
+        "COMM-001"
+      ],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "COMM-005": {
+      "id": "COMM-005",
+      "title": "Cleanup comment types, states, and edge cases",
+      "status": "done",
+      "type": "feature",
+      "priority": "medium",
+      "assignee": null,
+      "parent": "EPIC-003",
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "EPIC-004": {
+      "id": "EPIC-004",
+      "title": "Diagnose Fixes — Config cleanup, dead code removal, session/auth consolidation, LoadState Behavior",
+      "status": "done",
+      "type": "epic",
+      "priority": "high",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "design_dir": "docs/design/diagnose-fixes-2026-07-23/",
+      "design_verdict": "PROCEED",
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "FIX-001": {
+      "id": "FIX-001",
+      "title": "Config cleanup — gitignore, Skyline alignment, hot reload",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-004",
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "FIX-002": {
+      "id": "FIX-002",
+      "title": "Dead code removal — login CF, unused types",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-004",
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "FIX-003": {
+      "id": "FIX-003",
+      "title": "Session/auth consolidation — unified imports, login guard, scrollToBottom",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-004",
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "FIX-004": {
+      "id": "FIX-004",
+      "title": "LoadState Behavior — extract shared state management pattern",
+      "status": "monitor_only",
+      "type": "feature",
+      "priority": "medium",
+      "assignee": null,
+      "parent": "EPIC-004",
+      "dependencies": [],
+      "reason": "Page() does not support behaviors. Converting 12 pages to Component() is riskier than 3 lines of setData each. ponytail: skip. Revisit if WeChat adds Page.behaviors support.",
+      "updated": "2026-07-23T00:00:00.000000+00:00"
+    },
+    "EPIC-005": {
+      "id": "EPIC-005",
+      "title": "Unified Messages + Tap-to-Chat + Comment Notification Completion",
+      "status": "done",
+      "type": "epic",
+      "priority": "high",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "design_dir": "docs/design/unified-messages-tapchat/",
+      "design_verdict": "PROCEED",
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "UNI-001": {
+      "id": "UNI-001",
+      "title": "Unified Messages Tab — tabbed UI with inline notification feed",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-005",
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "UNI-002": {
+      "id": "UNI-002",
+      "title": "Tap-to-Chat — avatar/username tap handlers across all components",
+      "status": "superseded",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-005",
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "UNI-003": {
+      "id": "UNI-003",
+      "title": "Reply Notifications — fix comments CF, emit reply-type notifications",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-005",
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "UNI-004": {
+      "id": "UNI-004",
+      "title": "Tab Bar Badge — aggregate unread count from conversations + notifications",
+      "status": "done",
+      "type": "feature",
+      "priority": "medium",
+      "assignee": null,
+      "parent": "EPIC-005",
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "EPIC-006": {
+      "id": "EPIC-006",
+      "title": "User Profile Page + Identity (G-4 + G-5)",
+      "status": "done",
+      "type": "epic",
+      "priority": "high",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "design_dir": "docs/design/user-profile/",
+      "design_verdict": "PROCEED",
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "PRO-001": {
+      "id": "PRO-001",
+      "title": "User profile page — UI + data loading",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-006",
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "PRO-002": {
+      "id": "PRO-002",
+      "title": "Update tap handlers — route to profile instead of chat",
+      "status": "done",
+      "type": "feature",
+      "priority": "high",
+      "assignee": null,
+      "parent": "EPIC-006",
+      "dependencies": [
+        "PRO-001"
+      ],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "PRO-003": {
+      "id": "PRO-003",
+      "title": "Add post count to users service",
+      "status": "done",
+      "type": "feature",
+      "priority": "medium",
+      "assignee": null,
+      "parent": "EPIC-006",
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-001": {
+      "id": "AUDIT-001",
+      "title": "Editor: no category causes post creation failure ('__uncategorized__' not in DB)",
+      "status": "done",
+      "type": "bug",
+      "priority": "high",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-002": {
+      "id": "AUDIT-002",
+      "title": "view_count increment is client-side write — may silently fail on ACL",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-003": {
+      "id": "AUDIT-003",
+      "title": "seedCategories has no auth check + race condition",
+      "status": "done",
+      "type": "bug",
+      "priority": "low",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-004": {
+      "id": "AUDIT-004",
+      "title": "comment_count/post_count can go negative via _.inc(-1)",
+      "status": "done",
+      "type": "bug",
+      "priority": "low",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-005": {
+      "id": "AUDIT-005",
+      "title": "sendMessage allows empty content after trim (no minLen check)",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-006": {
+      "id": "AUDIT-006",
+      "title": "Editor: _autoSaveTimer dead code — clearTimeout never clears anything",
+      "status": "done",
+      "type": "bug",
+      "priority": "low",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-007": {
+      "id": "AUDIT-007",
+      "title": "No rate limiting on comments/drafts/messages CFs (only posts has it)",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-008": {
+      "id": "AUDIT-008",
+      "title": "watchComments triggers full reload instead of incremental update",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-009": {
+      "id": "AUDIT-009",
+      "title": "Scrollable areas missing explicit height / not using scroll-view",
+      "status": "done",
+      "type": "bug",
+      "priority": "low",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-010": {
+      "id": "AUDIT-010",
+      "title": "Editor shows no anonymous mode indicator while typing",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-011": {
+      "id": "AUDIT-011",
+      "title": "Message idempotency TOCTOU allows duplicate messages on retry",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-012": {
+      "id": "AUDIT-012",
+      "title": "findComment returns parent for reply deletion authorization",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-013": {
+      "id": "AUDIT-013",
+      "title": "Editor auto-save and submit race leaks drafts",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-014": {
+      "id": "AUDIT-014",
+      "title": "onNotifRetry is referenced in WXML but not implemented",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-015": {
+      "id": "AUDIT-015",
+      "title": "Index feed resets on every tab switch",
+      "status": "done",
+      "type": "bug",
+      "priority": "low",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-016": {
+      "id": "AUDIT-016",
+      "title": "clear-db cloud function has no authentication or admin check",
+      "status": "done",
+      "type": "bug",
+      "priority": "high",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-017": {
+      "id": "AUDIT-017",
+      "title": "users document primary key conflicts with all doc(openid) reads",
+      "status": "done",
+      "type": "bug",
+      "priority": "high",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-018": {
+      "id": "AUDIT-018",
+      "title": "Anonymous content exposes the real OPENID to ordinary users",
+      "status": "done",
+      "type": "bug",
+      "priority": "high",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-019": {
+      "id": "AUDIT-019",
+      "title": "Profile sync rewrites anonymous history with real identity",
+      "status": "done",
+      "type": "bug",
+      "priority": "high",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-020": {
+      "id": "AUDIT-020",
+      "title": "WXML reads TypeScript instance methods as template data",
+      "status": "done",
+      "type": "bug",
+      "priority": "high",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-021": {
+      "id": "AUDIT-021",
+      "title": "Strict TypeScript check fails and no typecheck script exists",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-022": {
+      "id": "AUDIT-022",
+      "title": "Category page cannot navigate to a filtered tab-bar home page",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-023": {
+      "id": "AUDIT-023",
+      "title": "Deleted and moderated posts remain readable by document ID",
+      "status": "done",
+      "type": "bug",
+      "priority": "high",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-024": {
+      "id": "AUDIT-024",
+      "title": "createNotification lets clients forge arbitrary notifications",
+      "status": "done",
+      "type": "bug",
+      "priority": "high",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-025": {
+      "id": "AUDIT-025",
+      "title": "Local notification dots stay unread after mark-read succeeds",
+      "status": "done",
+      "type": "bug",
+      "priority": "low",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-026": {
+      "id": "AUDIT-026",
+      "title": "Deployment omits drafts and still references deleted login function",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-027": {
+      "id": "AUDIT-027",
+      "title": "Flagged content corrupts public post and comment counts",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-028": {
+      "id": "AUDIT-028",
+      "title": "Shared input validation accepts whitespace-only required fields",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-029": {
+      "id": "AUDIT-029",
+      "title": "Chat polling compares generated IDs and can lose or duplicate messages",
+      "status": "done",
+      "type": "bug",
+      "priority": "medium",
+      "assignee": null,
+      "parent": null,
+      "dependencies": [],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    },
+    "AUDIT-030": {
+      "id": "AUDIT-030",
+      "title": "User profile join date and post pagination are incomplete",
+      "status": "done",
+      "type": "bug",
+      "priority": "low",
+      "assignee": null,
+      "parent": "EPIC-006",
+      "dependencies": [
+        "PRO-001"
+      ],
+      "updated": "2026-07-23T12:00:00.000000+00:00"
+    }
+  },
+  "by_status": {
+    "backlog": [
+      "CLOUD-001",
+      "CLOUD-002",
+      "CLOUD-003",
+      "CLOUD-004",
+      "CLOUD-005",
+      "CLOUD-006",
+      "CLOUD-007",
+      "CLOUD-008",
+      "FLAT-001",
+      "COMM-001",
+      "COMM-002",
+      "COMM-003",
+      "COMM-004",
+      "COMM-005",
+      "FIX-001",
+      "FIX-002",
+      "FIX-003",
+      "AUDIT-001",
+      "AUDIT-002",
+      "AUDIT-003",
+      "AUDIT-004",
+      "AUDIT-005",
+      "AUDIT-006",
+      "AUDIT-007",
+      "AUDIT-008",
+      "AUDIT-009",
+      "AUDIT-010",
+      "AUDIT-011",
+      "AUDIT-012",
+      "AUDIT-013",
+      "AUDIT-014",
+      "AUDIT-015",
+      "AUDIT-016",
+      "AUDIT-017",
+      "AUDIT-018",
+      "AUDIT-019",
+      "AUDIT-020",
+      "AUDIT-021",
+      "AUDIT-022",
+      "AUDIT-023",
+      "AUDIT-024",
+      "AUDIT-025",
+      "AUDIT-026",
+      "AUDIT-027",
+      "AUDIT-028",
+      "AUDIT-029",
+      "AUDIT-030"
+    ],
+    "design": [
+      "EPIC-002",
+      "EPIC-003",
+      "EPIC-004",
+      "EPIC-005",
+      "EPIC-006"
+    ],
+    "superseded": [
+      "EPIC-001",
+      "FEAT-001",
+      "FEAT-002",
+      "FEAT-003",
+      "FEAT-004",
+      "FEAT-005",
+      "FEAT-006",
+      "FEAT-007",
+      "FEAT-008",
+      "FEAT-009"
+    ],
+    "review": [
+      "UNI-001",
+      "UNI-002",
+      "UNI-003",
+      "UNI-004",
+      "PRO-001",
+      "PRO-002",
+      "PRO-003"
+    ],
+    "monitor_only": [
+      "FIX-004"
+    ]
+  },
+  "by_parent": {
+    "EPIC-001": [
+      "FEAT-001",
+      "FEAT-002",
+      "FEAT-003",
+      "FEAT-004",
+      "FEAT-005",
+      "FEAT-006",
+      "FEAT-007",
+      "FEAT-008",
+      "FEAT-009"
+    ],
+    "EPIC-002": [
+      "CLOUD-001",
+      "CLOUD-002",
+      "CLOUD-003",
+      "CLOUD-004",
+      "CLOUD-005",
+      "CLOUD-006",
+      "CLOUD-007",
+      "CLOUD-008",
+      "FLAT-001"
+    ],
+    "EPIC-003": [
+      "COMM-001",
+      "COMM-002",
+      "COMM-003",
+      "COMM-004",
+      "COMM-005"
+    ],
+    "EPIC-004": [
+      "FIX-001",
+      "FIX-002",
+      "FIX-003",
+      "FIX-004"
+    ],
+    "EPIC-005": [
+      "UNI-001",
+      "UNI-002",
+      "UNI-003",
+      "UNI-004"
+    ],
+    "EPIC-006": [
+      "PRO-001",
+      "PRO-002",
+      "PRO-003",
+      "AUDIT-030"
+    ]
+  },
+  "by_module": {
+    "cf-login": [
+      "CLOUD-002"
+    ],
+    "cf-users": [
+      "CLOUD-002",
+      "AUDIT-017",
+      "AUDIT-019",
+      "AUDIT-030"
+    ],
+    "cf-utils": [
+      "CLOUD-002",
+      "AUDIT-028"
+    ],
+    "cf-posts": [
+      "CLOUD-003",
+      "AUDIT-023",
+      "AUDIT-027"
+    ],
+    "cf-comments": [
+      "CLOUD-003",
+      "UNI-003",
+      "AUDIT-018",
+      "AUDIT-027"
+    ],
+    "cf-categories": [
+      "CLOUD-003"
+    ],
+    "cf-messages": [
+      "CLOUD-004",
+      "AUDIT-024",
+      "AUDIT-029"
+    ],
+    "cf-clear-db": [
+      "AUDIT-016"
+    ],
+    "db-all": [
+      "CLOUD-001",
+      "AUDIT-016"
+    ],
+    "mp-services": [
+      "CLOUD-005"
+    ],
+    "mp-watch": [
+      "CLOUD-007",
+      "AUDIT-029"
+    ],
+    "mp-pages": [
+      "CLOUD-006",
+      "CLOUD-007"
+    ],
+    "mp-components": [
+      "CLOUD-006",
+      "COMM-002",
+      "COMM-003",
+      "AUDIT-020"
+    ],
+    "mp-cleanup": [
+      "CLOUD-008"
+    ],
+    "mp-config": [
+      "CLOUD-001",
+      "FLAT-001"
+    ],
+    "mp-pages/profile": [
+      "FLAT-001"
+    ],
+    "mp-pages/post": [
+      "COMM-001",
+      "COMM-004",
+      "COMM-005",
+      "UNI-002",
+      "PRO-002",
+      "AUDIT-023"
+    ],
+    "mp-pages/categories": [
+      "AUDIT-022"
+    ],
+    "mp-pages/messages": [
+      "UNI-001",
+      "UNI-004",
+      "AUDIT-025"
+    ],
+    "mp-pages/user": [
+      "PRO-001",
+      "AUDIT-030"
+    ],
+    "mp-services/comments": [
+      "COMM-001",
+      "COMM-002",
+      "COMM-003"
+    ],
+    "mp-services/users": [
+      "PRO-003",
+      "AUDIT-017"
+    ],
+    "mp-watch-comments": [
+      "COMM-004"
+    ],
+    "mp-types": [
+      "COMM-005",
+      "AUDIT-021"
+    ],
+    "mp-components/post-item": [
+      "UNI-002",
+      "PRO-002",
+      "AUDIT-020"
+    ],
+    "mp-components/comment-item": [
+      "UNI-002",
+      "PRO-002",
+      "AUDIT-020"
+    ],
+    "mp-components/notification-card": [
+      "UNI-002",
+      "PRO-002",
+      "AUDIT-018",
+      "AUDIT-020",
+      "AUDIT-025"
+    ],
+    "deployment": [
+      "AUDIT-026"
+    ]
+  }
+}

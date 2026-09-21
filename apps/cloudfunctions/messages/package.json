@@ -1,0 +1,9 @@
+{
+  "name": "cf-messages",
+  "version": "1.0.0",
+  "description": "Private messaging — send, conversation list, history, markRead",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "4.0.2"
+  }
+}

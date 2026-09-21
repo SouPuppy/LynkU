@@ -1,0 +1,82 @@
+<nav-bar title="{{mode === 'edit' ? '编辑帖子' : mode === 'draft' ? '继续编辑' : '发帖'}}" showBack="{{true}}" />
+<view class="edit-page" style="min-height: calc(100vh - {{navHeight}}px);">
+  <view class="editor-field title-section">
+    <input
+      class="edit-title"
+      placeholder="输入标题..."
+      placeholder-class="edit-title-placeholder"
+      value="{{title}}"
+      bindinput="onTitleInput"
+      disabled="{{submitting || publicationPending}}"
+      maxlength="200"
+    />
+    <view class="field-meta">
+      <text class="counter text-xs {{titleLen > 180 ? 'counter-warn' : 'text-secondary'}}">{{titleLen}}/200</text>
+    </view>
+  </view>
+
+  <view class="editor-field topic-section">
+    <view class="topic-label-row flex-row">
+      <text class="text-sm text-secondary">话题（可选）</text>
+      <text class="text-xs text-secondary drafts-link" bindtap="onDraftsTap">草稿箱</text>
+    </view>
+    <view class="topic-pills">
+      <block wx:if="{{!categoriesReady}}">
+        <view class="topic-pill topic-pill-ghost">
+          <text class="text-xs text-secondary">加载中...</text>
+        </view>
+      </block>
+      <block wx:elif="{{categories.length === 0}}">
+        <view class="topic-pill topic-pill-ghost">
+          <text class="text-xs text-secondary">暂无可用话题</text>
+        </view>
+      </block>
+      <block wx:else>
+        <view
+          wx:for="{{categories}}"
+          wx:key="_id"
+          class="topic-pill {{categoryId === item._id ? 'pill-active' : ''}}"
+          data-id="{{item._id}}"
+          bindtap="onCategoryTap"
+        >
+          {{item.name}}
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <view class="editor-field anonymous-row flex-row">
+    <view>
+      <text class="text-sm">匿名发布</text>
+      <text class="anonymous-status text-xs text-secondary">{{anonymousMode ? '其他用户不会看到你的身份' : '显示昵称和头像'}}</text>
+    </view>
+    <switch disabled="{{submitting || publicationPending}}" checked="{{anonymousMode}}" bindchange="onAnonymousChange" color="#5f6368" />
+  </view>
+
+  <view class="editor-field content-section">
+    <textarea
+      class="edit-content"
+      placeholder="分享你的想法..."
+      placeholder-class="edit-content-placeholder"
+      value="{{content}}"
+      bindinput="onContentInput"
+      disabled="{{submitting || publicationPending}}"
+      maxlength="10000"
+    />
+    <view class="content-footer flex-row">
+      <text class="counter text-xs {{contentLen > 9000 ? 'counter-warn' : 'text-secondary'}}">{{contentLen}}/10000</text>
+      <text wx:if="{{lastSavedAt}}" class="save-indicator text-xs text-secondary">{{lastSavedAt}}</text>
+    </view>
+  </view>
+</view>
+
+<view class="submit-bar">
+  <button
+    class="submit-btn"
+    bindtap="onSubmit"
+    disabled="{{submitting}}"
+    loading="{{submitting}}"
+  >
+    {{submitting ? (mode === 'edit' ? '保存中...' : '发布中...') : (publicationPending ? '重试确认发布结果' : mode === 'edit' ? '保存修改' : '发布')}}
+  </button>
+</view>

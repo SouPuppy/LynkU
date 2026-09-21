@@ -1,0 +1,2 @@
+<!-- avatar -->
+<image class="avatar avatar-{{size}}" src="{{displaySrc}}" mode="aspectFill" binderror="onError" />

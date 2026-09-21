@@ -1,0 +1,8 @@
+{
+  "usingComponents": {
+    "nav-bar": "/components/nav-bar/nav-bar",
+    "notification-card": "/components/notification-card/notification-card",
+    "empty": "/components/empty/empty"
+  },
+  "navigationStyle": "custom"
+}

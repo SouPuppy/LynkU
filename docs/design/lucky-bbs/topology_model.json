@@ -1,0 +1,272 @@
+{
+  "source": "DESIGN",
+  "nodes": [
+    {
+      "id": "mp-pages",
+      "name": "Mini-Program Pages",
+      "category": "ORCHESTRATOR",
+      "responsibility": "WeChat mini-program page layer: post list, post detail, create post, user profile, message list, chat room, category browser. Orchestrates components and API/WS clients.",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "mp-components",
+      "name": "Mini-Program Components",
+      "category": "UTILITY",
+      "responsibility": "Reusable UI components: post card, comment item, message bubble, category tag, user avatar, loading skeleton.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "mp-api-client",
+      "name": "Mini-Program API Client",
+      "category": "ADAPTER",
+      "responsibility": "HTTP REST client wrapping wx.request with JWT token injection, error normalization, and response typing.",
+      "is_entry_point": false,
+      "is_external_boundary": true
+    },
+    {
+      "id": "mp-ws-client",
+      "name": "Mini-Program WebSocket Client",
+      "category": "ADAPTER",
+      "responsibility": "WebSocket client wrapping wx.connectSocket with state machine, heartbeat, exponential backoff reconnection, and message ACK protocol.",
+      "is_entry_point": false,
+      "is_external_boundary": true
+    },
+    {
+      "id": "mp-auth",
+      "name": "Mini-Program Auth Module",
+      "category": "UTILITY",
+      "responsibility": "WeChat login flow: wx.login() → code exchange → JWT storage. Token refresh and session recovery.",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "be-routes",
+      "name": "Backend API Routes",
+      "category": "ORCHESTRATOR",
+      "responsibility": "FastAPI route handlers for auth, users, posts, comments, categories, messages. Validates requests, delegates to services, returns responses. Stateless.",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "be-ws-handler",
+      "name": "Backend WebSocket Handler",
+      "category": "ORCHESTRATOR",
+      "responsibility": "WebSocket endpoint: accept connections, authenticate via token, manage session registry, route messages between users. Single endpoint multiplexed by message type.",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "be-auth-service",
+      "name": "Authentication Service",
+      "category": "SERVICE",
+      "responsibility": "WeChat code exchange with WeChat API, JWT token issuance and validation, user identity resolution. Trust boundary between WeChat and the application.",
+      "is_entry_point": false,
+      "is_external_boundary": true
+    },
+    {
+      "id": "be-post-service",
+      "name": "Post Service",
+      "category": "SERVICE",
+      "responsibility": "Post CRUD, pagination, full-text search, category filtering, view counting. Business rules: rate limiting per user, content length limits, soft-delete.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "be-comment-service",
+      "name": "Comment Service",
+      "category": "SERVICE",
+      "responsibility": "Comment CRUD with self-referencing threading (parent_id), nested reply depth limit (max 2 levels). Soft-delete with cascade.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "be-message-service",
+      "name": "Message Service",
+      "category": "SERVICE",
+      "responsibility": "Direct message send/receive, conversation listing (grouped by other user), message status (sent/delivered/read), offline message queue, delivery confirmation via ACK.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "be-category-service",
+      "name": "Category Service",
+      "category": "SERVICE",
+      "responsibility": "Category listing, creation (admin only), post count tracking per category. Read-heavy, minimal writes.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "be-user-repo",
+      "name": "User Repository",
+      "category": "REPOSITORY",
+      "responsibility": "User data access: find by WeChat openid, create on first login, update profile. Encapsulates SQLAlchemy queries for User model.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "be-post-repo",
+      "name": "Post Repository",
+      "category": "REPOSITORY",
+      "responsibility": "Post data access: cursor-paginated listing, full-text search via PostgreSQL TSVECTOR, category filtering. Soft-delete support.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "be-comment-repo",
+      "name": "Comment Repository",
+      "category": "REPOSITORY",
+      "responsibility": "Comment data access: find by post_id with eager-loaded user and nested replies. Tree-building logic for threaded display.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "be-message-repo",
+      "name": "Message Repository",
+      "category": "REPOSITORY",
+      "responsibility": "Message data access: conversation history between two users, unread count per conversation, offline message retrieval, status updates (delivered/read).",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "be-category-repo",
+      "name": "Category Repository",
+      "category": "REPOSITORY",
+      "responsibility": "Category data access: list all, find by id, create, update post count. Read-optimized with in-memory caching consideration.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "be-models",
+      "name": "Database Models",
+      "category": "ENTITY",
+      "responsibility": "SQLAlchemy ORM entity definitions: User, Post, Comment, Category, Message, Conversation. Schema relationships, constraints, indexes.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "be-core",
+      "name": "Backend Core Infrastructure",
+      "category": "UTILITY",
+      "responsibility": "Database session management (async), application factory, configuration (Pydantic Settings), CORS middleware, exception handlers, structured logging.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "be-session-manager",
+      "name": "WebSocket Session Manager",
+      "category": "UTILITY",
+      "responsibility": "Track online users: user_id → WebSocket connection mapping. Handle connect/disconnect lifecycle. Broadcast online status changes. Shared mutable state with explicit lock.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "wechat-api",
+      "name": "WeChat External API",
+      "category": "GATEWAY",
+      "responsibility": "External WeChat server API: code2session (login code exchange), access token management. External trust boundary — not owned by this project.",
+      "is_entry_point": false,
+      "is_external_boundary": true
+    },
+    {
+      "id": "be-schemas",
+      "name": "Pydantic Schemas",
+      "category": "ENTITY",
+      "responsibility": "Pydantic v2 request/response models for all API endpoints. Input validation, serialization, OpenAPI documentation generation.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    }
+  ],
+  "edges": [
+    {"from": "mp-pages", "to": "mp-components", "relationship": "COMPOSES", "description": "Pages compose UI components for rendering"},
+    {"from": "mp-pages", "to": "mp-api-client", "relationship": "CALLS", "description": "Pages call REST API for data: posts, comments, categories, user profile"},
+    {"from": "mp-pages", "to": "mp-ws-client", "relationship": "CALLS", "description": "Chat pages use WebSocket for real-time messaging"},
+    {"from": "mp-pages", "to": "mp-auth", "relationship": "CALLS", "description": "Pages check auth state before protected actions"},
+    {"from": "mp-api-client", "to": "mp-auth", "relationship": "CALLS", "description": "API client reads JWT from auth module, injects into request headers"},
+    {"from": "mp-ws-client", "to": "mp-auth", "relationship": "CALLS", "description": "WebSocket client reads JWT from auth module for connection auth"},
+    {"from": "mp-auth", "to": "mp-api-client", "relationship": "CALLS", "description": "Auth module calls login endpoint via API client to exchange WeChat code for JWT"},
+    {"from": "be-routes", "to": "be-schemas", "relationship": "COMPOSES", "description": "Routes use Pydantic schemas for request validation and response serialization"},
+    {"from": "be-routes", "to": "be-auth-service", "relationship": "CALLS", "description": "Auth routes delegate to auth service for login/token operations"},
+    {"from": "be-routes", "to": "be-post-service", "relationship": "CALLS", "description": "Post routes delegate to post service for business logic"},
+    {"from": "be-routes", "to": "be-comment-service", "relationship": "CALLS", "description": "Comment routes delegate to comment service"},
+    {"from": "be-routes", "to": "be-message-service", "relationship": "CALLS", "description": "Message REST routes (history, conversations) delegate to message service"},
+    {"from": "be-routes", "to": "be-category-service", "relationship": "CALLS", "description": "Category routes delegate to category service"},
+    {"from": "be-ws-handler", "to": "be-message-service", "relationship": "CALLS", "description": "WebSocket message events delegate to message service for persistence and routing"},
+    {"from": "be-ws-handler", "to": "be-session-manager", "relationship": "CALLS", "description": "WebSocket handler registers/unregisters connections in session manager"},
+    {"from": "be-ws-handler", "to": "be-auth-service", "relationship": "CALLS", "description": "WebSocket handler validates JWT on connection via auth service"},
+    {"from": "be-auth-service", "to": "wechat-api", "relationship": "CALLS", "description": "Auth service calls WeChat code2session API to exchange login code"},
+    {"from": "be-auth-service", "to": "be-user-repo", "relationship": "CALLS", "description": "Auth service finds or creates user via user repository"},
+    {"from": "be-post-service", "to": "be-post-repo", "relationship": "CALLS", "description": "Post service delegates data access to post repository"},
+    {"from": "be-comment-service", "to": "be-comment-repo", "relationship": "CALLS", "description": "Comment service delegates data access to comment repository"},
+    {"from": "be-message-service", "to": "be-message-repo", "relationship": "CALLS", "description": "Message service delegates data access to message repository"},
+    {"from": "be-message-service", "to": "be-session-manager", "relationship": "CALLS", "description": "Message service checks online status and delivers real-time messages via session manager"},
+    {"from": "be-category-service", "to": "be-category-repo", "relationship": "CALLS", "description": "Category service delegates data access to category repository"},
+    {"from": "be-user-repo", "to": "be-models", "relationship": "CALLS", "description": "Repository uses SQLAlchemy User model for queries"},
+    {"from": "be-post-repo", "to": "be-models", "relationship": "CALLS", "description": "Repository uses SQLAlchemy Post model"},
+    {"from": "be-comment-repo", "to": "be-models", "relationship": "CALLS", "description": "Repository uses SQLAlchemy Comment model"},
+    {"from": "be-message-repo", "to": "be-models", "relationship": "CALLS", "description": "Repository uses SQLAlchemy Message and Conversation models"},
+    {"from": "be-category-repo", "to": "be-models", "relationship": "CALLS", "description": "Repository uses SQLAlchemy Category model"},
+    {"from": "be-models", "to": "be-core", "relationship": "CALLS", "description": "Models use core database session and base model class"},
+    {"from": "be-post-service", "to": "be-category-repo", "relationship": "CALLS", "description": "Post service validates category existence via category repository"},
+    {"from": "be-comment-service", "to": "be-post-repo", "relationship": "CALLS", "description": "Comment service validates post existence before creating comment"}
+  ],
+  "boundary_conditions": [
+    {
+      "id": "BC-001",
+      "description": "WeChat login code exchange may fail — WeChat API returns error (invalid code, rate limit, system busy)",
+      "owner_node": "be-auth-service",
+      "failure_mode": "WeChat code2session returns errcode != 0. Service returns structured error, frontend shows retry prompt. Rate-limited codes get 429 with Retry-After."
+    },
+    {
+      "id": "BC-002",
+      "description": "JWT token may be expired, malformed, or revoked on every authenticated request",
+      "owner_node": "be-auth-service",
+      "failure_mode": "Auth middleware returns 401 with error code. Frontend API client catches 401, attempts token refresh or redirects to login. WebSocket connection drops on expired token."
+    },
+    {
+      "id": "BC-003",
+      "description": "WebSocket connection interrupted by network change, app background, or server disconnect",
+      "owner_node": "mp-ws-client",
+      "failure_mode": "Client state machine triggers reconnection with exponential backoff (1s→2s→4s→8s, max 5 retries). Server session manager cleans up stale connections after heartbeat timeout (90s). Offline messages queued for delivery on reconnect."
+    },
+    {
+      "id": "BC-004",
+      "description": "Concurrent comment/post creation may cause race conditions on counters or tree structures",
+      "owner_node": "be-post-service",
+      "failure_mode": "PostgreSQL atomic increments for view/reply counts. Comments use database-level ordering (created_at) with id tiebreaker. Optimistic concurrency for nested reply depth checks."
+    },
+    {
+      "id": "BC-005",
+      "description": "Message delivery to offline recipient — must persist and deliver on reconnect",
+      "owner_node": "be-message-service",
+      "failure_mode": "If session manager reports user offline, message is persisted with status='sent'. On recipient WebSocket connect, query undelivered messages and push via WS. Recipient sends ACK, status updated to 'delivered' then 'read'."
+    },
+    {
+      "id": "BC-006",
+      "description": "User-generated content may contain spam, abuse, or prohibited material",
+      "owner_node": "be-post-service",
+      "failure_mode": "Content length limits enforced at Pydantic schema layer. Basic sensitive word list checked server-side before persistence. Flagged posts go to 'review' status (visible only to author). Admin moderation endpoints for approve/reject."
+    },
+    {
+      "id": "BC-007",
+      "description": "WeChat mini-program bundle size limit (2MB main package, 12MB subpackages total)",
+      "owner_node": "mp-pages",
+      "failure_mode": "Use WeChat subpackage loading: chat module as independent subpackage. Images loaded from remote CDN, not bundled. Tree-shaking via TypeScript compiler. Bundle size checked in CI."
+    },
+    {
+      "id": "BC-008",
+      "description": "Database connection pool exhaustion under concurrent request load",
+      "owner_node": "be-core",
+      "failure_mode": "SQLAlchemy pool_size and max_overflow configured. Connection timeout with 503 response if pool exhausted. Health check endpoint monitors pool utilization."
+    }
+  ],
+  "notes": [
+    "Monolith backend — all services in one process. Split along service boundaries if UNNC student scale (~10k) is exceeded.",
+    "WebSocket and HTTP share the same FastAPI process via ASGI. Uvicorn workers handle both protocols.",
+    "Frontend is WeChat native (not Uni-app) — already scaffolded. Uses Glass-Easel component framework and Skyline render engine.",
+    "ponytail: comment tree depth limited to 2 levels (flat + one nesting). Add closure table if full threading needed.",
+    "ponytail: sensitive word filter as simple list check. Add ML-based moderation if spam becomes a problem.",
+    "Intentional cycle: mp-api-client ↔ mp-auth. mp-auth calls login endpoint via mp-api-client during authentication bootstrap; mp-api-client reads JWT from mp-auth for request headers. Bootstrapping dependency — not a design defect. Break by having mp-auth use raw wx.request for the single login call if the cycle causes issues."
+  ]
+}

@@ -1,0 +1,25 @@
+# AI
+.claude
+.mcp.json
+
+# MacOS
+.DS_Store
+
+# Secrets — never commit
+.env
+private.*.key
+
+# WeChat private config (personal DevTools overrides)
+project.private.config.json
+
+# Editor
+.vscode/
+
+# Node
+node_modules/
+dist/
+apps/miniprogram/generated/
+
+# Env
+.env*
+!.env.example

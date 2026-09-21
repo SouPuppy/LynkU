@@ -1,0 +1,127 @@
+<view wx:if="{{access !== 'verified'}}" class="access-state">
+  <text class="access-title">{{access === 'guest' ? '登录后查看消息' : '完成学校认证后可使用消息功能'}}</text>
+  <text class="access-description">学校邮箱认证暂不可用，你可以继续浏览校园内容。</text>
+  <button wx:if="{{access === 'guest'}}" class="access-button" bindtap="onLogin">微信登录</button>
+  <button wx:else class="access-button" bindtap="onVerify">查看认证状态</button>
+</view>
+<block wx:else>
+<nav-bar title="私信" showBack="{{false}}" />
+<!-- messages: tabbed view — 私信 + 系统消息 -->
+<view class="messages-page" style="height: calc(100vh - {{navHeight}}px);">
+  <!-- Tab bar -->
+  <view class="msg-tabs">
+    <view class="msg-tab {{activeTab === 'chat' ? 'msg-tab-active' : ''}}" bindtap="onTabChat">
+      <text>私信</text>
+    </view>
+    <view class="msg-tab {{activeTab === 'notif' ? 'msg-tab-active' : ''}}" bindtap="onTabNotif">
+      <text>系统消息</text>
+      <view wx:if="{{notifUnread > 0}}" class="tab-badge">{{notifUnread > 99 ? '99+' : notifUnread}}</view>
+    </view>
+  </view>
+
+  <!-- Tab: 私信 (conversations) -->
+  <view wx:if="{{activeTab === 'chat'}}" class="tab-panel">
+    <view wx:if="{{chatState === 'loading'}}" class="list-loading">
+      <view class="conversation-skeleton">
+        <view wx:for="{{skRows5}}" wx:key="*this" class="conv-sk-row">
+          <view class="sk-circle conv-sk-avatar"></view>
+          <view class="conv-sk-info">
+            <view class="conv-sk-top">
+              <view class="sk-line sk-line-md sk-w-40"></view>
+              <view class="sk-line sk-line-xs conv-sk-time"></view>
+            </view>
+            <view class="sk-line sk-w-80"></view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:elif="{{chatState === 'error'}}" class="list-empty" bindtap="onRetry">
+      <text class="text-secondary">加载失败，点击重试</text>
+    </view>
+
+    <scroll-view
+      wx:elif="{{conversations.length}}"
+      class="conv-scroll"
+      scroll-y
+      bindscrolltolower="onChatLoadMore"
+      lower-threshold="100"
+    >
+      <view
+        wx:for="{{conversations}}" wx:key="conversationKey"
+        class="conv-row flex-row"
+        data-conv="{{item}}"
+        bindtap="onConvTap"
+      >
+        <avatar src="{{item.peer.avatar_url}}" anonymous="{{item.peerAnonymous}}" size="md" />
+        <view class="conv-info flex-1">
+          <view class="flex-row">
+            <text class="conv-name">{{item.peer.nickname}}</text>
+            <text class="conv-time text-xs text-secondary">{{item.display_time}}</text>
+          </view>
+          <view class="flex-row">
+            <text class="conv-preview text-sm text-secondary text-ellipsis flex-1">{{item.lastMessage.content}}</text>
+            <view wx:if="{{item.unreadCount > 0}}" class="conv-badge">{{item.unreadCount}}</view>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{chatLoadingMore}}" class="list-footer text-secondary text-sm">加载中...</view>
+      <view wx:elif="{{chatLoadError}}" class="list-footer text-secondary text-sm" bindtap="onChatLoadMore">加载失败，点击重试</view>
+      <view wx:elif="{{!chatHasMore}}" class="list-footer text-secondary text-sm">没有更多了</view>
+    </scroll-view>
+
+    <view wx:else class="list-empty">
+      <text class="text-secondary">暂无消息</text>
+    </view>
+  </view>
+
+  <!-- Tab: 系统消息 (notifications) -->
+  <view wx:if="{{activeTab === 'notif'}}" class="tab-panel">
+    <view wx:if="{{notifState === 'loading'}}" class="message-notif-skeleton">
+      <view wx:for="{{skRows5}}" wx:key="*this" class="message-notif-sk-row">
+        <view class="sk-circle message-notif-sk-avatar"></view>
+        <view class="message-notif-sk-info">
+          <view class="sk-line sk-w-80"></view>
+          <view class="sk-line sk-line-sm sk-w-60"></view>
+          <view class="sk-line sk-line-xs sk-w-30"></view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:elif="{{notifState === 'error'}}" class="list-empty" bindtap="onNotifRetry">
+      <text class="text-secondary">加载失败，点击重试</text>
+    </view>
+
+    <scroll-view
+      wx:elif="{{notifications.length}}"
+      class="notif-feed"
+      scroll-y
+      refresher-enabled
+      refresher-triggered="{{false}}"
+      bindrefresherrefresh="onNotifRefresh"
+      bindscrolltolower="onNotifLoadMore"
+      lower-threshold="100"
+    >
+      <notification-card
+        wx:for="{{notifications}}"
+        wx:key="_id"
+        notification="{{item}}"
+      />
+
+      <view wx:if="{{notifLoadingMore}}" class="list-footer text-secondary text-sm">
+        <text>加载中...</text>
+      </view>
+
+      <view wx:elif="{{notifLoadError}}" class="list-footer text-secondary text-sm" bindtap="onNotifLoadMore">加载失败，点击重试</view>
+      <view wx:elif="{{!notifHasMore && notifications.length > 0}}" class="list-footer text-secondary text-sm">
+        <text>没有更多了</text>
+      </view>
+    </scroll-view>
+
+    <view wx:else class="list-empty">
+      <text class="text-secondary">暂无消息通知</text>
+    </view>
+  </view>
+</view>
+
+</block>

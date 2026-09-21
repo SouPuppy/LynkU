@@ -1,0 +1,73 @@
+<!-- index: home page -->
+<view class="page-index">
+  <!-- Combined header: search bar in nav position -->
+  <view class="index-header" style="padding-top: {{statusBarHeight}}px;">
+    <view class="header-inner">
+      <search-bar
+        categories="{{categories}}"
+        activeCategoryId="{{activeCategoryId}}"
+        capsuleRight="{{headerPaddingRight}}"
+        bindsearch="onSearch"
+        bindcategorychange="onCategoryChange"
+      />
+    </view>
+  </view>
+
+  <!-- loading skeleton -->
+  <view wx:if="{{state === 'loading'}}" class="home-skeleton">
+    <view wx:for="{{skRows5}}" wx:key="*this" class="home-sk-post">
+      <view class="sk-line sk-line-lg sk-w-80"></view>
+      <view class="home-sk-body">
+        <view class="sk-line sk-w-full"></view>
+        <view class="sk-line sk-w-70"></view>
+      </view>
+      <view class="home-sk-meta">
+        <view class="sk-line sk-line-xs sk-w-30"></view>
+        <view class="sk-line sk-line-xs sk-w-20"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- error state -->
+  <view wx:elif="{{state === 'error'}}" class="list-empty" style="padding-top:120rpx;" bindtap="onRetry">
+    <text class="text-secondary">{{errorMsg || '加载失败，点击重试'}}</text>
+  </view>
+
+  <!-- empty state -->
+  <view wx:elif="{{state === 'empty'}}" class="list-empty" style="padding-top:120rpx;">
+    <text class="text-secondary">暂无内容，快去发帖吧</text>
+  </view>
+
+  <!-- post list -->
+  <scroll-view
+    wx:else
+    class="feed-list"
+    scroll-y
+    refresher-enabled
+    refresher-triggered="{{false}}"
+    bindrefresherrefresh="onRefresh"
+    bindscrolltolower="onLoadMore"
+    lower-threshold="100"
+  >
+    <post-item
+      wx:for="{{posts}}"
+      wx:key="_id"
+      post="{{item}}"
+      data-id="{{item._id}}"
+      bindtap="onPostTap"
+    />
+
+    <view wx:if="{{loadingMore}}" class="list-footer text-secondary text-sm">
+      <text>加载中...</text>
+    </view>
+
+    <view wx:elif="{{!hasMore && posts.length > 0}}" class="list-footer text-secondary text-sm">
+      <text>没有更多了</text>
+    </view>
+  </scroll-view>
+
+  <!-- FAB: quick post -->
+  <view class="fab" bindtap="onCreatePost">
+    <view class="fab-icon"></view>
+  </view>
+</view>

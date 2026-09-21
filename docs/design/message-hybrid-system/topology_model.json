@@ -1,0 +1,145 @@
+{
+  "source": "DESIGN",
+  "nodes": [
+    {
+      "id": "notifications-page",
+      "name": "Notifications Feed Page",
+      "category": "ADAPTER",
+      "responsibility": "Renders a scrollable feed of interaction notifications (comments, replies, likes, follows) with per-type card templates",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "notification-card",
+      "name": "Notification Card Component",
+      "category": "ADAPTER",
+      "responsibility": "Renders a single notification event with type-specific layout: actor avatar, action text, target preview, timestamp, and deeplink",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "notifications-service",
+      "name": "Notifications Service",
+      "category": "SERVICE",
+      "responsibility": "Data access layer: fetch paginated notifications, mark as read, expose unread count for badge",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "notifications-cloud",
+      "name": "Notifications Cloud Function Actions",
+      "category": "SERVICE",
+      "responsibility": "Server-side: list notifications for current user, mark read, create notification records (called by comment/post/follow flows)",
+      "is_entry_point": false,
+      "is_external_boundary": true
+    },
+    {
+      "id": "notifications-collection",
+      "name": "Notifications DB Collection",
+      "category": "ENTITY",
+      "responsibility": "Persistent storage for notification records: type, actor, target, read status, created_at",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "messages-page",
+      "name": "Messages Page (Conversation List)",
+      "category": "ADAPTER",
+      "responsibility": "Renders the messages tab: Stub notification row pinned at index 0, followed by DM conversation list sorted by most recent message",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "messages-cloud",
+      "name": "Messages Cloud Function (Extended)",
+      "category": "SERVICE",
+      "responsibility": "Existing DM send/listConversations/getConversation/markRead plus new listNotifications action",
+      "is_entry_point": false,
+      "is_external_boundary": true
+    },
+    {
+      "id": "comments-cloud",
+      "name": "Comments Cloud Function (Extended)",
+      "category": "SERVICE",
+      "responsibility": "Existing comment create/delete; extended to emit a notification to the post author when a new top-level comment is created",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "stub-row",
+      "name": "Stub Notification Row",
+      "category": "ADAPTER",
+      "responsibility": "Synthetic list entry pinned at the top of the messages page showing aggregated unread notification count and latest notification preview; taps navigate to notifications-page",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "typings-notification",
+      "name": "INotification Type Definition",
+      "category": "ENTITY",
+      "responsibility": "TypeScript interface: id, type enum, actor snapshot, target reference, read status, created_at timestamp",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    }
+  ],
+  "edges": [
+    { "from": "messages-page", "to": "stub-row", "relationship": "COMPOSES", "description": "Messages page renders the Stub row at position 0 of its list" },
+    { "from": "messages-page", "to": "notifications-service", "relationship": "CALLS", "description": "Fetches unread count for Stub badge" },
+    { "from": "stub-row", "to": "notifications-page", "relationship": "CALLS", "description": "Tap navigates to notifications feed page" },
+    { "from": "messages-page", "to": "messages-cloud", "relationship": "CALLS", "description": "Existing: listConversations" },
+    { "from": "notifications-page", "to": "notification-card", "relationship": "COMPOSES", "description": "Each notification rendered as a card" },
+    { "from": "notifications-page", "to": "notifications-service", "relationship": "CALLS", "description": "Fetch paginated notifications, mark read" },
+    { "from": "notifications-service", "to": "messages-cloud", "relationship": "CALLS", "description": "Sends listNotifications action to cloud function" },
+    { "from": "messages-cloud", "to": "notifications-collection", "relationship": "CALLS", "description": "Queries notification records for the current user" },
+    { "from": "comments-cloud", "to": "notifications-collection", "relationship": "CALLS", "description": "Creates a 'comment' type notification when a new top-level comment is posted" },
+    { "from": "notifications-cloud", "to": "notifications-collection", "relationship": "CALLS", "description": "Reads/writes notification records" },
+    { "from": "notifications-page", "to": "typings-notification", "relationship": "IMPLEMENTS", "description": "Uses INotification type for data binding" },
+    { "from": "notifications-service", "to": "typings-notification", "relationship": "IMPLEMENTS", "description": "Returns typed INotification arrays" },
+    { "from": "stub-row", "to": "typings-notification", "relationship": "IMPLEMENTS", "description": "Uses INotification for unread count display" },
+    { "from": "notifications-page", "to": "messages-cloud", "relationship": "CALLS", "description": "markRead action to mark notifications as read when viewed" }
+  ],
+  "boundary_conditions": [
+    {
+      "id": "BC-001",
+      "description": "Notification creation idempotency: the same event (e.g. user posts two identical comments) must not create duplicate notification records",
+      "owner_node": "comments-cloud",
+      "failure_mode": "Duplicate notifications clutter the feed and inflate unread counts"
+    },
+    {
+      "id": "BC-002",
+      "description": "Notification feed pagination: a user may accumulate thousands of notifications over time; the feed must support cursor-based pagination",
+      "owner_node": "notifications-cloud",
+      "failure_mode": "Unbounded query returns excessive data, page load degrades linearly"
+    },
+    {
+      "id": "BC-003",
+      "description": "Stub unread count consistency: the badge count on the Stub row must reflect the actual number of unread notifications in the database",
+      "owner_node": "notifications-service",
+      "failure_mode": "Stale badge count misleads the user (shows 3 when actually 0, or 0 when actually 5)"
+    },
+    {
+      "id": "BC-004",
+      "description": "Dangling target references: a notification may reference a post or comment that has since been deleted; the feed must handle this gracefully",
+      "owner_node": "notification-card",
+      "failure_mode": "Null-pointer crash or blank card when user taps a notification for deleted content"
+    },
+    {
+      "id": "BC-005",
+      "description": "Anonymous mode identity in notifications: when an anonymous user comments, the notification shown to the post author must respect the anonymous setting (show '匿名用户' not the real nickname)",
+      "owner_node": "comments-cloud",
+      "failure_mode": "Privacy leak: anonymous commenter's real identity exposed via notification"
+    },
+    {
+      "id": "BC-006",
+      "description": "CloudBase collection count limits: WeChat CloudBase free tier has read/write quotas; notification creation on every comment must not exceed quotas under normal load",
+      "owner_node": "notifications-cloud",
+      "failure_mode": "Quota exhaustion blocks all message/notification operations"
+    }
+  ],
+  "notes": [
+    "The Stub is a UI-level construct, not a real conversation. It is never stored in the conversations collection.",
+    "Notification creation is fire-and-forget from the comment/post flow: if notification creation fails, the comment still succeeds.",
+    "The notifications collection reuses the existing messages cloud function by adding a new action ('listNotifications') rather than creating a separate cloud function. This avoids Lambda sprawl.",
+    "Likes and follows are out of scope for the initial implementation but the notification type enum is designed to accommodate them."
+  ]
+}

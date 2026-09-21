@@ -1,0 +1,119 @@
+/* comment-item styles */
+.comment {
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid var(--color-border);
+}
+
+.comment-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+}
+
+.comment-avatar {
+  width: 56rpx;
+  height: 56rpx;
+  flex-shrink: 0;
+}
+
+.comment-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.comment-meta,
+.reply-meta {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+}
+
+.comment-author,
+.reply-author {
+  max-width: 360rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.comment-time,
+.reply-time {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-xs);
+  line-height: 1.4;
+}
+
+.comment-text {
+  margin-top: 8rpx;
+  color: var(--color-text);
+  font-size: var(--font-md);
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.comment-actions {
+  display: flex;
+  align-items: center;
+  min-height: 40rpx;
+  margin-top: 8rpx;
+}
+
+.comment-action {
+  color: var(--color-text-secondary);
+  font-size: var(--font-xs);
+  line-height: 40rpx;
+}
+
+.comment-deleted {
+  padding-left: 72rpx;
+  min-height: 56rpx;
+  display: flex;
+  align-items: center;
+}
+
+.comment-deleted-text,
+.reply-deleted {
+  color: var(--color-text-secondary);
+  font-size: var(--font-xs);
+}
+
+.replies-panel {
+  margin: 14rpx 0 0 72rpx;
+  padding: 14rpx 16rpx;
+  border-radius: var(--radius-md);
+  background: #f7f8fa;
+}
+
+.replies-header {
+  margin-bottom: 8rpx;
+  color: var(--color-text-secondary);
+  font-size: var(--font-xs);
+  line-height: 1.4;
+}
+
+.reply-row {
+  padding: 10rpx 0;
+}
+
+.reply-row + .reply-row {
+  border-top: 1rpx solid #eceff3;
+}
+
+.reply-text {
+  display: block;
+  margin-top: 4rpx;
+  color: var(--color-text);
+  font-size: var(--font-sm);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

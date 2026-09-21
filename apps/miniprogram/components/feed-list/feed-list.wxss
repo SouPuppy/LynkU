@@ -1,0 +1,4 @@
+/* feed-list styles */
+.feed-list { flex: 1; overflow: hidden; }
+.list-footer { padding: var(--spacing-md); text-align: center; }
+.list-empty { padding: 120rpx var(--spacing-md); text-align: center; }

@@ -1,0 +1,12 @@
+/* chat-bubble styles */
+.bubble-row { display: flex; flex-direction: column; padding: var(--spacing-xs) var(--spacing-md); }
+.bubble-mine { align-items: flex-end; }
+.bubble-other { align-items: flex-start; }
+
+.bubble { max-width: 75%; padding: 16rpx 24rpx; border-radius: var(--radius-md); margin-bottom: 4rpx; }
+.bubble-right { background: var(--color-primary); }
+.bubble-right .bubble-text { color: #fff; }
+.bubble-left { background: var(--color-bg-white); }
+.bubble-text { font-size: var(--font-md); line-height: 1.5; word-break: break-all; }
+
+.bubble-meta { display: flex; gap: 8rpx; }

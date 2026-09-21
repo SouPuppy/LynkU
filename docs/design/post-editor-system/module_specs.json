@@ -1,0 +1,364 @@
+[
+  {
+    "module_id": "typings-editor",
+    "module_name": "Editor Type Definitions",
+    "interfaces": [
+      {
+        "signature": "type EditorMode = 'create' | 'edit' | 'draft'",
+        "preconditions": [],
+        "postconditions": ["Editor page renders correct UI per mode: submit button label, title, whether to load existing data"],
+        "failure_modes": [
+          {
+            "id": "FM-T01",
+            "trigger": "Unknown mode string passed in query params",
+            "behavior": "Defaults to 'create' mode",
+            "propagation": "Editor renders as new-post mode; user can compose and publish normally",
+            "test_contracts": [
+              { "scenario": "Invalid mode parameter defaults to create", "type": "UNIT", "verifies": "EditorMode fallback" }
+            ]
+          }
+        ],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "interface IDraft { _id: string; _openid: string; title: string; content: string; category_id: string; anonymous: boolean; created_at: Date; updated_at: Date }",
+        "preconditions": ["Draft document exists in drafts collection"],
+        "postconditions": ["Type-safe access to draft fields in frontend"],
+        "failure_modes": [
+          {
+            "id": "FM-T02",
+            "trigger": "Draft document has missing optional fields (legacy data)",
+            "behavior": "Defaults applied: title='', content='', category_id='', anonymous=false",
+            "propagation": "Editor renders with empty fields; user fills them in",
+            "test_contracts": [
+              { "scenario": "Legacy draft with missing fields loads with defaults", "type": "UNIT", "verifies": "Backward compatibility" }
+            ]
+          }
+        ],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["EditorMode enum extensible with new modes", "IDraft extensible with new fields (images, tags)"],
+    "sealed_points": ["Core fields (_id, _openid, updated_at) are immutable"],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "drafts-collection",
+    "module_name": "Drafts DB Collection",
+    "interfaces": [
+      {
+        "signature": "db.collection('drafts').add/save/remove with per-user filtering via _openid",
+        "preconditions": ["Caller is authenticated cloud function", "draft._openid matches authenticated user"],
+        "postconditions": ["Draft persisted or deleted. Collection enforces max 50 drafts per user via count check before insert."],
+        "failure_modes": [
+          {
+            "id": "FM-DC01",
+            "trigger": "User has 50 drafts and tries to save another",
+            "behavior": "Save rejected with error code DRAFT_LIMIT_REACHED",
+            "propagation": "drafts-cloud returns fail, drafts-service surfaces error toast to user",
+            "test_contracts": [
+              { "scenario": "51st draft save is rejected with limit error", "type": "INTEGRATION", "verifies": "Draft cap enforcement", "boundary_ref": "BC-004" }
+            ]
+          },
+          {
+            "id": "FM-DC02",
+            "trigger": "CloudBase write quota exceeded",
+            "behavior": "Error logged; save falls back to local storage",
+            "propagation": "drafts-service catches cloud error, writes to wx.Storage as fallback",
+            "test_contracts": [
+              { "scenario": "Cloud write fails, draft saved to local storage", "type": "INTEGRATION", "verifies": "Offline fallback" }
+            ]
+          }
+        ],
+        "side_effects": "STATE_MUTATION"
+      }
+    ],
+    "extension_points": ["Draft schema extensible: images array, tags array added later"],
+    "sealed_points": ["Collection name: 'drafts'", "Per-user ownership via _openid"],
+    "state_owned": ["All draft documents in the drafts collection"],
+    "state_shared": []
+  },
+  {
+    "module_id": "drafts-cloud",
+    "module_name": "Drafts Cloud Function",
+    "interfaces": [
+      {
+        "signature": "saveDraft(openid, { draft_id?, title, content, category_id, anonymous }) -> { draft: IDraft }",
+        "preconditions": ["openid is authenticated user", "title.length <= 200, content.length <= 10000"],
+        "postconditions": ["Draft upserted: if draft_id provided and exists, updates; otherwise creates new. Returns full draft object."],
+        "failure_modes": [
+          {
+            "id": "FM-DF01",
+            "trigger": "Draft count at limit (50) and this is a new draft",
+            "behavior": "Returns fail('草稿已达上限', 'DRAFT_LIMIT_REACHED')",
+            "propagation": "Editor shows toast '草稿箱已满，请删除旧草稿后重试'",
+            "test_contracts": [
+              { "scenario": "Save draft when at limit shows error toast", "type": "INTEGRATION", "verifies": "Draft limit UX", "boundary_ref": "BC-004" }
+            ]
+          }
+        ],
+        "side_effects": "STATE_MUTATION"
+      },
+      {
+        "signature": "listDrafts(openid) -> { drafts: IDraft[] }",
+        "preconditions": ["openid is authenticated user"],
+        "postconditions": ["Returns all drafts for user, sorted by updated_at desc"],
+        "failure_modes": [
+          {
+            "id": "FM-DF02",
+            "trigger": "Database query timeout",
+            "behavior": "Returns fail('查询失败', 'QUERY_ERROR')",
+            "propagation": "Drafts page shows error state with retry button",
+            "test_contracts": [
+              { "scenario": "Draft list query fails shows retry button", "type": "INTEGRATION", "verifies": "Error state UX" }
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "deleteDraft(openid, draft_id) -> { deleted: true }",
+        "preconditions": ["draft_id belongs to openid"],
+        "postconditions": ["Draft removed from collection. Returns ok even if draft already deleted (idempotent)."],
+        "failure_modes": [
+          {
+            "id": "FM-DF03",
+            "trigger": "Delete attempt on draft owned by different user",
+            "behavior": "Returns fail('无权操作', 'FORBIDDEN')",
+            "propagation": "Frontend shows error; draft remains in list",
+            "test_contracts": [
+              { "scenario": "Delete another user's draft returns FORBIDDEN", "type": "INTEGRATION", "verifies": "Ownership enforcement", "boundary_ref": "BC-003" }
+            ]
+          }
+        ],
+        "side_effects": "STATE_MUTATION"
+      }
+    ],
+    "extension_points": ["New action: batchDelete for clearing all drafts"],
+    "sealed_points": ["All actions require withAuth", "Ownership check on save/delete"],
+    "state_owned": [],
+    "state_shared": ["Drafts collection (sole writer via this cloud function)"]
+  },
+  {
+    "module_id": "drafts-service",
+    "module_name": "Drafts Service (Frontend)",
+    "interfaces": [
+      {
+        "signature": "saveDraft(data: { draft_id?: string, title: string, content: string, category_id: string, anonymous: boolean }) -> Promise<IDraft>",
+        "preconditions": ["User is logged in"],
+        "postconditions": ["Draft saved to cloud; returns draft object with _id for future updates"],
+        "failure_modes": [
+          {
+            "id": "FM-DS01",
+            "trigger": "Cloud function call fails (network error)",
+            "behavior": "Falls back to wx.setStorageSync with key 'draft_fallback_{timestamp}'",
+            "propagation": "Editor shows subtle '已离线保存' indicator; next online save pushes to cloud",
+            "test_contracts": [
+              { "scenario": "Network failure triggers local storage fallback", "type": "INTEGRATION", "verifies": "Offline fallback works", "boundary_ref": "BC-002" }
+            ]
+          }
+        ],
+        "side_effects": "NETWORK"
+      },
+      {
+        "signature": "listDrafts() -> Promise<IDraft[]>",
+        "preconditions": ["User is logged in"],
+        "postconditions": ["Returns all user drafts sorted by updated_at desc"],
+        "failure_modes": [],
+        "side_effects": "NETWORK"
+      },
+      {
+        "signature": "deleteDraft(draft_id: string) -> Promise<void>",
+        "preconditions": ["draft_id is a valid draft owned by user"],
+        "postconditions": ["Draft deleted from cloud collection"],
+        "failure_modes": [],
+        "side_effects": "NETWORK"
+      }
+    ],
+    "extension_points": ["batchDelete for clear-all", "syncLocalDrafts for uploading offline drafts on reconnect"],
+    "sealed_points": ["Underlying cloud function name is 'drafts'"],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "editor-page",
+    "module_name": "Editor Page (Redesigned)",
+    "interfaces": [
+      {
+        "signature": "Page with mode detection: onLoad reads ?mode=create|edit|draft&post_id=X&draft_id=Y. Auto-save on every input (debounced 2s). Character counters for title (0/200) and content (0/10000).",
+        "preconditions": ["User is logged in", "For edit mode: post_id refers to a published post owned by user", "For draft mode: draft_id refers to an existing draft"],
+        "postconditions": ["Post created/updated/draft saved. On publish: draft source deleted, user navigated back."],
+        "failure_modes": [
+          {
+            "id": "FM-ED01",
+            "trigger": "Edit mode: post not found or not owned by user",
+            "behavior": "Show error toast '帖子不存在或无权编辑', redirect to create mode",
+            "propagation": "User lands in blank editor (create mode)",
+            "test_contracts": [
+              { "scenario": "Edit unauthorized post redirects to create mode", "type": "INTEGRATION", "verifies": "Permission enforcement", "boundary_ref": "BC-003" }
+            ]
+          },
+          {
+            "id": "FM-ED02",
+            "trigger": "Submit with empty title or content",
+            "behavior": "Client-side validation blocks submit; shows inline error text below the empty field",
+            "propagation": "Form does not submit; user stays on editor",
+            "test_contracts": [
+              { "scenario": "Empty title shows inline validation error", "type": "UNIT", "verifies": "Client-side validation" }
+            ]
+          },
+          {
+            "id": "FM-ED03",
+            "trigger": "Auto-save fires but draft_id hasn't been assigned yet (first save of a new draft)",
+            "behavior": "First save creates the draft and stores the returned _id for subsequent updates",
+            "propagation": "Subsequent auto-saves use the assigned draft_id for updates",
+            "test_contracts": [
+              { "scenario": "First auto-save creates draft and caches draft_id", "type": "INTEGRATION", "verifies": "Draft creation on first save" }
+            ]
+          },
+          {
+            "id": "FM-ED04",
+            "trigger": "User navigates back with unsaved content",
+            "behavior": "Before unload, save current state as draft (fire-and-forget). On next editor open in create mode, check for auto-saved draft and offer restore.",
+            "propagation": "Content not lost; restore prompt on next open",
+            "test_contracts": [
+              { "scenario": "Back navigation saves emergency draft, restored on next open", "type": "INTEGRATION", "verifies": "Emergency save on back", "boundary_ref": "BC-002" }
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": ["Toolbar slot for future rich text controls", "Image upload slot for future media attachments"],
+    "sealed_points": ["Mode parameter contract: 'create' | 'edit' | 'draft'", "Submit flow: validate → createPost/updatePost → deleteDraft → navigateBack"],
+    "state_owned": ["Current editor state: title, content, categoryId, mode, draftId, postId, isDirty flag"],
+    "state_shared": []
+  },
+  {
+    "module_id": "drafts-page",
+    "module_name": "Drafts List Page",
+    "interfaces": [
+      {
+        "signature": "Page: /pages/drafts/drafts — shows list of drafts with swipe-to-delete. Tap to continue editing.",
+        "preconditions": ["User is logged in"],
+        "postconditions": ["Drafts displayed in reverse chronological order. Each row: title (or '无标题'), content preview (first 50 chars), category label, last-saved time."],
+        "failure_modes": [
+          {
+            "id": "FM-DP01",
+            "trigger": "Draft list is empty",
+            "behavior": "Shows empty state: '暂无草稿' with illustration",
+            "propagation": "User sees empty state, can navigate back",
+            "test_contracts": [
+              { "scenario": "Empty draft list shows empty state", "type": "UNIT", "verifies": "Empty state UX" }
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": ["Batch delete (select mode)", "Draft count badge on tab bar"],
+    "sealed_points": ["One draft → one editor navigation", "Swipe-to-delete gesture is standard"],
+    "state_owned": ["Draft list state, loading state, delete confirmation state"],
+    "state_shared": []
+  },
+  {
+    "module_id": "posts-cloud",
+    "module_name": "Posts Cloud Function (Extended with update)",
+    "interfaces": [
+      {
+        "signature": "updatePost(openid, { post_id, title, content, category_id, anonymous }) -> { post: IPost }",
+        "preconditions": ["openid matches post._openid", "post.status != 'deleted'", "title.length 1-200, content.length 1-10000"],
+        "postconditions": ["Post fields updated: title, content, category_id, updated_at. category post_count adjusted if category changed."],
+        "failure_modes": [
+          {
+            "id": "FM-PC01",
+            "trigger": "Post not found or status is 'deleted'",
+            "behavior": "Returns fail('帖子不存在', 'NOT_FOUND')",
+            "propagation": "Editor shows error toast, redirects to create mode",
+            "test_contracts": [
+              { "scenario": "Edit deleted post returns NOT_FOUND", "type": "INTEGRATION", "verifies": "Deleted post guard" }
+            ]
+          },
+          {
+            "id": "FM-PC02",
+            "trigger": "Edit attempt on post owned by different user",
+            "behavior": "Returns fail('无权操作', 'FORBIDDEN')",
+            "propagation": "Editor shows error, redirects to create mode",
+            "test_contracts": [
+              { "scenario": "Edit another user's post returns FORBIDDEN", "type": "INTEGRATION", "verifies": "Ownership guard", "boundary_ref": "BC-003" }
+            ]
+          },
+          {
+            "id": "FM-PC03",
+            "trigger": "Sensitive word detected in updated content",
+            "behavior": "Post is updated but status set to 'flagged' (same as create behavior)",
+            "propagation": "Editor shows '发布成功，内容审核中' toast",
+            "test_contracts": [
+              { "scenario": "Update with sensitive words flags the post", "type": "INTEGRATION", "verifies": "Sensitive word filter on update" }
+            ]
+          }
+        ],
+        "side_effects": "STATE_MUTATION"
+      }
+    ],
+    "extension_points": ["Future: update with image attachments"],
+    "sealed_points": ["update action always requires auth", "Only post author can update"],
+    "state_owned": [],
+    "state_shared": ["Posts collection (reads + writes)"]
+  },
+  {
+    "module_id": "posts-service",
+    "module_name": "Posts Service (Extended)",
+    "interfaces": [
+      {
+        "signature": "updatePost(postId: string, data: IUpdatePostData, anonymous?: boolean) -> Promise<{ post: IPost; flagged: boolean }>",
+        "preconditions": ["User is logged in and owns the post"],
+        "postconditions": ["Post updated; returns updated post object"],
+        "failure_modes": [
+          {
+            "id": "FM-PS01",
+            "trigger": "Cloud function returns FORBIDDEN or NOT_FOUND",
+            "behavior": "Promise rejects with CloudCallError",
+            "propagation": "Editor catches, shows error toast, redirects",
+            "test_contracts": [
+              { "scenario": "updatePost with unauthorized postId throws CloudCallError", "type": "UNIT", "verifies": "Error propagation" }
+            ]
+          }
+        ],
+        "side_effects": "NETWORK"
+      }
+    ],
+    "extension_points": ["Future: batch update for admin moderation"],
+    "sealed_points": ["Cloud function name is 'posts', action is 'update'"],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "my-posts-page",
+    "module_name": "My Posts Page (Modified)",
+    "interfaces": [
+      {
+        "signature": "Modified post-item tap handler: tap navigates to post detail (unchanged). New edit button per post: navigates to editor?mode=edit&post_id=X.",
+        "preconditions": ["User is logged in and viewing their own posts"],
+        "postconditions": ["Edit button visible on each post row. Tap opens editor in edit mode with post data pre-filled."],
+        "failure_modes": [
+          {
+            "id": "FM-MP01",
+            "trigger": "Post was deleted between list load and edit button tap",
+            "behavior": "Editor loads, fetches post, gets NOT_FOUND, shows error, redirects to create mode",
+            "propagation": "User sees error toast and gets blank editor",
+            "test_contracts": [
+              { "scenario": "Edit deleted post shows error and redirects", "type": "INTEGRATION", "verifies": "Race condition handling" }
+            ]
+          }
+        ],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["Future: batch actions (select + delete multiple)"],
+    "sealed_points": ["Edit button only visible on own posts", "Delete behavior unchanged"],
+    "state_owned": ["Post list state"],
+    "state_shared": []
+  }
+]

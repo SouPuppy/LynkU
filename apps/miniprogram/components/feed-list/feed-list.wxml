@@ -1,0 +1,24 @@
+<!-- feed-list: scroll container with loading/empty states. Parent iterates items. -->
+<scroll-view
+  class="feed-list"
+  scroll-y
+  refresher-enabled
+  refresher-triggered="{{loading}}"
+  bindrefresherrefresh="onRefresh"
+  bindscrolltolower="onScrollToLower"
+  lower-threshold="100"
+>
+  <slot></slot>
+
+  <view wx:if="{{loading}}" class="list-footer">
+    <text>{{loadingText}}</text>
+  </view>
+
+  <view wx:elif="{{!hasMore && items.length > 0}}" class="list-footer text-secondary text-sm">
+    <text>没有更多了</text>
+  </view>
+
+  <view wx:if="{{!loading && items.length === 0}}" class="list-empty">
+    <text class="text-secondary">{{emptyText}}</text>
+  </view>
+</scroll-view>

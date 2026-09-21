@@ -1,0 +1,6 @@
+{
+  "name": "common",
+  "version": "1.0.0",
+  "description": "Shared utilities for all cloud functions — canonical source of truth",
+  "main": "index.js"
+}

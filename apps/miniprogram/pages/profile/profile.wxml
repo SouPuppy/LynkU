@@ -1,0 +1,51 @@
+<nav-bar title="我的" showBack="{{false}}" />
+<view wx:if="{{user}}" class="page">
+
+  <!-- User row -->
+    <view class="user-row">
+      <avatar src="{{anonymousMode ? anonymousAvatar : user.avatar_url}}" anonymous="{{anonymousMode}}" size="lg" />
+      <view class="user-info">
+        <text class="user-name">{{anonymousMode ? anonymousName : user.nickname}}</text>
+        <text class="user-sub text-xs {{user.verified ? 'text-secondary' : 'verify-warn'}}">{{user.verified ? user.email : '微信用户（游客）· 未完成学校邮箱认证'}}</text>
+      </view>
+    </view>
+
+  <!-- Anonymous toggle -->
+  <view class="section">
+    <view class="menu-list">
+      <view class="menu-row">
+        <view class="toggle-info">
+          <text>匿名模式</text>
+          <text class="toggle-desc text-xs text-secondary">{{anonymousMode ? '发帖评论显示为匿名用户' : '发帖评论显示真实身份'}}</text>
+        </view>
+        <switch checked="{{anonymousMode}}" bindchange="onToggleAnonymous" color="#8E8E93" />
+      </view>
+    </view>
+    <text class="disclosure text-xs text-secondary">开启后对其他用户隐藏你的身份信息，平台保留管理记录</text>
+  </view>
+
+  <!-- Menu -->
+  <view class="section">
+    <view class="menu-list">
+      <view class="menu-row" bindtap="onMyPosts">
+        <text>我的帖子</text>
+        <view class="menu-arrow"></view>
+      </view>
+      <view wx:if="{{!user.verified}}" class="menu-row" bindtap="onVerifyEmail">
+        <text>{{verificationEnabled ? '认证学校邮箱' : '学校邮箱认证暂不可用'}}</text>
+        <view class="menu-arrow"></view>
+      </view>
+      <view class="menu-row" bindtap="onSettings">
+        <text>设置</text>
+        <view class="menu-arrow"></view>
+      </view>
+    </view>
+  </view>
+
+</view>
+
+<view wx:else class="access-state">
+  <text class="access-title">微信身份尚未就绪</text>
+  <text class="access-description">可以继续浏览公开内容，恢复微信身份后可查看个人资料。</text>
+  <button class="access-button" bindtap="onLogin">恢复微信身份</button>
+</view>

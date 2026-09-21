@@ -1,0 +1,28 @@
+.page { height: 100vh; background: var(--color-bg); }
+.post-list { background: var(--color-bg-white); }
+.post-item-wrap { }
+.post-item-wrap post-item { display: block; }
+.post-actions {
+  display: flex; justify-content: flex-end; gap: 32rpx;
+  padding: 0 var(--spacing-md) var(--spacing-sm);
+}
+.action-btn {
+  font-size: var(--font-sm); color: var(--color-primary);
+  padding: 8rpx 16rpx;
+}
+.action-delete { color: var(--color-danger); }
+.empty { padding: 120rpx var(--spacing-md); text-align: center; }
+.my-posts-skeleton { background: var(--color-bg-white); padding: 0 var(--spacing-md); }
+.my-post-sk-row {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding: var(--spacing-md) 0 var(--spacing-sm);
+  border-bottom: 1rpx solid var(--color-border);
+}
+.my-post-sk-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 32rpx;
+  margin-top: 4rpx;
+}

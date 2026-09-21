@@ -1,0 +1,53 @@
+<nav-bar title="{{chatTitle}}" showBack="{{true}}" />
+<view class="chat-page" style="height: calc(100vh - {{navHeight}}px);">
+  <view wx:if="{{pollingActive}}" class="sync-warning">连接不稳定，正在重试</view>
+  <scroll-view class="chat-scroll" scroll-y scroll-into-view="{{scrollTo}}" enhanced show-scrollbar="{{false}}">
+    <view wx:if="{{state === 'loading'}}" class="chat-skeleton">
+      <view class="chat-sk-row chat-sk-peer">
+        <view class="sk-block chat-sk-bubble chat-sk-bubble-wide"></view>
+      </view>
+      <view class="chat-sk-row chat-sk-mine">
+        <view class="sk-block chat-sk-bubble"></view>
+      </view>
+      <view class="chat-sk-row chat-sk-peer">
+        <view class="sk-block chat-sk-bubble chat-sk-bubble-mid"></view>
+      </view>
+      <view class="chat-sk-row chat-sk-mine">
+        <view class="sk-block chat-sk-bubble chat-sk-bubble-wide"></view>
+      </view>
+    </view>
+
+    <view wx:elif="{{state === 'error'}}" class="chat-empty" bindtap="loadMessages">
+      <text class="text-secondary">加载失败，点击重试</text>
+    </view>
+
+    <view wx:elif="{{messages.length === 0}}" class="chat-empty">
+      <text class="text-secondary">暂无消息</text>
+    </view>
+
+    <block wx:else>
+      <view wx:if="{{hasMoreHistory}}" class="history-control" bindtap="onLoadEarlier">
+        {{loadingHistory ? '加载中...' : historyError ? '加载失败，点击重试' : '查看更早消息'}}
+      </view>
+      <view wx:for="{{messages}}" wx:key="_id" id="msg-{{item._id}}">
+        <chat-bubble
+          message="{{item}}"
+          mine="{{item.from === myOpenid}}"
+        />
+      </view>
+    </block>
+  </scroll-view>
+
+  <view class="chat-input-bar flex-row">
+    <input
+      class="chat-input flex-1"
+      placeholder="输入消息..."
+      value="{{inputText}}"
+      bindinput="onInput"
+      bindconfirm="onSend"
+      confirm-type="send"
+      adjust-position="{{false}}"
+    />
+    <button class="chat-send-btn" bindtap="onSend" size="mini" disabled="{{sending || inputText === ''}}" loading="{{sending}}">发送</button>
+  </view>
+</view>

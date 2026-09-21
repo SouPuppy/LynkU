@@ -1,0 +1,14 @@
+<view class="login-page">
+  <view class="login-logo">
+    <text class="logo-text">{{appName}}</text>
+    <text class="logo-sub">UNNC Student Community</text>
+    <text class="login-tagline">看看校园里的新鲜事</text>
+  </view>
+  <view class="login-action">
+    <button class="login-btn" bindtap="handleLogin" disabled="{{loading}}" loading="{{loading}}">{{loading ? '正在识别微信身份' : '重试微信登录'}}</button>
+    <button wx:if="{{error}}" class="login-btn guest-btn" bindtap="handleBrowse">先浏览公开内容</button>
+    <text wx:if="{{error}}" class="login-error text-sm">{{error}}</text>
+    <text class="login-hint text-xs">自动使用微信身份，未认证时为游客；学校邮箱认证后可参与讨论</text>
+    <text wx:if="{{!verificationEnabled}}" class="login-hint text-xs">学校邮箱认证暂不可用，浏览不受影响</text>
+  </view>
+</view>

@@ -1,0 +1,50 @@
+/* index page */
+.page-index { display: flex; flex-direction: column; height: 100vh; }
+
+/* Header — search bar in nav position */
+.index-header { background: var(--color-bg-white); flex-shrink: 0; position: relative; z-index: 10; }
+.header-inner { }
+
+/* scroll list */
+.feed-list { flex: 1; overflow: hidden; }
+.list-footer { padding: var(--spacing-md); text-align: center; }
+.list-empty { padding: 120rpx var(--spacing-md); text-align: center; }
+.home-skeleton { flex: 1; padding: var(--spacing-md); background: var(--color-bg-white); }
+.home-sk-post {
+  padding: var(--spacing-md) 0;
+  border-bottom: 1rpx solid var(--color-border);
+}
+.home-sk-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  margin-top: 18rpx;
+}
+.home-sk-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 22rpx;
+}
+
+/* FAB */
+.fab {
+  position: fixed; bottom: 80rpx; right: 40rpx; z-index: 100;
+  width: 96rpx; height: 96rpx; border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 8rpx 24rpx rgba(30, 77, 140, 0.35);
+  display: flex; align-items: center; justify-content: center;
+}
+.fab-icon {
+  width: 36rpx; height: 36rpx; position: relative;
+}
+.fab-icon::before,
+.fab-icon::after {
+  content: ''; position: absolute; background: #fff; border-radius: 3rpx;
+}
+.fab-icon::before {
+  width: 100%; height: 4rpx; top: 50%; transform: translateY(-50%);
+}
+.fab-icon::after {
+  width: 4rpx; height: 100%; left: 50%; transform: translateX(-50%);
+}

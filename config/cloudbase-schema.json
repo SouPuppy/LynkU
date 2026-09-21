@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "collections": [
+    { "name": "users", "clientPermission": "admin-only", "documentId": "new accounts: stableDocumentId(account, OPENID); existing account IDs retained", "indexes": [{ "fields": ["_openid"], "unique": true }] },
+    { "name": "posts", "clientPermission": "admin-only", "indexes": [{ "fields": ["status", "created_at"] }, { "fields": ["status", "category_id", "created_at"] }, { "fields": ["status", "_openid", "anonymous", "created_at"] }, { "fields": ["_openid", "status", "created_at", "_id"] }] },
+    { "name": "comments", "clientPermission": "admin-only", "indexes": [{ "fields": ["post_id", "status", "created_at", "_id"] }] },
+    { "name": "comment_counters", "clientPermission": "admin-only", "documentId": "post_id" },
+    { "name": "comment_changes", "clientPermission": "admin-only", "indexes": [{ "fields": ["post_id", "sequence"], "unique": true }] },
+    { "name": "messages", "clientPermission": "admin-only", "indexes": [{ "fields": ["from", "created_at"] }, { "fields": ["to", "created_at"] }, { "fields": ["to", "status"] }, { "fields": ["conversation_id", "from", "status", "_id"] }, { "fields": ["conversation_id", "sync_sequence"], "unique": true }] },
+    { "name": "conversation_counters", "clientPermission": "admin-only", "documentId": "conversation_id" },
+    { "name": "conversation_entries", "clientPermission": "admin-only", "documentId": "owner-scoped conversation key", "indexes": [{ "fields": ["owner_openid", "updated_at", "_id"] }] },
+    { "name": "notifications", "clientPermission": "admin-only", "indexes": [{ "fields": ["to", "created_at", "_id"] }, { "fields": ["to", "read", "created_at", "_id"] }] },
+    { "name": "notification_outbox", "clientPermission": "admin-only", "indexes": [{ "fields": ["status", "next_attempt_at"] }, { "fields": ["status", "lease_until"] }, { "fields": ["status", "created_at"] }] },
+    { "name": "profile_outbox", "clientPermission": "admin-only", "indexes": [{ "fields": ["status", "next_attempt_at"] }, { "fields": ["status", "lease_until"] }, { "fields": ["status", "created_at"] }] },
+    { "name": "categories", "clientPermission": "public-read-admin-write", "indexes": [{ "fields": ["status", "sort_order"] }, { "fields": ["name"], "unique": true }] },
+    { "name": "drafts", "clientPermission": "admin-only", "indexes": [{ "fields": ["_openid", "updated_at", "_id"] }] },
+    { "name": "draft_counters", "clientPermission": "admin-only", "documentId": "hashed owner identifier" },
+    { "name": "email_verifications", "clientPermission": "admin-only", "documentId": "hashed owner; one active challenge per WeChat account" },
+    { "name": "email_send_limits", "clientPermission": "admin-only", "documentId": "hashed owner; atomic cooldown and hourly quota" },
+    { "name": "email_claims", "clientPermission": "admin-only", "documentId": "stableDocumentId(email:claim, normalized email)", "indexes": [{ "fields": ["owner_openid"] }] },
+    { "name": "rate_limits", "clientPermission": "admin-only", "documentId": "rate-limit key" }
+  ]
+}

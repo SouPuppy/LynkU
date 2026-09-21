@@ -1,0 +1,10 @@
+<!-- chat-bubble: left/right chat bubble -->
+<view wx:if="{{message}}" class="bubble-row {{mine ? 'bubble-mine' : 'bubble-other'}}">
+  <view class="bubble {{mine ? 'bubble-right' : 'bubble-left'}}">
+    <text class="bubble-text">{{message.content}}</text>
+  </view>
+  <view class="bubble-meta text-xs text-secondary">
+    <text>{{displayTime}}</text>
+    <text wx:if="{{mine}}">{{displayStatus}}</text>
+  </view>
+</view>

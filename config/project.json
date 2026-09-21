@@ -1,0 +1,8 @@
+{
+  "name": "LynkU",
+  "appId": "wxba2bcb0c71a5f33d",
+  "cloudEnvironment": "cloud1-d7gifgdpb8ad0ab8e",
+  "baseLibrary": "3.17.3",
+  "emailVerificationEnabled": true,
+  "debug": false
+}

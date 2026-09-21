@@ -1,0 +1,9 @@
+{
+  "name": "cf-users",
+  "version": "1.0.0",
+  "description": "User profile management — read, update, sync denormalized author data",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "4.0.2"
+  }
+}

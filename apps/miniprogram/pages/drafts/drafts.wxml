@@ -1,0 +1,41 @@
+<nav-bar title="草稿箱" showBack="{{true}}" />
+<!-- drafts: list of saved drafts -->
+<view class="drafts-page">
+  <view wx:if="{{state === 'loading'}}" class="drafts-skeleton">
+    <view wx:for="{{skRows4}}" wx:key="*this" class="draft-sk-row">
+      <view class="draft-sk-info">
+        <view class="sk-line sk-line-md sk-w-70"></view>
+        <view class="sk-line sk-w-90"></view>
+        <view class="sk-line sk-line-xs sk-w-30"></view>
+      </view>
+      <view class="sk-block draft-sk-delete"></view>
+    </view>
+  </view>
+
+  <view wx:elif="{{state === 'error'}}" class="drafts-empty" bindtap="onRetry">
+    <text class="text-secondary">加载失败，点击重试</text>
+  </view>
+
+  <view wx:elif="{{state === 'empty'}}" class="drafts-empty">
+    <text class="text-secondary">暂无草稿</text>
+  </view>
+
+  <view wx:else class="draft-list">
+    <view
+      wx:for="{{drafts}}"
+      wx:key="_id"
+      class="draft-row" hover-class="draft-row-pressed"
+      data-id="{{item._id}}"
+      bindtap="onDraftTap"
+    >
+      <view class="draft-info">
+        <text class="draft-title text-ellipsis">{{item.title || '无标题'}}</text>
+        <text class="draft-preview text-sm text-secondary text-ellipsis">{{item.content || '空内容'}}</text>
+        <text class="draft-time text-xs text-secondary">{{item.display_time}}</text>
+      </view>
+      <view class="draft-delete" data-id="{{item._id}}" catchtap="onDelete">
+        <text class="text-xs text-secondary">删除</text>
+      </view>
+    </view>
+  </view>
+</view>

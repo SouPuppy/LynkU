@@ -1,0 +1,5 @@
+<!-- empty state -->
+<view class="empty">
+  <view class="empty-icon"></view>
+  <text class="empty-text text-secondary">{{text}}</text>
+</view>

@@ -1,0 +1,92 @@
+{
+  "timestamp": "2026-07-21T14:00:00+08:00",
+  "pipeline": "DESIGN",
+  "predicate_results": [
+    {
+      "id": "SC-001",
+      "name": "Interface-Type Consistency",
+      "result": "PASS",
+      "evidence": {
+        "pass": "All 37 edges verified against module specs. Every A→B edge has matching interface in B's spec: mp-pages→mp-services (services interfaces), mp-pages→mp-watch (watch interfaces), mp-services→cf-* (cloud function interfaces), mp-services→db-* (database document shapes + permission models), cf-*→cf-utils (utility interfaces), cf-*→db-* (collection interfaces). No edge without a matching interface signature."
+      }
+    },
+    {
+      "id": "SC-002",
+      "name": "Boundary Closure",
+      "result": "PASS",
+      "evidence": {
+        "pass": "All 10 boundary conditions have owner modules with documented handling paths: BC-001→mp-services(FM-004), BC-002→cf-login(FM-012), BC-003→mp-watch(FM-010), BC-004→mp-services(skeleton loading pattern), BC-005→cf-posts(FM-013), BC-006→cf-messages(FM-019), BC-007→mp-pages(subpackage architecture), BC-008→db-messages(FM-011 architectural note), BC-009→cf-posts(FM-015), BC-010→cf-comments(FM-016). BC-008 note: messages-watch permission model has three viable options documented in FM-011 — not a closure gap but a deferred design decision. Resolution required before chat implementation."
+      }
+    },
+    {
+      "id": "SC-003",
+      "name": "Abstraction Level Alignment",
+      "result": "PASS",
+      "evidence": {
+        "pass": "Clean layered architecture: Pages (ORCHESTRATOR) → Service Layer (ADAPTER) → Cloud Functions (SERVICE) + Database (ENTITY). No skip-level calls — pages never call CloudBase SDK directly. Components are pure presentation (UTILITY, no data fetching). Cloud functions are business logic (SERVICE) with database access. Edge between mp-services and both cloud functions AND database is intentional: services abstract which path is used (cloud function for writes, direct DB for simple reads). This is an architectural choice documented in topology notes, not a layering violation."
+      }
+    },
+    {
+      "id": "SC-004",
+      "name": "Cycle Detection",
+      "result": "PASS",
+      "evidence": {
+        "pass": "Zero cycles in dependency graph. The old intentional cycle (mp-api-client ↔ mp-auth) has been eliminated by CloudBase native auth — context.OPENID removes the bootstrapping dependency loop entirely. All dependencies flow in one direction: Pages → Services → Cloud Functions + Database. Utility modules (mp-utils, cf-utils) are leaf nodes. External gateway (ext-wechat) is called only by cloud functions."
+      }
+    },
+    {
+      "id": "SC-005",
+      "name": "Open/Closed Principle",
+      "result": "PASS",
+      "evidence": {
+        "pass": "All 17 modules have explicit extension_points and sealed_points in their module specs. Extension points document where modules are designed to grow (new actions in cloud functions, new component types, new service modules). Sealed points document hard constraints (soft-delete only, max depth=2, admin-only message access, no hard delete). No module is fully open or fully closed without documented reason."
+      }
+    },
+    {
+      "id": "SC-006",
+      "name": "Error Propagation Closure",
+      "result": "PASS",
+      "evidence": {
+        "pass": "All 22 failure modes have complete propagation paths: FM-001(retry UI)→page, FM-002(watch fails→polling)→mp-watch→page, FM-003(default avatar)→component internal, FM-004(login timeout)→mp-services→app.ts, FM-005(permission denied)→mp-services→empty list, FM-006(sensitive word)→mp-services→page confirmation, FM-007(rate limit)→mp-services→page cooldown, FM-008(max depth)→mp-services→page toast, FM-009(user not found)→mp-services→page toast, FM-010(subscription error)→mp-watch→page polling, FM-011(messages permission)→mp-watch→design decision deferred, FM-012(no OPENID)→cf-login→mp-services→app, FM-013(flagged post)→cf-posts→mp-services→page, FM-014(invalid category)→cf-posts→mp-services→page, FM-015(rate limited)→cf-posts→mp-services→page, FM-016(max depth)→cf-comments→mp-services→page, FM-017(parent mismatch)→cf-comments→mp-services→page, FM-018(post not found)→cf-comments→mp-services→page, FM-019(user not found)→cf-messages→mp-services→page, FM-020(duplicate msg)→cf-messages→transparent, FM-021(not admin)→cf-categories→mp-services→page, FM-022(WeChat API fail)→ext-wechat→cf-posts fallback to local filter. No failure terminates in undocumented 'log and swallow'."
+      }
+    },
+    {
+      "id": "SC-007",
+      "name": "State Ownership",
+      "result": "PASS",
+      "evidence": {
+        "pass": "All mutable state has exactly one owner: page-local data → mp-pages, component UI state → mp-components, user profile cache → mp-services, active watcher references → mp-watch, per-user rate counters → cf-posts (in-memory Map), sensitive word list → cf-utils (hardcoded array), user documents → db-users, post documents → db-posts, comment documents → db-comments, message documents → db-messages, category documents → db-categories. Database documents are shared state coordinated by CloudBase permission rules and cloud function logic — this is the expected pattern for a document DB. No state has multiple owners without explicit coordination mechanism."
+      }
+    },
+    {
+      "id": "SC-008",
+      "name": "External Consistency",
+      "result": "PASS",
+      "evidence": {
+        "pass": "Design decisions are consistent with all three research references. CloudBase research confirms: context.OPENID for auth (cf-login), watch() for real-time (mp-watch), document DB with denormalized reads (db-posts author field), cloud functions with action-based routing (all cf-* modules), collection-level permissions (all db-* modules). Frontend principles confirm: service layer as data boundary (mp-services), presentation/container split (mp-components vs mp-pages), CSS variable theming, subpackage stratification. Tech stack confirms: WeChat Native + Skyline + Glass-Easel + Chaining API. One deferred decision: messages-watch permission model (FM-011) — three options exist, resolution needed during chat implementation. Not a research gap, just an implementation-time trade-off."
+      }
+    },
+    {
+      "id": "SC-009",
+      "name": "Test Contract Completeness",
+      "result": "PASS",
+      "evidence": {
+        "pass": "All 22 failure modes have at least one test contract defined (24 contracts total). Each contract specifies scenario, type (UNIT|INTEGRATION), and verifies field. Boundary-referencing contracts link to BC-001 through BC-010. FM-011 has a contract noting the architectural decision requirement rather than a traditional test — appropriate for a design-time unresolved decision. Simple failure modes (component default rendering, validation errors) have targeted unit test contracts. Complex failures (network loss, permission violations, rate limits) have integration test contracts."
+      }
+    }
+  ],
+  "summary": {
+    "total": 9,
+    "passed": 9,
+    "failed": 0,
+    "deferred": 0,
+    "blockers_remaining": 0
+  },
+  "verdict": "PROCEED",
+  "notes": [
+    "SC-002/BC-008: Messages-watch permission model needs resolution. Three options in FM-011. Recommended: Option B (polling for messages, 3-5s interval) for MVP simplicity. Upgrade to Option C (notification cache collection) if chat becomes high-frequency. Decision deferred to implementation.",
+    "SC-008: One architectural gap acknowledged — messages collection is admin-only, so client-side watch() cannot subscribe directly. This is a permission-model constraint, not a design defect. The resolution choice (polling vs dual-write vs cache collection) is an implementation-time decision with documented trade-offs.",
+    "Ponytail confirmation: No Redis, no message queue, no separate search service, no component library. All CloudBase-native. External dependencies limited to WeChat APIs (msgSecCheck for content moderation, optional).",
+    "Deleted from previous design: 11 modules (be-*, mp-ws-client, mp-api-client, wechat-api, JWT infra). Net reduction: 22 modules → 17 modules. Simpler topology, fewer boundaries."
+  ]
+}

@@ -1,0 +1,262 @@
+{
+  "source": "DESIGN",
+  "nodes": [
+    {
+      "id": "mp-pages",
+      "name": "Mini-Program Pages",
+      "category": "ORCHESTRATOR",
+      "responsibility": "Page layer orchestrating data fetching, component composition, navigation, and user interaction. Pages: forum feed (index), post detail, create post, search, profile, conversation list, chat room.",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "mp-components",
+      "name": "Mini-Program Components",
+      "category": "UTILITY",
+      "responsibility": "Reusable glass-easel presentation components: post-card, comment-item, chat-bubble, avatar, empty-state, error-view, nav-bar, loading-skeleton, category-tag. Pure render — no data fetching.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "mp-services",
+      "name": "Mini-Program Service Layer",
+      "category": "ADAPTER",
+      "responsibility": "Typed data access boundary. Wraps wx.cloud.database() for reads and wx.cloud.callFunction() for writes. Single module per domain: auth.ts, posts.ts, comments.ts, messages.ts, categories.ts, users.ts. No page calls CloudBase SDK directly.",
+      "is_entry_point": false,
+      "is_external_boundary": true
+    },
+    {
+      "id": "mp-watch",
+      "name": "Mini-Program Watch Manager",
+      "category": "ADAPTER",
+      "responsibility": "Real-time push subscriptions via db.collection().watch(). Manages lifecycle: open, onChange, onError, close. Replaces the deleted mp-ws-client module. Used for live post updates, new comments, and real-time messaging.",
+      "is_entry_point": false,
+      "is_external_boundary": true
+    },
+    {
+      "id": "mp-utils",
+      "name": "Mini-Program Utilities",
+      "category": "UTILITY",
+      "responsibility": "Shared helpers: date formatting, storage wrapper (wx.Storage typed), LoadState type, debounce, Chinese text utilities. No business logic.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "cf-login",
+      "name": "Cloud Function — Login",
+      "category": "SERVICE",
+      "responsibility": "User identity bootstrap. On first call: create user document with openid + nickname + avatar. On subsequent calls: return cached profile. Sync profile updates from WeChat. CloudBase context.OPENID is the trust root.",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "cf-posts",
+      "name": "Cloud Function — Posts",
+      "category": "SERVICE",
+      "responsibility": "Post CRUD business logic. Action dispatch: create (with sensitive word filter), update, delete (soft), flag, search (RegExp). Enforces: title 1-200 chars, content 1-10000 chars, rate limit per user per hour.",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "cf-comments",
+      "name": "Cloud Function — Comments",
+      "category": "SERVICE",
+      "responsibility": "Comment CRUD with nesting enforcement. Action dispatch: create, delete (soft). Enforces: max depth 2 (post→comment→reply), content 1-2000 chars, parent comment must belong to same post.",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "cf-messages",
+      "name": "Cloud Function — Messages",
+      "category": "SERVICE",
+      "responsibility": "Private message send + conversation queries. Action dispatch: send (with dedup via msg_id), listConversations (grouped by other user, last message preview, unread count), getConversation (paginated history). Enforces: content 1-5000 chars, rate limit.",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "cf-categories",
+      "name": "Cloud Function — Categories",
+      "category": "SERVICE",
+      "responsibility": "Category listing and admin management. Action dispatch: list (all active, ordered by sort_order), create (admin only), update (admin only). Read-heavy — client may also read directly from db-categories with permission rules.",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "cf-users",
+      "name": "Cloud Function — Users",
+      "category": "SERVICE",
+      "responsibility": "User profile read/update. Sync denormalized author data to posts and comments when profile changes. Admin: list users, mute/ban.",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "cf-utils",
+      "name": "Cloud Function — Shared Utilities",
+      "category": "UTILITY",
+      "responsibility": "Shared cloud function code deployed as a CloudBase '层' (layer). Sensitive word filter list, input validation helpers, error response formatting. Imported by all other cloud functions.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "db-users",
+      "name": "Database Collection — Users",
+      "category": "ENTITY",
+      "responsibility": "User documents: _openid (PK), nickname, avatar_url, role (user|admin), created_at, updated_at. Permission: all users read, only self write (via cloud function).",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "db-posts",
+      "name": "Database Collection — Posts",
+      "category": "ENTITY",
+      "responsibility": "Post documents: title, content, category_id, author (denormalized: nickname, avatar_url), status (published|flagged|hidden|deleted), view_count, comment_count, created_at, updated_at. Indexes: (category_id, status, created_at), (status, created_at). Permission: all read, creator write.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "db-comments",
+      "name": "Database Collection — Comments",
+      "category": "ENTITY",
+      "responsibility": "Comment documents: post_id, parent_id (null for top-level), depth (0|1), content, author (denormalized), status, created_at. Indexes: (post_id, status, created_at). Permission: all read, creator write.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "db-messages",
+      "name": "Database Collection — Messages",
+      "category": "ENTITY",
+      "responsibility": "Message documents: msg_id (unique, idempotency), from (openid), to (openid), content, status (sent|delivered|read), created_at. Indexes: (msg_id) unique, (from, to, created_at), (to, from, created_at). Permission: admin-only via cloud function (private data).",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "db-categories",
+      "name": "Database Collection — Categories",
+      "category": "ENTITY",
+      "responsibility": "Category documents: name, description, sort_order, post_count, status (active|hidden). Permission: all read, admin write.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "ext-wechat",
+      "name": "WeChat External APIs",
+      "category": "GATEWAY",
+      "responsibility": "WeChat open APIs called via cloud.call (cloud.openapi): getUserProfile, getPhoneNumber, content security check (imgSecCheck, msgSecCheck), template messages. Not called directly — cloud functions mediate all calls.",
+      "is_entry_point": false,
+      "is_external_boundary": true
+    }
+  ],
+  "edges": [
+    {"from": "mp-pages", "to": "mp-components", "relationship": "COMPOSES", "description": "Pages compose presentation components for rendering: post-card in list, comment-item in detail, chat-bubble in chat"},
+    {"from": "mp-pages", "to": "mp-services", "relationship": "CALLS", "description": "Pages call service layer for all data: posts.list(), comments.byPost(), messages.getConversation()"},
+    {"from": "mp-pages", "to": "mp-watch", "relationship": "CALLS", "description": "Pages start/stop watch subscriptions: forum feed watches new posts, chat watches new messages"},
+    {"from": "mp-pages", "to": "mp-utils", "relationship": "CALLS", "description": "Pages use utilities for date formatting, debounced search input, LoadState management"},
+    {"from": "mp-components", "to": "mp-utils", "relationship": "CALLS", "description": "Components use date formatting for timestamps, text truncation helpers"},
+    {"from": "mp-services", "to": "mp-utils", "relationship": "CALLS", "description": "Service layer uses storage wrapper for auth cache, LoadState type definitions"},
+    {"from": "mp-services", "to": "cf-login", "relationship": "CALLS", "description": "auth.ts calls login cloud function for user bootstrap on first launch"},
+    {"from": "mp-services", "to": "cf-posts", "relationship": "CALLS", "description": "posts.ts calls posts cloud function for create/update/delete/search operations"},
+    {"from": "mp-services", "to": "cf-comments", "relationship": "CALLS", "description": "comments.ts calls comments cloud function for create/delete"},
+    {"from": "mp-services", "to": "cf-messages", "relationship": "CALLS", "description": "messages.ts calls messages cloud function for send, conversation list, history"},
+    {"from": "mp-services", "to": "cf-categories", "relationship": "CALLS", "description": "categories.ts calls categories cloud function for admin create/update operations"},
+    {"from": "mp-services", "to": "cf-users", "relationship": "CALLS", "description": "users.ts calls users cloud function for profile update, admin user management"},
+    {"from": "mp-services", "to": "db-posts", "relationship": "CALLS", "description": "posts.ts reads post listing and detail directly from database (read-only, permission-allowed)"},
+    {"from": "mp-services", "to": "db-comments", "relationship": "CALLS", "description": "comments.ts reads comments for a post directly from database"},
+    {"from": "mp-services", "to": "db-categories", "relationship": "CALLS", "description": "categories.ts reads category list directly from database (public data)"},
+    {"from": "mp-services", "to": "db-users", "relationship": "CALLS", "description": "users.ts reads user profiles directly from database (public fields only)"},
+    {"from": "mp-watch", "to": "db-posts", "relationship": "SUBSCRIBES", "description": "Watch subscription on posts collection filtered by category for real-time new post notifications"},
+    {"from": "mp-watch", "to": "db-comments", "relationship": "SUBSCRIBES", "description": "Watch subscription on comments collection filtered by post_id for live comment updates"},
+    {"from": "mp-watch", "to": "db-messages", "relationship": "SUBSCRIBES", "description": "Watch subscription on messages collection filtered by conversation pair for real-time chat"},
+    {"from": "cf-login", "to": "db-users", "relationship": "CALLS", "description": "Login function creates or finds user document in users collection"},
+    {"from": "cf-login", "to": "cf-utils", "relationship": "CALLS", "description": "Uses shared validation and error formatting utilities"},
+    {"from": "cf-posts", "to": "db-posts", "relationship": "CALLS", "description": "Post function creates, updates, queries posts collection"},
+    {"from": "cf-posts", "to": "db-categories", "relationship": "CALLS", "description": "Increments category post_count on post creation"},
+    {"from": "cf-posts", "to": "cf-utils", "relationship": "CALLS", "description": "Uses sensitive word filter and input validation"},
+    {"from": "cf-posts", "to": "ext-wechat", "relationship": "CALLS", "description": "Calls msgSecCheck for AI content moderation (optional enhancement)"},
+    {"from": "cf-comments", "to": "db-comments", "relationship": "CALLS", "description": "Comment function creates, queries, soft-deletes comments"},
+    {"from": "cf-comments", "to": "db-posts", "relationship": "CALLS", "description": "Validates post existence, increments post comment_count"},
+    {"from": "cf-comments", "to": "cf-utils", "relationship": "CALLS", "description": "Uses sensitive word filter and input validation"},
+    {"from": "cf-messages", "to": "db-messages", "relationship": "CALLS", "description": "Message function persists sent messages, queries conversation history, computes unread counts"},
+    {"from": "cf-messages", "to": "db-users", "relationship": "CALLS", "description": "Validates recipient user existence before sending"},
+    {"from": "cf-messages", "to": "cf-utils", "relationship": "CALLS", "description": "Uses idempotency helper and input validation"},
+    {"from": "cf-categories", "to": "db-categories", "relationship": "CALLS", "description": "Category function creates, updates, lists categories"},
+    {"from": "cf-categories", "to": "cf-utils", "relationship": "CALLS", "description": "Uses admin role check and input validation"},
+    {"from": "cf-users", "to": "db-users", "relationship": "CALLS", "description": "User function reads and updates user profile documents"},
+    {"from": "cf-users", "to": "db-posts", "relationship": "CALLS", "description": "Syncs denormalized author data when user updates profile (nickname, avatar)"},
+    {"from": "cf-users", "to": "db-comments", "relationship": "CALLS", "description": "Syncs denormalized author data to existing comments when profile changes"},
+    {"from": "cf-users", "to": "cf-utils", "relationship": "CALLS", "description": "Uses input validation and error formatting"}
+  ],
+  "boundary_conditions": [
+    {
+      "id": "BC-001",
+      "description": "CloudBase environment may be uninitialized or wrong environment ID — wx.cloud.init() fails or calls return UNAUTHORIZED",
+      "owner_node": "mp-services",
+      "failure_mode": "Service layer catches init failure on first call. Returns structured error {code: 'ENV_INIT_FAILED', message: '...'}. Page shows full-screen error with 'check config' prompt."
+    },
+    {
+      "id": "BC-002",
+      "description": "User identity unavailable — context.OPENID is empty (should never happen in mini-program, but guard)",
+      "owner_node": "cf-login",
+      "failure_mode": "Cloud function returns {error: 'IDENTITY_UNAVAILABLE', code: 'AUTH_FAILED'}. Client shows 'please restart mini-program' message. WeChat runtime guarantees OPENID in normal operation — this is a defense-in-depth check."
+    },
+    {
+      "id": "BC-003",
+      "description": "watch() subscription fails or exceeds connection/document limits",
+      "owner_node": "mp-watch",
+      "failure_mode": "onError handler logs error. Falls back to polling via cloud function every 5 seconds if watch is unavailable. Shows 'connection unstable' banner. watch is preferred path; polling is degraded fallback."
+    },
+    {
+      "id": "BC-004",
+      "description": "Cloud function cold start latency (100-800ms) — user perceives slow response on first interaction after inactivity",
+      "owner_node": "mp-services",
+      "failure_mode": "Service layer returns normally — cold start is transparent to the caller. UI shows loading skeleton immediately on action (button spinner), so the user sees feedback instantly even if the cloud function takes 800ms."
+    },
+    {
+      "id": "BC-005",
+      "description": "Sensitive word filter triggers on user-generated content (post or comment)",
+      "owner_node": "cf-posts",
+      "failure_mode": "Post/comment created with status='flagged' instead of 'published'. Returned to author with 'under review' message. Flagged content not visible to other users in public listings. Admin reviews via CMS or cloud function."
+    },
+    {
+      "id": "BC-006",
+      "description": "Message sent to non-existent user — recipient openid not in users collection",
+      "owner_node": "cf-messages",
+      "failure_mode": "Cloud function validates recipient exists before persisting. Returns 404 error {code: 'USER_NOT_FOUND', message: '...'}. Sender sees 'user not found' toast. Message not persisted."
+    },
+    {
+      "id": "BC-007",
+      "description": "WeChat mini-program bundle size limit (2MB main, 12MB subpackages total)",
+      "owner_node": "mp-pages",
+      "failure_mode": "Chat module as independent subpackage (<1MB). Images from CDN, not bundled. Cloud function SDK included in app.json dependencies. Bundle size checked in CI via miniprogram-ci build --analyze."
+    },
+    {
+      "id": "BC-008",
+      "description": "Database permission violation — client tries to write to admin-only collection or read private data",
+      "owner_node": "db-messages",
+      "failure_mode": "CloudBase SDK returns UNAUTHORIZED error. mp-services catches and throws typed error. For writes: redirect to cloud function path. For reads: return empty with error logged. Messages collection is admin-only — all access through cloud functions."
+    },
+    {
+      "id": "BC-009",
+      "description": "Rate limit exceeded — user creates too many posts/comments/messages in a window",
+      "owner_node": "cf-posts",
+      "failure_mode": "Cloud function tracks per-user rate in memory (Map<openid, count>). Returns 429 error {code: 'RATE_LIMITED', retry_after: seconds}. Client shows cooldown timer. ponytail: in-memory counters reset on cold start. Add Redis/DB-backed counters if abuse becomes a problem."
+    },
+    {
+      "id": "BC-010",
+      "description": "Comment depth exceeds maximum (reply to a reply) — 3rd level nesting attempt",
+      "owner_node": "cf-comments",
+      "failure_mode": "Cloud function checks parent comment's depth field. If depth >= 1, returns 400 error {code: 'MAX_DEPTH', max: 2}. Client disables reply button on level-2 comments. UX: show 'reply in thread' that creates top-level comment mentioning the user."
+    }
+  ],
+  "notes": [
+    "Frontend services/ layer is the single data boundary — pages never call CloudBase SDK directly. This allows mock data swap during development and centralized error handling.",
+    "mp-watch replaces the deleted mp-ws-client. Watch lifecycle is page-scoped (onLoad → open, onUnload → close). No persistent connections across pages.",
+    "Cloud functions use action-based routing: each function receives {action: 'create'|'update'|'delete'|..., ...data}. Single function per domain, not per operation.",
+    "cf-utils is deployed as a CloudBase '层' (layer) — shared across all cloud functions without code duplication. Contains: sensitive word list, validation helpers, error formatters.",
+    "Database permission model: posts/comments/categories = all read, creator write. messages = admin-only (all access via cloud functions). users = all read public fields, creator write own.",
+    "Denormalization strategy: author nickname + avatar stored in post and comment at creation time. cf-users syncs changes to all existing posts/comments when profile updated (eventually consistent).",
+    "Full-text search uses db.RegExp() for MVP. If quality is insufficient, create a search index collection where cloud function tokenizes and indexes post content.",
+    "ponytail: No Redis, no message queue, no separate search service. CloudBase native capabilities only. Add external services only when measured performance requires it.",
+    "Intentional coupling: mp-services calls both cloud functions (writes) AND database directly (simple reads). This is by design — not a layering violation. The service layer abstracts which path is used.",
+    "Deleted modules from previous design: be-routes, be-ws-handler, be-session-manager, be-core, be-schemas, be-models, all 5 repos, wechat-api, mp-ws-client, mp-api-client. JWT management in mp-auth replaced by CloudBase native identity."
+  ]
+}

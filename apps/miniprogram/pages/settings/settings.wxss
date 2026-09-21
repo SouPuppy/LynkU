@@ -1,0 +1,39 @@
+.page { min-height: 100vh; background: var(--color-bg); }
+.section { margin-bottom: 16rpx; background: var(--color-bg-white); }
+.settings-list { }
+.setting-row {
+  padding: var(--spacing-md);
+  border-bottom: 1rpx solid var(--color-border);
+  font-size: var(--font-md);
+  display: flex; flex-direction: row; justify-content: space-between; align-items: center;
+}
+.setting-value { gap: 8rpx; align-items: center; }
+.setting-warn { color: var(--color-danger); }
+.setting-arrow {
+  width: 16rpx;
+  height: 16rpx;
+  border-top: 3rpx solid var(--color-text-secondary);
+  border-right: 3rpx solid var(--color-text-secondary);
+  transform: rotate(45deg);
+  flex-shrink: 0;
+}
+.logout-row { border-bottom: none; }
+.logout-row text:first-child { color: #e74c3c; }
+
+/* Edit overlay */
+.edit-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 200;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+}
+.edit-card {
+  background: var(--color-bg-white); border-radius: 24rpx;
+  padding: var(--spacing-lg); width: 560rpx;
+  display: flex; flex-direction: column; gap: 24rpx;
+}
+.edit-title { font-size: var(--font-lg); font-weight: 600; text-align: center; }
+.edit-input { height: 80rpx; padding: 0 24rpx; background: var(--color-bg); border-radius: var(--radius-round); font-size: var(--font-md); }
+.edit-actions { gap: 24rpx; }
+.edit-actions button { flex: 1; border-radius: var(--radius-round); font-size: var(--font-md); }
+.edit-cancel-btn { background: var(--color-bg); color: var(--color-text); }
+.edit-save-btn { background: var(--color-primary); color: #fff; }

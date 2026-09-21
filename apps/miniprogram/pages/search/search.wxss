@@ -1,0 +1,11 @@
+/* search page */
+.page-search { display: flex; flex-direction: column; height: 100vh; }
+.search-skeleton { flex: 1; padding: 0 var(--spacing-md); background: var(--color-bg-white); }
+.search-sk-row {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  padding: var(--spacing-md) 0;
+  border-bottom: 1rpx solid var(--color-border);
+}
+.search-empty { padding: 120rpx var(--spacing-md); text-align: center; }

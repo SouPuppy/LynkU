@@ -1,0 +1,2 @@
+/* topic-chip styles */
+.cat-tag { padding: 2rpx 16rpx; border-radius: var(--radius-sm); font-size: var(--font-xs); flex-shrink: 0; }

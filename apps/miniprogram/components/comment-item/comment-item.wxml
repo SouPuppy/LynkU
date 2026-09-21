@@ -1,0 +1,69 @@
+<!-- comment-item: top-level comment with one-level replies -->
+<view wx:if="{{viewComment}}" class="comment">
+  <view wx:if="{{viewComment.status === 'deleted'}}" class="comment-deleted">
+    <text class="comment-deleted-text">[评论已删除]</text>
+  </view>
+
+  <view wx:else class="comment-main" data-id="{{viewComment._id}}" bindlongpress="onDelete">
+    <view
+      class="comment-avatar"
+      data-author="{{viewComment.author}}"
+      data-anonymous="{{viewComment.anonymous}}"
+      data-comment-id="{{viewComment._id}}"
+      data-is-mine="{{viewComment.is_mine}}"
+      catchtap="onAuthorTap"
+    >
+      <avatar src="{{viewComment.author.avatar_url}}" anonymous="{{viewComment.anonymous}}" size="sm" />
+    </view>
+
+    <view class="comment-body">
+      <view
+        class="comment-meta"
+        data-author="{{viewComment.author}}"
+        data-anonymous="{{viewComment.anonymous}}"
+        data-comment-id="{{viewComment._id}}"
+        data-is-mine="{{viewComment.is_mine}}"
+        catchtap="onAuthorTap"
+      >
+        <text class="comment-author">{{viewComment.author.nickname}}</text>
+        <text class="comment-time">{{viewComment.display_time}}</text>
+      </view>
+      <text class="comment-text">{{viewComment.content}}</text>
+      <view wx:if="{{viewComment.depth === 0}}" class="comment-actions">
+        <text class="comment-action" bindtap="onReplyTap">回复</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{viewComment.replies && viewComment.replies.length}}" class="replies-panel">
+    <view class="replies-header">
+      <text>{{viewComment.reply_count_text}}</text>
+    </view>
+
+    <view
+      wx:for="{{viewComment.replies}}"
+      wx:key="_id"
+      wx:for-item="reply"
+      class="reply-row"
+      data-id="{{reply._id}}"
+      bindlongpress="onDelete"
+    >
+      <block wx:if="{{reply.status !== 'deleted'}}">
+        <view
+          class="reply-meta"
+          data-author="{{reply.author}}"
+          data-anonymous="{{reply.anonymous}}"
+          data-comment-id="{{reply._id}}"
+          data-is-mine="{{reply.is_mine}}"
+          catchtap="onAuthorTap"
+        >
+          <text class="reply-author">{{reply.author.nickname}}</text>
+          <text class="reply-time">{{reply.display_time}}</text>
+        </view>
+        <text class="reply-text">{{reply.content}}</text>
+      </block>
+
+      <text wx:else class="reply-deleted">[评论已删除]</text>
+    </view>
+  </view>
+</view>

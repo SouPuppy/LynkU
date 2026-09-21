@@ -1,0 +1,9 @@
+{
+  "name": "cf-posts",
+  "version": "1.0.0",
+  "description": "Post CRUD + sensitive word filter + search + rate limiting",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "4.0.2"
+  }
+}

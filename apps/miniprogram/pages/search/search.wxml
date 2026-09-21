@@ -1,0 +1,34 @@
+<nav-bar title="搜索" showBack="{{true}}" />
+<!-- search page -->
+<view class="page-search">
+  <search-bar
+    placeholder="搜索帖子..."
+    bindsearch="onSearch"
+    bindinput="onInput"
+  />
+  <view class="feed-wrapper">
+    <view wx:if="{{state === 'loading'}}" class="search-skeleton">
+      <view wx:for="{{skRows4}}" wx:key="*this" class="search-sk-row">
+        <view class="sk-line sk-line-lg sk-w-80"></view>
+        <view class="sk-line sk-w-90"></view>
+        <view class="sk-line sk-line-xs sk-w-40"></view>
+      </view>
+    </view>
+
+    <view wx:elif="{{state === 'error'}}" class="search-empty" bindtap="onRefresh">
+      <text class="text-secondary">搜索失败，点击重试</text>
+    </view>
+
+    <feed-list
+      wx:else
+      items="{{results}}"
+      hasMore="{{hasMore}}"
+      loading="{{loadingMore}}"
+      emptyText="{{keyword ? '未找到相关帖子' : '输入关键词搜索帖子'}}"
+      bindloadmore="onLoadMore"
+      bindrefresh="onRefresh"
+    >
+      <post-item wx:for="{{results}}" wx:key="_id" post="{{item}}" data-id="{{item._id}}" bindtap="onItemTap" />
+    </feed-list>
+  </view>
+</view>

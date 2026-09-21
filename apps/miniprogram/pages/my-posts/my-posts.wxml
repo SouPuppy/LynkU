@@ -1,0 +1,31 @@
+<nav-bar title="我的帖子" showBack="{{true}}" />
+<scroll-view class="page" scroll-y refresher-enabled refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bindscrolltolower="onLoadMore">
+  <view wx:if="{{state === 'loading'}}" class="my-posts-skeleton">
+    <view wx:for="{{skRows4}}" wx:key="*this" class="my-post-sk-row">
+      <view class="sk-line sk-line-lg sk-w-80"></view>
+      <view class="sk-line sk-w-70"></view>
+      <view class="my-post-sk-actions">
+        <view class="sk-line sk-line-sm sk-w-20"></view>
+        <view class="sk-line sk-line-sm sk-w-20"></view>
+      </view>
+    </view>
+  </view>
+  <view wx:elif="{{state === 'loaded' && posts.length === 0}}" class="empty">
+    <text class="text-secondary text-sm">还没有发过帖子</text>
+  </view>
+  <view wx:elif="{{state === 'error'}}" class="empty" bindtap="onRefresh">
+    <text class="text-secondary text-sm">加载失败，点击重试</text>
+  </view>
+  <view wx:else class="post-list">
+    <view wx:for="{{posts}}" wx:key="_id" class="post-item-wrap">
+      <post-item post="{{item}}" data-id="{{item._id}}" bindtap="onPostTap" />
+      <view class="post-actions">
+        <text class="action-btn" data-id="{{item._id}}" catchtap="onEditTap">编辑</text>
+        <text class="action-btn action-delete" data-id="{{item._id}}" catchtap="onDeleteTap">删除</text>
+      </view>
+    </view>
+    <view class="empty" wx:if="{{loadingMore}}">正在加载…</view>
+    <view class="empty" wx:elif="{{loadError}}" bindtap="onRetry">加载失败，点击重试</view>
+    <view class="empty" wx:elif="{{hasMore}}" bindtap="onLoadMore">加载更多</view>
+  </view>
+</scroll-view>

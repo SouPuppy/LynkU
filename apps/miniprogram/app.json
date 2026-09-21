@@ -1,0 +1,62 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/email-verify/email-verify",
+    "pages/index/index",
+    "pages/search/search",
+    "pages/categories/categories",
+    "pages/post/post",
+    "pages/editor/editor",
+    "pages/profile/profile",
+    "pages/my-posts/my-posts",
+    "pages/settings/settings",
+    "pages/messages/messages",
+    "pages/notifications/notifications",
+    "pages/drafts/drafts",
+    "pages/user/user"
+  ],
+  "subpackages": [
+    {
+      "root": "subpkg-chat",
+      "pages": [
+        "pages/chat/chat"
+      ]
+    }
+  ],
+  "window": {
+    "backgroundColor": "#f5f5f5"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#1E4D8C",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/messages/messages",
+        "text": "私信"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "renderer": "skyline",
+  "componentFramework": "glass-easel",
+  "rendererOptions": {
+    "skyline": {
+      "defaultDisplayBlock": true,
+      "defaultContentBox": true
+    }
+  },
+  "lazyCodeLoading": "requiredComponents",
+  "resolveAlias": {
+    "@/*": "/*"
+  }
+}

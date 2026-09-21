@@ -1,0 +1,774 @@
+[
+  {
+    "module_id": "mp-pages",
+    "module_name": "Mini-Program Pages",
+    "interfaces": [
+      {
+        "signature": "navigateToPostList(categoryId?: string) -> void",
+        "preconditions": ["User is authenticated (JWT stored locally)"],
+        "postconditions": ["Post list page rendered with paginated posts, filtered by category if specified"],
+        "failure_modes": [
+          {
+            "id": "FM-001",
+            "trigger": "API returns error or network timeout",
+            "behavior": "Show error toast with retry button. Page remains in loading skeleton state.",
+            "propagation": "Caught by mp-api-client, surfaced as error state in page data binding.",
+            "test_contracts": [
+              {"scenario": "Network error on post list load", "type": "INTEGRATION", "verifies": "Error state renders retry UI", "boundary_ref": null},
+              {"scenario": "Empty post list for category", "type": "UNIT", "verifies": "Empty state renders with message", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": ["New page types added via app.json pages array + subpackage config"],
+    "sealed_points": ["Page lifecycle methods follow WeChat onLoad/onShow/onHide/onUnload contract"],
+    "state_owned": ["Current page data (posts list, scroll position)"],
+    "state_shared": ["User auth state (shared with mp-auth)"]
+  },
+  {
+    "module_id": "mp-components",
+    "module_name": "Mini-Program Components",
+    "interfaces": [
+      {
+        "signature": "post-card: properties={post: Post, showCategory: boolean} -> WXML template",
+        "preconditions": ["Post object has required fields: id, title, content, author, created_at"],
+        "postconditions": ["Card renders with title, excerpt, author avatar, category tag, timestamp"],
+        "failure_modes": [
+          {
+            "id": "FM-002",
+            "trigger": "Post object has missing optional fields (e.g., no avatarUrl)",
+            "behavior": "Render default avatar placeholder. No crash.",
+            "propagation": "Handled internally via WXML wx:if conditional rendering.",
+            "test_contracts": [
+              {"scenario": "Post with all fields renders completely", "type": "UNIT", "verifies": "All card elements present", "boundary_ref": null},
+              {"scenario": "Post with missing avatar renders default", "type": "UNIT", "verifies": "Default placeholder shown", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["New components added in components/ directory, registered in page JSON"],
+    "sealed_points": ["Component property types match Post/Comment/User/Category domain types"],
+    "state_owned": ["Component-local UI state (expanded/collapsed, image preview)"],
+    "state_shared": []
+  },
+  {
+    "module_id": "mp-api-client",
+    "module_name": "Mini-Program API Client",
+    "interfaces": [
+      {
+        "signature": "request<T>(method, path, body?, params?) -> Promise<ApiResponse<T>>",
+        "preconditions": ["JWT token is available from mp-auth module", "path is a valid backend endpoint"],
+        "postconditions": ["Parsed typed response or structured ApiError"],
+        "failure_modes": [
+          {
+            "id": "FM-003",
+            "trigger": "HTTP 401 Unauthorized (expired/invalid JWT)",
+            "behavior": "Clear stored token, emit 'auth-expired' event, redirect to login page",
+            "propagation": "Caught in response interceptor. Auth-expired event handled by app.ts onAuthExpired handler.",
+            "test_contracts": [
+              {"scenario": "401 triggers re-login flow", "type": "INTEGRATION", "verifies": "Token cleared and redirect happens", "boundary_ref": "BC-002"},
+              {"scenario": "Network timeout with retry", "type": "UNIT", "verifies": "Timeout error surfaced with retry info", "boundary_ref": null}
+            ]
+          },
+          {
+            "id": "FM-004",
+            "trigger": "HTTP 429 Rate Limit",
+            "behavior": "Return error with retryAfter seconds. Page shows cooldown indicator.",
+            "propagation": "Caught in response interceptor, surfaced as rate_limit_error type.",
+            "test_contracts": [
+              {"scenario": "429 returns retryAfter in error", "type": "UNIT", "verifies": "retryAfter field populated from header", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": ["New HTTP method wrappers (upload, download) for file attachments"],
+    "sealed_points": ["Base URL is fixed to configured backend endpoint. Token injection is mandatory."],
+    "state_owned": ["Pending request count (for loading indicator)"],
+    "state_shared": []
+  },
+  {
+    "module_id": "mp-ws-client",
+    "module_name": "Mini-Program WebSocket Client",
+    "interfaces": [
+      {
+        "signature": "connect(token: string) -> Promise<void>",
+        "preconditions": ["JWT token is valid and fresh", "Network is available"],
+        "postconditions": ["WebSocket connected and authenticated. State = 'connected'."],
+        "failure_modes": [
+          {
+            "id": "FM-005",
+            "trigger": "Connection fails after max retries (5 attempts)",
+            "behavior": "State → 'failed'. Emit 'ws-disconnected' event. UI shows 'connection lost' banner.",
+            "propagation": "Event handled by page layer. User can manually retry via 'reconnect' button.",
+            "test_contracts": [
+              {"scenario": "Max retries exhausted enters failed state", "type": "UNIT", "verifies": "State machine reaches 'failed' after 5 attempts", "boundary_ref": "BC-003"}
+            ]
+          },
+          {
+            "id": "FM-006",
+            "trigger": "Server sends authentication failure (invalid token)",
+            "behavior": "Close connection. Emit 'auth-expired'. Clear token. Redirect to login.",
+            "propagation": "Auth-expired event → app.ts handler → login page redirect.",
+            "test_contracts": [
+              {"scenario": "Auth failure on WS connect triggers login", "type": "INTEGRATION", "verifies": "Token cleared on auth failure", "boundary_ref": "BC-002"}
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "sendMessage(msg: OutgoingMessage) -> Promise<string>",
+        "preconditions": ["WebSocket state is 'connected'", "msg has type, to, content fields"],
+        "postconditions": ["Message sent with unique msgId. Returns msgId for tracking."],
+        "failure_modes": [
+          {
+            "id": "FM-007",
+            "trigger": "WebSocket disconnected during send",
+            "behavior": "Queue message locally. Retry on reconnect. Fail after queue TTL (5 min).",
+            "propagation": "Message status updated in local store. User sees 'sending...' → 'sent' or 'failed'.",
+            "test_contracts": [
+              {"scenario": "Send while disconnected queues and retries", "type": "INTEGRATION", "verifies": "Message queued locally, sent on reconnect", "boundary_ref": "BC-003"},
+              {"scenario": "Queued message expires after 5min TTL", "type": "UNIT", "verifies": "Expired message marked as failed", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      }
+    ],
+    "extension_points": ["Additional message types via JSON 'type' discriminator field"],
+    "sealed_points": ["WSS protocol mandatory for production. Heartbeat interval = 30s."],
+    "state_owned": ["Connection state machine (idle|connecting|connected|reconnecting|failed)", "Outgoing message queue"],
+    "state_shared": []
+  },
+  {
+    "module_id": "mp-auth",
+    "module_name": "Mini-Program Auth Module",
+    "interfaces": [
+      {
+        "signature": "login() -> Promise<UserInfo>",
+        "preconditions": ["WeChat runtime is available (wx.login exists)"],
+        "postconditions": ["JWT stored in local storage. User info returned with nickname and avatar."],
+        "failure_modes": [
+          {
+            "id": "FM-008",
+            "trigger": "wx.login fails (WeChat service error, user cancelled)",
+            "behavior": "Return error with code. UI shows 'login failed' with retry.",
+            "propagation": "Error surfaced to calling page. Login button remains available for retry.",
+            "test_contracts": [
+              {"scenario": "wx.login failure shows retry UI", "type": "INTEGRATION", "verifies": "Error state renders with retry button", "boundary_ref": "BC-001"}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      },
+      {
+        "signature": "getToken() -> string | null",
+        "preconditions": [],
+        "postconditions": ["Returns stored JWT or null if not logged in"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "logout() -> void",
+        "preconditions": [],
+        "postconditions": ["JWT cleared from storage. WebSocket disconnected. All local state reset."],
+        "failure_modes": [],
+        "side_effects": "STATE_MUTATION"
+      }
+    ],
+    "extension_points": [],
+    "sealed_points": ["Only WeChat login supported — no email/password, no SSO"],
+    "state_owned": ["JWT token", "Current user info (nickname, avatarUrl, openid)"],
+    "state_shared": ["User auth state (read by mp-api-client, mp-ws-client, mp-pages)"]
+  },
+  {
+    "module_id": "be-routes",
+    "module_name": "Backend API Routes",
+    "interfaces": [
+      {
+        "signature": "POST /api/auth/login {code: string} -> {token: string, user: UserResponse}",
+        "preconditions": ["WeChat login code is valid and not expired (5 min TTL)"],
+        "postconditions": ["JWT issued. User created if first login. Token returned."],
+        "failure_modes": [
+          {
+            "id": "FM-009",
+            "trigger": "WeChat code2session returns error (invalid code, rate limit)",
+            "behavior": "Return 400 with error_code: INVALID_CODE or 429 with RATE_LIMITED",
+            "propagation": "Handled by FastAPI exception handler → structured JSON error response.",
+            "test_contracts": [
+              {"scenario": "Invalid WeChat code returns 400", "type": "INTEGRATION", "verifies": "Error response structure matches schema", "boundary_ref": "BC-001"}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      },
+      {
+        "signature": "GET /api/posts?category=id&cursor=token&limit=20 -> {items: Post[], next_cursor: string|null}",
+        "preconditions": ["User is authenticated (JWT valid)"],
+        "postconditions": ["Cursor-paginated post list returned. Posts include author summary and comment count."],
+        "failure_modes": [
+          {
+            "id": "FM-010",
+            "trigger": "database query timeout",
+            "behavior": "Return 503 with RETRYABLE error code",
+            "propagation": "Exception handler catches DB timeout → 503 response.",
+            "test_contracts": [
+              {"scenario": "DB timeout returns 503 with retry hint", "type": "INTEGRATION", "verifies": "503 status and RETRYABLE code", "boundary_ref": "BC-008"}
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "GET /api/messages/conversations -> {conversations: Conversation[]}",
+        "preconditions": ["User is authenticated"],
+        "postconditions": ["List of conversations with last message preview and unread count"],
+        "failure_modes": [],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": ["New route modules registered via FastAPI app.include_router()"],
+    "sealed_points": ["All routes require JWT auth except POST /api/auth/login. Response format is always {data, error}."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "be-ws-handler",
+    "module_name": "Backend WebSocket Handler",
+    "interfaces": [
+      {
+        "signature": "ws://api/ws?token=jwt -> WebSocket connection",
+        "preconditions": ["JWT token query parameter is valid"],
+        "postconditions": ["WebSocket connection established. User registered in session manager. Online status broadcast."],
+        "failure_modes": [
+          {
+            "id": "FM-011",
+            "trigger": "JWT validation fails on connect",
+            "behavior": "Send error frame with code=AUTH_FAILED, close connection with code 4001",
+            "propagation": "Connection refused. Client receives close event with code 4001.",
+            "test_contracts": [
+              {"scenario": "Invalid token WS connect is rejected", "type": "INTEGRATION", "verifies": "Connection closed with 4001", "boundary_ref": "BC-002"}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      },
+      {
+        "signature": "WS message frame: {type: 'message', to: userId, content: string, msgId: string} -> void",
+        "preconditions": ["Connection authenticated", "to user exists"],
+        "postconditions": ["Message delivered if recipient online, queued if offline. Sender receives ACK."],
+        "failure_modes": [
+          {
+            "id": "FM-012",
+            "trigger": "Recipient is offline",
+            "behavior": "Message persisted by message service. Sender gets ACK with status='sent'.",
+            "propagation": "Message service handles offline queue. Delivered on recipient reconnect.",
+            "test_contracts": [
+              {"scenario": "Message to offline user is persisted", "type": "INTEGRATION", "verifies": "Message stored with sent status", "boundary_ref": "BC-005"}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      }
+    ],
+    "extension_points": ["Additional WS message types: typing indicators, read receipts, presence updates"],
+    "sealed_points": ["Single endpoint /ws. Multiplexed by message type field. WSS required for production."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "be-auth-service",
+    "module_name": "Authentication Service",
+    "interfaces": [
+      {
+        "signature": "async login_with_wechat(code: str) -> tuple[User, str]",
+        "preconditions": ["code is a non-empty string from wx.login()"],
+        "postconditions": ["User record exists (created if first login). Valid JWT returned with expiry."],
+        "failure_modes": [
+          {
+            "id": "FM-013",
+            "trigger": "WeChat code2session API returns errcode != 0",
+            "behavior": "Raise InvalidWeChatCode(code=errcode, msg=errmsg) exception",
+            "propagation": "Caught by route handler → 400 response with WECHAT_ERROR code",
+            "test_contracts": [
+              {"scenario": "WeChat returns invalid code error", "type": "INTEGRATION", "verifies": "Exception raised with correct errcode", "boundary_ref": "BC-001"},
+              {"scenario": "WeChat API timeout", "type": "UNIT", "verifies": "Retryable error raised with timeout flag", "boundary_ref": null}
+            ]
+          },
+          {
+            "id": "FM-014",
+            "trigger": "code2session response missing openid field",
+            "behavior": "Raise WeChatAPIError with UNEXPECTED_RESPONSE code",
+            "propagation": "Caught by route handler → 502 with UPSTREAM_ERROR",
+            "test_contracts": [
+              {"scenario": "WeChat returns malformed response", "type": "UNIT", "verifies": "Specific error code for upstream malformation", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      },
+      {
+        "signature": "async validate_token(token: str) -> TokenPayload",
+        "preconditions": ["token is a non-empty string"],
+        "postconditions": ["Decoded token payload with user_id, openid, exp. Raises if invalid."],
+        "failure_modes": [
+          {
+            "id": "FM-015",
+            "trigger": "Token is expired (exp < now)",
+            "behavior": "Raise TokenExpired(expired_at=exp) exception",
+            "propagation": "FastAPI dependency catches → 401 with TOKEN_EXPIRED code",
+            "test_contracts": [
+              {"scenario": "Expired token raises TokenExpired", "type": "UNIT", "verifies": "Exception with expired_at field", "boundary_ref": "BC-002"}
+            ]
+          },
+          {
+            "id": "FM-016",
+            "trigger": "Token signature is invalid (tampered or wrong secret)",
+            "behavior": "Raise InvalidToken exception",
+            "propagation": "FastAPI dependency catches → 401 with INVALID_TOKEN code",
+            "test_contracts": [
+              {"scenario": "Tampered token raises InvalidToken", "type": "UNIT", "verifies": "InvalidToken exception on bad signature", "boundary_ref": "BC-002"}
+            ]
+          }
+        ],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": [],
+    "sealed_points": ["Auth method: WeChat code2session ONLY. No password auth, no OAuth2 flows."],
+    "state_owned": ["JWT signing key (from config)"],
+    "state_shared": []
+  },
+  {
+    "module_id": "be-post-service",
+    "module_name": "Post Service",
+    "interfaces": [
+      {
+        "signature": "async create_post(user_id: int, title: str, content: str, category_id: int) -> Post",
+        "preconditions": ["user_id references existing user", "category_id references existing category", "title length 1-200 chars", "content length 1-10000 chars"],
+        "postconditions": ["Post persisted with status='published'. Category post_count incremented atomically."],
+        "failure_modes": [
+          {
+            "id": "FM-017",
+            "trigger": "Content contains sensitive words from filter list",
+            "behavior": "Post created with status='flagged'. Return post with warning. Not shown publicly until admin review.",
+            "propagation": "Flagged status propagated to post listing queries which exclude flagged posts for non-owner, non-admin users.",
+            "test_contracts": [
+              {"scenario": "Post with sensitive word is flagged", "type": "INTEGRATION", "verifies": "Status='flagged', not publicly visible", "boundary_ref": "BC-006"}
+            ]
+          },
+          {
+            "id": "FM-018",
+            "trigger": "User exceeds rate limit (e.g., 10 posts per hour)",
+            "behavior": "Raise RateLimitExceeded(retry_after=seconds) exception",
+            "propagation": "Route handler catches → 429 response with Retry-After header",
+            "test_contracts": [
+              {"scenario": "11th post in one hour is rate limited", "type": "INTEGRATION", "verifies": "429 with correct retry_after", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      }
+    ],
+    "extension_points": ["Post statuses: published, flagged, hidden, deleted. Extend with 'pinned', 'locked'."],
+    "sealed_points": ["Soft-delete only. Posts are never hard-deleted. Title 200 char limit. Content 10000 char limit."],
+    "state_owned": ["Sensitive word list", "Per-user post rate counters"],
+    "state_shared": []
+  },
+  {
+    "module_id": "be-comment-service",
+    "module_name": "Comment Service",
+    "interfaces": [
+      {
+        "signature": "async create_comment(user_id: int, post_id: int, content: str, parent_id: int|null) -> Comment",
+        "preconditions": ["user_id and post_id reference existing records", "content 1-2000 chars", "if parent_id set, references existing comment on same post and depth < 2"],
+        "postconditions": ["Comment persisted. Post comment_count incremented."],
+        "failure_modes": [
+          {
+            "id": "FM-019",
+            "trigger": "parent_id references a comment at max depth (level 2)",
+            "behavior": "Raise MaxCommentDepth(max_depth=2) exception",
+            "propagation": "Route handler → 400 with MAX_DEPTH error code",
+            "test_contracts": [
+              {"scenario": "Reply to level-2 comment is rejected", "type": "INTEGRATION", "verifies": "MaxCommentDepth raised with depth=2", "boundary_ref": null}
+            ]
+          },
+          {
+            "id": "FM-020",
+            "trigger": "parent_id references comment on different post",
+            "behavior": "Raise CommentMismatch exception",
+            "propagation": "Route handler → 400 with PARENT_MISMATCH error code",
+            "test_contracts": [
+              {"scenario": "Reply with wrong post_id parent combo", "type": "UNIT", "verifies": "CommentMismatch raised", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      }
+    ],
+    "extension_points": [],
+    "sealed_points": ["Max comment depth = 2 (post → comment → reply). Content 2000 char limit. Soft-delete only."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "be-message-service",
+    "module_name": "Message Service",
+    "interfaces": [
+      {
+        "signature": "async send_message(from_id: int, to_id: int, content: str, msg_id: str) -> MessageDeliveryResult",
+        "preconditions": ["from_id and to_id reference existing users", "content 1-5000 chars", "msg_id is unique (dedup)"],
+        "postconditions": ["Message persisted. If recipient online, delivered via WebSocket. If offline, queued for delivery."],
+        "failure_modes": [
+          {
+            "id": "FM-021",
+            "trigger": "Duplicate msg_id (idempotency check)",
+            "behavior": "Return existing message's delivery status. No duplicate persisted.",
+            "propagation": "Transparent to sender — they get the original message's status.",
+            "test_contracts": [
+              {"scenario": "Duplicate msg_id returns original status", "type": "INTEGRATION", "verifies": "No duplicate row, same status returned", "boundary_ref": null}
+            ]
+          },
+          {
+            "id": "FM-022",
+            "trigger": "Recipient user does not exist",
+            "behavior": "Raise UserNotFound(to_id=to_id) exception",
+            "propagation": "Route handler → 404 with USER_NOT_FOUND",
+            "test_contracts": [
+              {"scenario": "Message to nonexistent user returns 404", "type": "INTEGRATION", "verifies": "404 and USER_NOT_FOUND code", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION, NETWORK"
+      }
+    ],
+    "extension_points": ["Message types: text, image, system_notification. Extend via type discriminator."],
+    "sealed_points": ["Content 5000 char limit. No file/attachment support in MVP."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "be-category-service",
+    "module_name": "Category Service",
+    "interfaces": [
+      {
+        "signature": "async list_categories() -> list[Category]",
+        "preconditions": [],
+        "postconditions": ["All active categories returned ordered by sort_order. Includes post_count."],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "async create_category(name: str, description: str) -> Category",
+        "preconditions": ["Caller has admin role", "name is unique and 1-50 chars"],
+        "postconditions": ["New category persisted and returned"],
+        "failure_modes": [
+          {
+            "id": "FM-023",
+            "trigger": "Category name already exists",
+            "behavior": "Raise DuplicateCategory(name=name) exception",
+            "propagation": "Route handler → 409 with DUPLICATE_NAME",
+            "test_contracts": [
+              {"scenario": "Duplicate category name returns 409", "type": "INTEGRATION", "verifies": "409 and DUPLICATE_NAME code", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      }
+    ],
+    "extension_points": [],
+    "sealed_points": ["Categories are flat (no nesting). Sort order is numeric ascending."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "be-session-manager",
+    "module_name": "WebSocket Session Manager",
+    "interfaces": [
+      {
+        "signature": "async register(user_id: int, ws: WebSocket) -> void",
+        "preconditions": ["user_id is valid", "ws is an active WebSocket connection"],
+        "postconditions": ["User registered as online. Previous connection for same user replaced. 'user_online' event broadcast."],
+        "failure_modes": [],
+        "side_effects": "STATE_MUTATION, NETWORK"
+      },
+      {
+        "signature": "async unregister(user_id: int) -> void",
+        "preconditions": ["user_id was previously registered"],
+        "postconditions": ["User removed from online set. 'user_offline' event broadcast if no other connections."],
+        "failure_modes": [],
+        "side_effects": "STATE_MUTATION, NETWORK"
+      },
+      {
+        "signature": "is_online(user_id: int) -> bool",
+        "preconditions": [],
+        "postconditions": ["True if user has active WebSocket connection"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "async send_to_user(user_id: int, data: dict) -> bool",
+        "preconditions": ["user_id is valid"],
+        "postconditions": ["Message sent if online (returns true). Returns false if offline."],
+        "failure_modes": [
+          {
+            "id": "FM-024",
+            "trigger": "WebSocket send fails (connection dropped mid-send)",
+            "behavior": "Unregister user. Return false. Message service handles offline delivery fallback.",
+            "propagation": "Unregister triggers cleanup. Message service sees offline status → persists for later delivery.",
+            "test_contracts": [
+              {"scenario": "Send fails on stale connection", "type": "INTEGRATION", "verifies": "User unregistered, send returns false", "boundary_ref": "BC-003"}
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": [],
+    "sealed_points": ["ponytail: single dict with asyncio.Lock for {user_id: WebSocket}. Per-account locks if lock contention measured."],
+    "state_owned": ["Active connections map: dict[int, WebSocket]. Protected by asyncio.Lock."],
+    "state_shared": []
+  },
+  {
+    "module_id": "be-core",
+    "module_name": "Backend Core Infrastructure",
+    "interfaces": [
+      {
+        "signature": "async get_db() -> AsyncGenerator[AsyncSession, None]",
+        "preconditions": ["Database URL is configured and reachable"],
+        "postconditions": ["Yields async SQLAlchemy session. Commits on success, rolls back on exception. Returned to pool."],
+        "failure_modes": [
+          {
+            "id": "FM-025",
+            "trigger": "Connection pool exhausted (all connections in use)",
+            "behavior": "Raise ConnectionPoolExhausted after timeout (30s default)",
+            "propagation": "Exception handler → 503 response. Health check endpoint reflects degraded status.",
+            "test_contracts": [
+              {"scenario": "Pool exhaustion raises after timeout", "type": "INTEGRATION", "verifies": "503 response on pool exhaustion", "boundary_ref": "BC-008"}
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": ["Additional middleware: rate limiting, request ID tracking, metrics collection"],
+    "sealed_points": ["Database: PostgreSQL via asyncpg. Session factory uses async SQLAlchemy 2.0."],
+    "state_owned": ["Database connection pool", "Application configuration (Pydantic Settings)"],
+    "state_shared": []
+  },
+  {
+    "module_id": "be-schemas",
+    "module_name": "Pydantic Schemas",
+    "interfaces": [
+      {
+        "signature": "PostCreate {title: str(1-200), content: str(1-10000), category_id: int} -> validates and returns PostCreate model",
+        "preconditions": ["Input data is JSON-compatible dict"],
+        "postconditions": ["Validated Pydantic model instance or ValidationError with field-level details"],
+        "failure_modes": [
+          {
+            "id": "FM-026",
+            "trigger": "title is empty string or exceeds 200 chars",
+            "behavior": "Pydantic ValidationError with loc=['title'] and type='string_too_long'",
+            "propagation": "FastAPI automatically returns 422 with detail from ValidationError",
+            "test_contracts": [
+              {"scenario": "Empty title returns 422", "type": "UNIT", "verifies": "Validation error with field='title'", "boundary_ref": null},
+              {"scenario": "Title exceeding 200 chars returns 422", "type": "UNIT", "verifies": "string_too_long error type", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["New schemas added per domain module as needed"],
+    "sealed_points": ["All schemas use Pydantic v2 with strict mode. Response schemas exclude internal fields."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "be-models",
+    "module_name": "Database Models",
+    "interfaces": [
+      {
+        "signature": "User(id: int PK, openid: str unique, nickname: str, avatar_url: str, role: str, created_at: datetime)",
+        "preconditions": ["Table exists with indexes on openid, created_at"],
+        "postconditions": ["ORM model available for query and mutation via SQLAlchemy"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "Post(id: int PK, title: str, content: str, user_id: int FK, category_id: int FK, status: str, view_count: int, comment_count: int, created_at: datetime, updated_at: datetime)",
+        "preconditions": ["Table exists with indexes on user_id, category_id, status, created_at. TSVECTOR GIN index on search_vector."],
+        "postconditions": ["ORM model. Relationships: author (User), category (Category), comments (Comment[])."],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "Message(id: int PK, msg_id: str unique, from_id: int FK, to_id: int FK, content: str, status: str, created_at: datetime)",
+        "preconditions": ["Table exists with indexes on msg_id (unique), conversation lookup (from_id, to_id, created_at)"],
+        "postconditions": ["ORM model. Status transitions: sent → delivered → read. Unique constraint on msg_id for idempotency."],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["New columns added via Alembic migrations"],
+    "sealed_points": ["All models use SQLAlchemy 2.0 Mapped[] style. UTC timestamps. Soft-delete via status column."],
+    "state_owned": [],
+    "state_shared": ["Database tables are shared state. Coordination via PostgreSQL transactions and constraints."]
+  },
+  {
+    "module_id": "be-user-repo",
+    "module_name": "User Repository",
+    "interfaces": [
+      {
+        "signature": "async find_by_openid(db: AsyncSession, openid: str) -> User | None",
+        "preconditions": ["db is an active async session"],
+        "postconditions": ["User object or None"],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "async create_from_wechat(db: AsyncSession, openid: str, nickname: str, avatar_url: str) -> User",
+        "preconditions": ["openid is not already in database"],
+        "postconditions": ["New User persisted with role='user'"],
+        "failure_modes": [
+          {
+            "id": "FM-027",
+            "trigger": "openid already exists (race condition between check and insert)",
+            "behavior": "IntegrityError caught, retry find_by_openid and return existing user",
+            "propagation": "Caught by repository. Caller receives user (existing or new) transparently.",
+            "test_contracts": [
+              {"scenario": "Concurrent create with same openid", "type": "INTEGRATION", "verifies": "One user created, both callers get user", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      }
+    ],
+    "extension_points": [],
+    "sealed_points": ["ponytail: simple find_by_openid + create. Add user search/pagination when needed."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "be-post-repo",
+    "module_name": "Post Repository",
+    "interfaces": [
+      {
+        "signature": "async list_posts(db: AsyncSession, category_id: int|None, cursor: str|None, limit: int) -> tuple[list[Post], str|None]",
+        "preconditions": ["limit between 1 and 100"],
+        "postconditions": ["Cursor-paginated posts with eager-loaded author and category. Returns (items, next_cursor)."],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "async search_posts(db: AsyncSession, query: str, cursor: str|None, limit: int) -> tuple[list[Post], str|None]",
+        "preconditions": ["query is 1-200 chars"],
+        "postconditions": ["Full-text search results via PostgreSQL TSVECTOR. Ranked by relevance."],
+        "failure_modes": [],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": ["Additional filter dimensions: by_user, by_status, date_range"],
+    "sealed_points": ["ponytail: cursor = base64(created_at + id). No offset pagination to avoid consistency issues under concurrent inserts."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "be-comment-repo",
+    "module_name": "Comment Repository",
+    "interfaces": [
+      {
+        "signature": "async find_by_post(db: AsyncSession, post_id: int) -> list[Comment]",
+        "preconditions": ["post_id references existing post"],
+        "postconditions": ["Comments for post with eager-loaded author. Tree built in-memory from flat result."],
+        "failure_modes": [],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": [],
+    "sealed_points": ["ponytail: flat query + in-memory tree. Add recursive CTE if threading depth > 2 ever needed."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "be-message-repo",
+    "module_name": "Message Repository",
+    "interfaces": [
+      {
+        "signature": "async find_conversation(db: AsyncSession, user_a: int, user_b: int, limit: int, before_id: int|None) -> list[Message]",
+        "preconditions": ["user_a and user_b are valid user ids"],
+        "postconditions": ["Messages between two users, ordered by created_at DESC, paginated by before_id"],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "async get_unread_count(db: AsyncSession, user_id: int, from_id: int) -> int",
+        "preconditions": ["user_id is valid"],
+        "postconditions": ["Count of messages with status != 'read' sent from from_id to user_id"],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "async mark_delivered(db: AsyncSession, msg_ids: list[str]) -> void",
+        "preconditions": ["msg_ids reference existing messages"],
+        "postconditions": ["Messages updated to status='delivered'"],
+        "failure_modes": [],
+        "side_effects": "IO, STATE_MUTATION"
+      }
+    ],
+    "extension_points": [],
+    "sealed_points": ["ponytail: simple between-two-users query. Group chat schema differs — add when needed."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "be-category-repo",
+    "module_name": "Category Repository",
+    "interfaces": [
+      {
+        "signature": "async list_all(db: AsyncSession) -> list[Category]",
+        "preconditions": [],
+        "postconditions": ["All non-deleted categories ordered by sort_order"],
+        "failure_modes": [],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": [],
+    "sealed_points": ["ponytail: list_all is sufficient for <50 categories. Add pagination if category count grows."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "wechat-api",
+    "module_name": "WeChat External API",
+    "interfaces": [
+      {
+        "signature": "GET https://api.weixin.qq.com/sns/jscode2session?appid=APPID&secret=SECRET&js_code=CODE&grant_type=authorization_code -> {openid, session_key, unionid?, errcode?, errmsg?}",
+        "preconditions": ["appid and secret are valid", "code is a fresh wx.login() code (5 min TTL)"],
+        "postconditions": ["openid returned if code valid. errcode != 0 on failure."],
+        "failure_modes": [
+          {
+            "id": "FM-028",
+            "trigger": "WeChat server returns errcode=-1 (system busy)",
+            "behavior": "External service error. Caller should retry with backoff.",
+            "propagation": "be-auth-service catches → raises WeChatAPIError with RETRYABLE flag",
+            "test_contracts": [
+              {"scenario": "WeChat returns system busy", "type": "INTEGRATION", "verifies": "Retryable error propagated", "boundary_ref": "BC-001"}
+            ]
+          }
+        ],
+        "side_effects": "NETWORK"
+      }
+    ],
+    "extension_points": [],
+    "sealed_points": ["External service — not owned by this project. Interface documented for boundary clarity only."],
+    "state_owned": [],
+    "state_shared": []
+  }
+]

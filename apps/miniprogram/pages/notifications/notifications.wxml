@@ -1,0 +1,52 @@
+<nav-bar title="消息通知" showBack="{{true}}" />
+<!-- notifications: feed of interaction events -->
+<view class="notif-page" style="height: calc(100vh - {{navHeight}}px);">
+  <!-- loading -->
+  <view wx:if="{{state === 'loading'}}" class="notif-skeleton">
+    <view wx:for="{{skRows5}}" wx:key="*this" class="notif-sk-card">
+      <view class="sk-circle notif-sk-avatar"></view>
+      <view class="notif-sk-info">
+        <view class="sk-line sk-w-80"></view>
+        <view class="sk-line sk-line-sm sk-w-60"></view>
+        <view class="sk-line sk-line-xs sk-w-30"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- error -->
+  <view wx:elif="{{state === 'error'}}" class="notif-empty" bindtap="onRetry">
+    <text class="text-secondary">加载失败，点击重试</text>
+  </view>
+
+  <!-- empty -->
+  <view wx:elif="{{state === 'empty'}}" class="notif-empty">
+    <text class="text-secondary">暂无消息通知</text>
+  </view>
+
+  <!-- notification feed -->
+  <scroll-view
+    wx:else
+    class="notif-feed"
+    scroll-y
+    refresher-enabled
+    refresher-triggered="{{false}}"
+    bindrefresherrefresh="onRefresh"
+    bindscrolltolower="onLoadMore"
+    lower-threshold="100"
+  >
+    <notification-card
+      wx:for="{{notifications}}"
+      wx:key="_id"
+      notification="{{item}}"
+    />
+
+    <view wx:if="{{loadingMore}}" class="notif-footer text-secondary text-sm">
+      <text>加载中...</text>
+    </view>
+
+    <view wx:elif="{{loadError}}" class="notif-footer text-secondary text-sm" bindtap="onLoadMore">加载失败，点击重试</view>
+    <view wx:elif="{{!hasMore && notifications.length > 0}}" class="notif-footer text-secondary text-sm">
+      <text>没有更多了</text>
+    </view>
+  </scroll-view>
+</view>

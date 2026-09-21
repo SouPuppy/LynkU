@@ -1,0 +1,134 @@
+{
+  "source": "DESIGN",
+  "nodes": [
+    {
+      "id": "editor-page",
+      "name": "Editor Page (Redesigned)",
+      "category": "ADAPTER",
+      "responsibility": "Unified post editor supporting three modes: create new, edit existing, continue draft. Auto-saves drafts with debounce. Character count, title validation, content preview toggle.",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "drafts-page",
+      "name": "Drafts List Page",
+      "category": "ADAPTER",
+      "responsibility": "Lists all saved drafts for the current user. Tap to continue editing, swipe/button to delete. Shows title preview, content preview, last-saved timestamp, category label.",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "drafts-service",
+      "name": "Drafts Service",
+      "category": "SERVICE",
+      "responsibility": "Data access layer for drafts: save, list, get, delete. Wraps cloud function calls. Handles local-storage fallback for offline drafts.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "drafts-collection",
+      "name": "Drafts DB Collection",
+      "category": "ENTITY",
+      "responsibility": "Persistent cloud storage for user drafts: _openid, title, content, category_id, anonymous flag, updated_at. One user can have multiple drafts.",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "posts-cloud",
+      "name": "Posts Cloud Function (Extended)",
+      "category": "SERVICE",
+      "responsibility": "Existing create/search/delete + new update action for editing published posts. Validates author ownership. Updates updated_at timestamp.",
+      "is_entry_point": false,
+      "is_external_boundary": true
+    },
+    {
+      "id": "drafts-cloud",
+      "name": "Drafts Cloud Function",
+      "category": "SERVICE",
+      "responsibility": "CRUD for drafts: save (upsert by draft_id), list by user, get by id, delete by id. Authentication required for all actions.",
+      "is_entry_point": false,
+      "is_external_boundary": true
+    },
+    {
+      "id": "my-posts-page",
+      "name": "My Posts Page (Modified)",
+      "category": "ADAPTER",
+      "responsibility": "Existing post list + new edit button per post. Edit button navigates to editor in edit mode. Delete button unchanged.",
+      "is_entry_point": true,
+      "is_external_boundary": false
+    },
+    {
+      "id": "posts-service",
+      "name": "Posts Service (Extended)",
+      "category": "SERVICE",
+      "responsibility": "Existing createPost/searchPosts/deletePost + new updatePost function",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    },
+    {
+      "id": "typings-editor",
+      "name": "Editor Type Definitions",
+      "category": "ENTITY",
+      "responsibility": "New types: IDraft interface, IUpdatePostData interface, EditorMode enum, draft-related API result types",
+      "is_entry_point": false,
+      "is_external_boundary": false
+    }
+  ],
+  "edges": [
+    { "from": "editor-page", "to": "drafts-service", "relationship": "CALLS", "description": "Auto-save draft via service; load draft on enter" },
+    { "from": "editor-page", "to": "posts-service", "relationship": "CALLS", "description": "createPost (new mode) or updatePost (edit mode)" },
+    { "from": "editor-page", "to": "typings-editor", "relationship": "IMPLEMENTS", "description": "Uses IDraft, EditorMode types" },
+    { "from": "drafts-page", "to": "drafts-service", "relationship": "CALLS", "description": "listDrafts, deleteDraft" },
+    { "from": "drafts-page", "to": "editor-page", "relationship": "CALLS", "description": "Tap draft navigates to editor with draft_id in query params" },
+    { "from": "drafts-service", "to": "drafts-cloud", "relationship": "CALLS", "description": "All draft operations go through cloud function for auth" },
+    { "from": "drafts-cloud", "to": "drafts-collection", "relationship": "CALLS", "description": "Reads/writes draft documents" },
+    { "from": "posts-service", "to": "posts-cloud", "relationship": "CALLS", "description": "createPost, updatePost, deletePost" },
+    { "from": "my-posts-page", "to": "editor-page", "relationship": "CALLS", "description": "Edit button navigates to editor with post_id in query params (edit mode)" },
+    { "from": "my-posts-page", "to": "posts-service", "relationship": "CALLS", "description": "Existing: list user's posts" }
+  ],
+  "boundary_conditions": [
+    {
+      "id": "BC-001",
+      "description": "Concurrent edit conflict: user edits a post on two devices simultaneously",
+      "owner_node": "posts-cloud",
+      "failure_mode": "Last-write-wins; updated_at timestamp reflects the most recent save. No merge logic in v1."
+    },
+    {
+      "id": "BC-002",
+      "description": "Draft data loss: user closes editor without saving, or app crashes mid-edit",
+      "owner_node": "editor-page",
+      "failure_mode": "Auto-save fires on every input (debounced 2s). On editor open, checks for unsaved draft and offers to restore."
+    },
+    {
+      "id": "BC-003",
+      "description": "Edit permission bypass: user attempts to edit another user's post via deep link",
+      "owner_node": "posts-cloud",
+      "failure_mode": "update action verifies post._openid === authenticated openid; returns FORBIDDEN on mismatch"
+    },
+    {
+      "id": "BC-004",
+      "description": "Draft count unbounded growth: user accumulates hundreds of drafts",
+      "owner_node": "drafts-cloud",
+      "failure_mode": "Hard cap of 50 drafts per user. Save refuses when at limit. UI warns on save attempt."
+    },
+    {
+      "id": "BC-005",
+      "description": "Publish from draft clears draft: draft must be deleted when post is successfully published",
+      "owner_node": "editor-page",
+      "failure_mode": "On successful createPost/updatePost, editor calls deleteDraft for the source draft_id"
+    },
+    {
+      "id": "BC-006",
+      "description": "Content length limits differ between title (200) and content (10000)",
+      "owner_node": "editor-page",
+      "failure_mode": "Client-side character counter displays remaining characters. Cloud function re-validates on submit."
+    }
+  ],
+  "notes": [
+    "Editor uses a unified page with mode parameter (create | edit | draft) rather than three separate pages.",
+    "Drafts are stored in CloudBase (not local storage) for cross-device access. Local storage is a fallback for offline saves.",
+    "The posts cloud function's new 'update' action reuses the existing validateInput and filterSensitiveWords utilities.",
+    "Image upload is explicitly out of scope for v1. Content remains plain text only.",
+    "Rich text (bold, italic, links) is out of scope for v1. Content is plain text with optional line breaks."
+  ]
+}

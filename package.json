@@ -1,0 +1,61 @@
+{
+  "name": "lynku",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LynkU - UNNC community mini program",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck:client && npm run typecheck:contracts && npm run typecheck:server && npm run typecheck:adapters && npm run typecheck:tests",
+    "typecheck:client": "node tooling/build-client-contracts.js && tsc --noEmit -p apps/miniprogram/tsconfig.json",
+    "typecheck:contracts": "tsc --noEmit -p packages/contracts/tsconfig.json",
+    "typecheck:server": "npm run build:contracts && tsc --noEmit -p packages/server/tsconfig.json",
+    "typecheck:adapters": "npm run build:server && tsc --noEmit -p packages/adapters/tsconfig.json",
+    "typecheck:tests": "tsc --noEmit -p tests/tsconfig.json",
+    "build:contracts": "tsc -p packages/contracts/tsconfig.json && node tooling/build-client-contracts.js",
+    "build:server": "npm run build:contracts && tsc -p packages/server/tsconfig.json",
+    "build:packages": "npm run build:server && tsc -p packages/adapters/tsconfig.json",
+    "build:cloud": "node tooling/build-cloud-functions.mjs",
+    "check:cloud-artifacts": "npm run build:cloud && node tooling/check-cloud-artifacts.mjs",
+    "check:architecture": "node tooling/check-architecture.js && node tooling/architecture/check.mjs",
+    "check:docs": "node tooling/check-docs.js",
+    "check:cloud": "node tooling/check-cloud.js",
+    "check:runtime-config": "node tooling/configure-project.mjs --check && node tooling/check-runtime-config.js",
+    "check:cloud-schema": "node tooling/check-cloud-schema.js",
+    "check:error-codes": "node tooling/check-error-codes.js",
+    "check:action-policy": "node tooling/check-action-policy.js",
+    "test": "npm run build:packages && npm run build:cloud && node --import tsx --test tests/*.test.js tests/*.test.ts tests/*.test.mjs",
+    "check": "npm run typecheck && npm run check:architecture && npm run check:docs && npm run check:runtime-config && npm run check:cloud && npm run check:cloud-schema && npm run check:action-policy && npm run check:error-codes && npm run check:cloud-artifacts && npm test",
+    "configure": "node tooling/configure-project.mjs",
+    "setup": "npm ci --ignore-scripts && npm run configure && npm run check",
+    "dev": "npm run configure && npm run build:contracts && node tooling/wechat-cli.mjs open",
+    "deploy:wechat": "npm run check && node tooling/wechat-cli.mjs deploy",
+    "demo:preview": "npm run configure && npm run typecheck:client && node tooling/wechat-cli.mjs preview",
+    "demo:verify": "node tooling/demo-smoke.mjs",
+    "cloud:inspect": "node tooling/initialize-cloud.mjs",
+    "cloud:init": "node tooling/initialize-cloud.mjs --apply"
+  },
+  "engines": {
+    "node": ">=24.21.0 <25"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "",
+  "devDependencies": {
+    "@types/node": "24.13.6",
+    "dependency-cruiser": "18.4.0",
+    "esbuild": "0.28.2",
+    "miniprogram-api-typings": "5.2.1",
+    "miniprogram-automator": "0.12.1",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "wx-server-sdk": "4.0.2"
+  },
+  "overrides": {
+    "jpeg-js": "0.4.4",
+    "minimist@<0.2.4": "0.2.4",
+    "phin": "3.7.1",
+    "axios": "0.33.0"
+  }
+}

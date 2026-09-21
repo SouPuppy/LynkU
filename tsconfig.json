@@ -1,0 +1,3 @@
+{
+  "extends": "./apps/miniprogram/tsconfig.json"
+}

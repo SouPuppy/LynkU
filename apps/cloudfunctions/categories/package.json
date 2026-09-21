@@ -1,0 +1,9 @@
+{
+  "name": "cf-categories",
+  "version": "1.0.0",
+  "description": "Category listing + admin CRUD",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "4.0.2"
+  }
+}

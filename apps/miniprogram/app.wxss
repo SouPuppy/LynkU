@@ -1,0 +1,88 @@
+/* app.wxss — Lucky BBS global styles */
+
+/* Global variables shared by Skyline and WebView pages. */
+page {
+  --color-primary: #1E4D8C;
+  --color-primary-dark: #163A6B;
+  --color-danger: #ee0a24;
+  --color-warning: #ff976a;
+  --color-text: #333333;
+  --color-text-secondary: #999999;
+  --color-text-light: #cccccc;
+  --color-bg: #f5f5f5;
+  --color-bg-white: #ffffff;
+  --color-border: #ebedf0;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-round: 999px;
+  --font-xs: 22rpx;
+  --font-sm: 26rpx;
+  --font-md: 28rpx;
+  --font-lg: 32rpx;
+  --font-xl: 36rpx;
+  --spacing-xs: 8rpx;
+  --spacing-sm: 16rpx;
+  --spacing-md: 24rpx;
+  --spacing-lg: 32rpx;
+
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: var(--font-md);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  line-height: 1.6;
+}
+
+/* Reset */
+view, text, image, scroll-view, input, textarea, button, navigator {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Utilities */
+.flex-row { display: flex; flex-direction: row; align-items: center; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-1 { flex: 1; }
+.feed-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.text-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.text-secondary { color: var(--color-text-secondary); }
+.text-sm { font-size: var(--font-sm); }
+.text-xs { font-size: var(--font-xs); }
+.anon-tag { color: var(--color-text-secondary); background: var(--color-bg); padding: 4rpx 12rpx; border-radius: var(--radius-sm); }
+
+/* Skeleton primitives. Page-level skeletons compose these to match real layouts. */
+.sk-line,
+.sk-block,
+.sk-circle {
+  background: linear-gradient(90deg, #eceff3 25%, #f7f8fa 50%, #eceff3 75%);
+  background-size: 200% 100%;
+  animation: sk-shimmer 1.35s ease-in-out infinite;
+}
+.sk-line { height: 24rpx; border-radius: 6rpx; }
+.sk-line-xs { height: 18rpx; }
+.sk-line-sm { height: 22rpx; }
+.sk-line-md { height: 28rpx; }
+.sk-line-lg { height: 36rpx; }
+.sk-block { border-radius: var(--radius-md); }
+.sk-circle { border-radius: var(--radius-round); flex-shrink: 0; }
+.sk-w-20 { width: 20%; }
+.sk-w-30 { width: 30%; }
+.sk-w-40 { width: 40%; }
+.sk-w-50 { width: 50%; }
+.sk-w-60 { width: 60%; }
+.sk-w-70 { width: 70%; }
+.sk-w-80 { width: 80%; }
+.sk-w-90 { width: 90%; }
+.sk-w-full { width: 100%; }
+
+@keyframes sk-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Shared guest and verification access states. */
+.access-state { min-height: 65vh; padding: 80rpx 40rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28rpx; text-align: center; }
+.access-title { font-size: 36rpx; font-weight: 600; color: var(--color-text); }
+.access-description { font-size: 26rpx; color: var(--color-text-secondary); line-height: 1.8; }
+.access-button { background: var(--color-primary); color: white; border-radius: 999rpx; padding: 0 56rpx; font-size: 28rpx; }

@@ -1,0 +1,120 @@
+<nav-bar title="帖子详情" showBack="{{true}}" />
+<!-- post: post detail + comments -->
+<scroll-view wx:if="{{state !== 'loading' && post}}" class="post-page {{replyingTo ? 'post-page-replying' : ''}}" scroll-y style="height: calc(100vh - {{navHeight}}px);" bindscrolltolower="onCommentLoadMore" lower-threshold="120">
+  <!-- Post header -->
+  <view class="post-header">
+    <text class="post-title">{{post.title}}</text>
+    <view class="post-author" data-author="{{post.author}}" data-anonymous="{{post.anonymous}}" bindtap="onAuthorTap">
+      <avatar src="{{post.author.avatar_url}}" anonymous="{{post.anonymous}}" size="sm" />
+      <text class="post-author-name text-sm">{{post.author.nickname}}</text>
+      <text class="post-author-meta text-xs text-secondary">{{postDisplayTime}} · {{post.view_count}}阅读</text>
+    </view>
+  </view>
+
+  <!-- Post body -->
+  <view class="post-body">
+    <text class="post-content">{{post.content}}</text>
+  </view>
+
+  <!-- Divider -->
+  <view class="comment-divider">
+    <text class="text-sm text-secondary">评论 {{post.comment_count}}</text>
+  </view>
+
+  <!-- Comments section -->
+  <view class="comments-section">
+    <!-- Loading -->
+    <view wx:if="{{commentState === 'loading'}}" class="comments-skeleton">
+      <view wx:for="{{skRows3}}" wx:key="*this" class="comment-sk-row">
+        <view class="sk-circle comment-sk-avatar"></view>
+        <view class="comment-sk-info">
+          <view class="sk-line sk-line-sm sk-w-30"></view>
+          <view class="sk-line sk-w-90"></view>
+          <view class="sk-line sk-w-60"></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- Empty -->
+    <view wx:elif="{{commentState === 'empty'}}" class="empty-comments">
+      <text class="text-secondary text-sm">暂无评论，来抢沙发吧</text>
+    </view>
+
+    <!-- Error -->
+    <view wx:elif="{{commentState === 'error'}}" class="error-comments">
+      <text class="text-secondary text-sm">加载失败</text>
+      <button class="retry-btn" size="mini" bindtap="onRetry">重试</button>
+    </view>
+
+    <!-- Loaded -->
+    <block wx:else>
+      <view
+        wx:for="{{comments}}"
+        wx:key="_id"
+        wx:for-item="comment"
+        class="comment-wrapper"
+        data-id="{{comment._id}}"
+      >
+        <comment-item comment="{{comment}}" bind:reply="onReplyTap" bind:delete="onCommentLongPress" />
+      </view>
+    </block>
+
+    <view wx:if="{{commentLoadingMore}}" class="comment-footer text-xs text-secondary">加载中...</view>
+    <view wx:elif="{{!commentHasMore && comments.length > 0}}" class="comment-footer text-xs text-secondary">没有更多了</view>
+  </view>
+
+  <!-- Comment input bar (fixed bottom) -->
+  <view class="comment-bar">
+    <view wx:if="{{replyingTo}}" class="reply-context">
+      <text class="reply-context-text text-ellipsis">回复 {{replyingToName}}</text>
+      <text class="reply-context-cancel" bindtap="onReplyCancel">取消</text>
+    </view>
+    <view wx:if="{{access !== 'verified'}}" class="comment-input-row" bindtap="onRequestAccess">
+      <text class="text-sm">{{access === 'guest' ? '登录并完成学校认证后可参与讨论' : '学校邮箱认证暂不可用，暂不能评论'}}</text>
+    </view>
+    <view wx:else class="comment-input-row">
+      <input
+        class="comment-input flex-1"
+        placeholder="{{inputPlaceholder}}"
+        value="{{inputValue}}"
+        bindinput="onCommentInput"
+        bindconfirm="submitComment"
+        confirm-type="send"
+        focus="{{inputFocus}}"
+        disabled="{{submitting}}"
+      />
+      <button class="comment-send" size="mini" bindtap="submitComment" disabled="{{submitting || inputValue === ''}}">发送</button>
+    </view>
+  </view>
+</scroll-view>
+
+<view wx:elif="{{state === 'loading'}}" class="post-detail-skeleton">
+  <view class="post-sk-header">
+    <view class="sk-line sk-line-lg sk-w-90"></view>
+    <view class="sk-line sk-line-lg sk-w-70"></view>
+    <view class="post-sk-author">
+      <view class="sk-circle post-sk-avatar"></view>
+      <view class="sk-line sk-line-sm sk-w-30"></view>
+      <view class="sk-line sk-line-xs post-sk-time"></view>
+    </view>
+  </view>
+  <view class="post-sk-body">
+    <view class="sk-line sk-w-full"></view>
+    <view class="sk-line sk-w-full"></view>
+    <view class="sk-line sk-w-80"></view>
+    <view class="sk-line sk-w-90"></view>
+  </view>
+  <view class="post-sk-divider">
+    <view class="sk-line sk-line-sm sk-w-20"></view>
+  </view>
+  <view class="comments-skeleton">
+    <view wx:for="{{skRows3}}" wx:key="*this" class="comment-sk-row">
+      <view class="sk-circle comment-sk-avatar"></view>
+      <view class="comment-sk-info">
+        <view class="sk-line sk-line-sm sk-w-30"></view>
+        <view class="sk-line sk-w-90"></view>
+        <view class="sk-line sk-w-60"></view>
+      </view>
+    </view>
+  </view>
+</view>

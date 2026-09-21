@@ -1,0 +1,55 @@
+<nav-bar title="邮箱认证" showBack="{{false}}" />
+<view wx:if="{{verificationEnabled}}" class="verify-page">
+  <view class="verify-panel">
+    <text class="verify-title">认证 Nottingham 邮箱</text>
+    <text class="verify-desc">仅支持 @nottingham.edu.cn 邮箱。验证码可能进入垃圾邮件，请同时检查垃圾邮件文件夹。</text>
+
+    <view class="verify-field">
+      <text class="field-label">学校邮箱</text>
+      <input
+        class="verify-input"
+        value="{{email}}"
+        placeholder="your.name@nottingham.edu.cn"
+        type="text"
+        bindinput="onEmailInput"
+        disabled="{{sending || verifying}}"
+      />
+    </view>
+
+    <button
+      class="send-btn"
+      bindtap="onSendCode"
+      disabled="{{sending || cooldown > 0 || verifying}}"
+      loading="{{sending}}"
+    >
+      {{cooldown > 0 ? cooldown + ' 秒后重发' : '发送验证码'}}
+    </button>
+
+    <view class="verify-field code-field">
+      <text class="field-label">验证码</text>
+      <input
+        class="verify-input code-input"
+        value="{{code}}"
+        placeholder="6 位数字验证码"
+        type="number"
+        maxlength="6"
+        bindinput="onCodeInput"
+        disabled="{{verifying}}"
+      />
+    </view>
+
+    <button
+      class="verify-btn"
+      bindtap="onVerify"
+      disabled="{{verifying || code.length !== 6}}"
+      loading="{{verifying}}"
+    >
+      完成认证
+    </button>
+
+    <text wx:if="{{message}}" class="verify-message text-sm">{{message}}</text>
+    <text wx:if="{{error}}" class="verify-error text-sm">{{error}}</text>
+  </view>
+</view>
+
+<view wx:else class="access-state"><text class="access-title">学校邮箱认证暂不可用</text><text class="access-description">你可以继续浏览；认证恢复后即可申请认证并参与讨论。</text><button class="access-button" bindtap="onBrowse">继续浏览</button></view>

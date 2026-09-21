@@ -1,0 +1,358 @@
+[
+  {
+    "module_id": "typings-notification",
+    "module_name": "INotification Type Definition",
+    "interfaces": [
+      {
+        "signature": "interface INotification { _id: string; type: NotificationType; actor: IUserPublic; target?: { post_id?: string; comment_id?: string; post_title?: string; comment_preview?: string }; read: boolean; created_at: Date }",
+        "preconditions": ["Notification record exists in the notifications collection"],
+        "postconditions": ["Type-safe access to all notification fields in frontend code"],
+        "failure_modes": [
+          {
+            "id": "FM-T01",
+            "trigger": "Dangling target reference (post or comment was deleted after notification creation)",
+            "behavior": "target fields are undefined; UI renders a degraded card with just the action text, no deeplink",
+            "propagation": "notification-card handles undefined target gracefully",
+            "test_contracts": [
+              { "scenario": "Notification with deleted target post renders without crash", "type": "UNIT", "verifies": "target is optional and UI handles undefined", "boundary_ref": "BC-004" }
+            ]
+          }
+        ],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["NotificationType enum is extensible: comment, reply, like, follow, system"],
+    "sealed_points": ["_id, created_at, read fields — standard CRUD fields, no customization needed"],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "notifications-collection",
+    "module_name": "Notifications DB Collection",
+    "interfaces": [
+      {
+        "signature": "db.collection('notifications').add({ data: INotificationRecord }) -> { _id: string }",
+        "preconditions": ["Valid notification record with all required fields", "Caller has server-side authority (cloud function)"],
+        "postconditions": ["Notification record persisted with server-generated _id and created_at"],
+        "failure_modes": [
+          {
+            "id": "FM-NC01",
+            "trigger": "CloudBase write quota exceeded",
+            "behavior": "Error logged, notification silently dropped (non-blocking for the triggering action)",
+            "propagation": "Caller (comments-cloud) catches and logs, does not fail the comment creation",
+            "test_contracts": [
+              { "scenario": "Notification creation fails but comment creation still succeeds", "type": "INTEGRATION", "verifies": "Notification write failure is non-blocking" }
+            ]
+          },
+          {
+            "id": "FM-NC02",
+            "trigger": "Duplicate notification (same actor, same target, same type within a time window)",
+            "behavior": "Write is skipped if an existing unread notification matches (idempotency check)",
+            "propagation": "Caller receives ok with status: 'duplicate'",
+            "test_contracts": [
+              { "scenario": "Second identical comment creates only one notification", "type": "INTEGRATION", "verifies": "Idempotency prevents duplicates", "boundary_ref": "BC-001" }
+            ]
+          }
+        ],
+        "side_effects": "STATE_MUTATION"
+      }
+    ],
+    "extension_points": ["Notification type enum drives which fields are populated in target"],
+    "sealed_points": ["Collection name is 'notifications' — no parameterization needed"],
+    "state_owned": ["All notification records in the notifications collection"],
+    "state_shared": []
+  },
+  {
+    "module_id": "notifications-cloud",
+    "module_name": "Notifications Cloud Function Actions",
+    "interfaces": [
+      {
+        "signature": "listNotifications(openid: string, before?: string, limit?: number) -> { notifications: INotification[], hasMore: boolean }",
+        "preconditions": ["openid is a valid authenticated user"],
+        "postconditions": ["Returns up to 'limit' notifications for the user, sorted by created_at desc, cursor-paginated via 'before' timestamp"],
+        "failure_modes": [
+          {
+            "id": "FM-NF01",
+            "trigger": "Database query timeout or connection error",
+            "behavior": "Return fail('查询失败', 'QUERY_ERROR') with error logged",
+            "propagation": "notifications-service catches, surfaces as error state on the page",
+            "test_contracts": [
+              { "scenario": "Network error during notification fetch shows error state with retry", "type": "INTEGRATION", "verifies": "Query errors surface to UI" }
+            ]
+          },
+          {
+            "id": "FM-NF02",
+            "trigger": "Pagination cursor 'before' references a deleted or non-existent notification",
+            "behavior": "Returns empty array with hasMore: false (graceful degradation)",
+            "propagation": "notifications-page shows '没有更多了' footer",
+            "test_contracts": [
+              { "scenario": "Invalid pagination cursor returns empty result", "type": "UNIT", "verifies": "Invalid before cursor handled gracefully", "boundary_ref": "BC-002" }
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "markNotificationsRead(openid: string, notificationIds?: string[]) -> { updated: number }",
+        "preconditions": ["openid is a valid authenticated user", "notificationIds are owned by this user"],
+        "postconditions": ["Specified notifications (or all unread if no ids) marked as read=true"],
+        "failure_modes": [
+          {
+            "id": "FM-NF03",
+            "trigger": "Update query matches zero documents (already read or invalid ids)",
+            "behavior": "Returns updated: 0, no error",
+            "propagation": "Caller treats as success (idempotent read marking)",
+            "test_contracts": [
+              { "scenario": "Marking already-read notifications returns updated: 0", "type": "UNIT", "verifies": "Idempotent markRead is safe" }
+            ]
+          }
+        ],
+        "side_effects": "STATE_MUTATION"
+      },
+      {
+        "signature": "createNotification(openid: string, data: { type: NotificationType; targetUserId: string; targetPostId?: string; targetCommentId?: string }) -> { notification: INotification, status: string }",
+        "preconditions": ["Caller is a cloud function (comments-cloud or posts-cloud)", "targetUserId exists and is not the same as the actor"],
+        "postconditions": ["Notification record created with actor snapshot from caller's user record, read: false, server timestamp"],
+        "failure_modes": [
+          {
+            "id": "FM-NF04",
+            "trigger": "Actor is the same as target user (e.g. commenting on own post)",
+            "behavior": "Notification creation silently skipped, returns status: 'self_target'",
+            "propagation": "Caller treats as success (don't notify users about their own actions)",
+            "test_contracts": [
+              { "scenario": "Commenting on own post does not create a notification", "type": "INTEGRATION", "verifies": "Self-target notifications are suppressed" }
+            ]
+          },
+          {
+            "id": "FM-NF05",
+            "trigger": "Anonymous actor — notification must show anonymous identity",
+            "behavior": "Actor snapshot stored with nickname: '匿名用户', avatar_url: '' regardless of real identity",
+            "propagation": "notification-card renders anonymous avatar and name",
+            "test_contracts": [
+              { "scenario": "Anonymous comment notification hides real identity", "type": "INTEGRATION", "verifies": "Anonymous mode preserved in notifications", "boundary_ref": "BC-005" }
+            ]
+          }
+        ],
+        "side_effects": "STATE_MUTATION"
+      }
+    ],
+    "extension_points": ["New notification types added via the NotificationType enum", "createNotification accepts extensible data payload per type"],
+    "sealed_points": ["All actions require authentication (withAuth wrapper)", "Collection name and index strategy are fixed"],
+    "state_owned": [],
+    "state_shared": ["Notifications collection (shared with comments-cloud for writes)"]
+  },
+  {
+    "module_id": "notifications-service",
+    "module_name": "Notifications Service (Frontend Data Access)",
+    "interfaces": [
+      {
+        "signature": "listNotifications(before?: string, limit?: number) -> Promise<{ notifications: INotification[], hasMore: boolean }>",
+        "preconditions": ["User is logged in"],
+        "postconditions": ["Returns paginated notification list, most recent first"],
+        "failure_modes": [
+          {
+            "id": "FM-NS01",
+            "trigger": "Cloud function returns error (QUERY_ERROR)",
+            "behavior": "Promise rejects with Error; caller sets page state to 'error'",
+            "propagation": "notifications-page shows error state with retry button",
+            "test_contracts": [
+              { "scenario": "listNotifications cloud error shows error state", "type": "INTEGRATION", "verifies": "Service errors propagate correctly" }
+            ]
+          }
+        ],
+        "side_effects": "NETWORK"
+      },
+      {
+        "signature": "markNotificationsRead(notificationIds?: string[]) -> Promise<number>",
+        "preconditions": ["User is logged in"],
+        "postconditions": ["Notifications marked as read; returns count updated"],
+        "failure_modes": [
+          {
+            "id": "FM-NS02",
+            "trigger": "Network failure during markRead",
+            "behavior": "Silently fails (best-effort), does not block UI",
+            "propagation": "Caller logs warning, continues rendering",
+            "test_contracts": [
+              { "scenario": "markRead network failure does not crash the page", "type": "INTEGRATION", "verifies": "markRead is best-effort" }
+            ]
+          }
+        ],
+        "side_effects": "NETWORK"
+      },
+      {
+        "signature": "getUnreadCount() -> Promise<number>",
+        "preconditions": ["User is logged in"],
+        "postconditions": ["Returns count of unread notifications for badge display"],
+        "failure_modes": [
+          {
+            "id": "FM-NS03",
+            "trigger": "Cloud function timeout during unread count query",
+            "behavior": "Returns 0 (degrade gracefully, don't show misleading badge)",
+            "propagation": "Stub row shows no badge rather than a potentially wrong count",
+            "test_contracts": [
+              { "scenario": "Unread count query failure returns 0", "type": "UNIT", "verifies": "Unread count degrades gracefully", "boundary_ref": "BC-003" }
+            ]
+          }
+        ],
+        "side_effects": "NETWORK"
+      }
+    ],
+    "extension_points": ["Additional notification query methods (filter by type, mark all read)"],
+    "sealed_points": ["Underlying cloud function action names are fixed"],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "stub-row",
+    "module_name": "Stub Notification Row (Message List Entry)",
+    "interfaces": [
+      {
+        "signature": "stub-row component: displays unreadCount (number), latestPreview (string), latestTime (Date); emits 'tap' event",
+        "preconditions": ["unreadCount is a non-negative integer", "latestPreview and latestTime come from the most recent unread notification (or empty if none)"],
+        "postconditions": ["Renders a list row visually consistent with conversation rows: icon + title + preview + time + badge"],
+        "failure_modes": [
+          {
+            "id": "FM-SR01",
+            "trigger": "unreadCount is 0 and there are no notifications at all",
+            "behavior": "Stub row renders without badge, preview shows '暂无新消息'",
+            "propagation": "User sees a neutral empty state, tapping still navigates to notifications page",
+            "test_contracts": [
+              { "scenario": "Stub row with zero notifications shows neutral text", "type": "UNIT", "verifies": "Empty state rendered correctly" }
+            ]
+          }
+        ],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["Stub row icon can be customized", "Badge style follows conversation badge style for visual consistency"],
+    "sealed_points": ["Position: always index 0 of the messages page list", "The Stub is never user-hideable"],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "notification-card",
+    "module_name": "Notification Card Component",
+    "interfaces": [
+      {
+        "signature": "notification-card component: receives notification: INotification; emits 'tap' event with notification data for deeplink navigation",
+        "preconditions": ["notification is a valid INotification object with at least type, actor, and created_at"],
+        "postconditions": ["Renders a card with: actor avatar + name, action text (per type), target preview (if available), relative timestamp"],
+        "failure_modes": [
+          {
+            "id": "FM-NK01",
+            "trigger": "notification.target is undefined (deleted post/comment)",
+            "behavior": "Card renders without target preview and without deeplink; action text still shows",
+            "propagation": "Tap does nothing (no navigation to deleted content)",
+            "test_contracts": [
+              { "scenario": "Notification for deleted post renders card without target preview", "type": "UNIT", "verifies": "Dangling references handled gracefully", "boundary_ref": "BC-004" }
+            ]
+          },
+          {
+            "id": "FM-NK02",
+            "trigger": "Unknown notification type (future enum value added but card not updated)",
+            "behavior": "Renders a generic card with actor name and '与你互动了' fallback text",
+            "propagation": "Future-proof: new types render something rather than blank",
+            "test_contracts": [
+              { "scenario": "Unknown notification type renders generic fallback card", "type": "UNIT", "verifies": "Forward compatibility for new types" }
+            ]
+          }
+        ],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["Per-type card template is extensible: each NotificationType maps to a template partial", "Deeplink logic per type: comment -> post page, reply -> post page scrolled to comment, follow -> profile page"],
+    "sealed_points": ["Card structure (avatar + text + time) is consistent across types for scanability"],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "notifications-page",
+    "module_name": "Notifications Feed Page",
+    "interfaces": [
+      {
+        "signature": "Page: notifications/notifications with scroll-view feed, pull-to-refresh, infinite scroll pagination",
+        "preconditions": ["User is logged in and navigated from messages page Stub row"],
+        "postconditions": ["Renders paginated list of notification-card components", "Marks all visible notifications as read on page enter"],
+        "failure_modes": [
+          {
+            "id": "FM-NP01",
+            "trigger": "Initial load returns empty (no notifications ever created)",
+            "behavior": "Shows empty state: '暂无消息通知'",
+            "propagation": "User sees empty state, can navigate back",
+            "test_contracts": [
+              { "scenario": "Empty notification feed shows empty state", "type": "UNIT", "verifies": "Empty state rendering" }
+            ]
+          },
+          {
+            "id": "FM-NP02",
+            "trigger": "Pagination loadMore fails (network error mid-scroll)",
+            "behavior": "Shows inline error toast '加载失败', user can scroll up and retry by pulling down",
+            "propagation": "Existing notifications remain visible; error does not clear the list",
+            "test_contracts": [
+              { "scenario": "Pagination network error shows inline error, preserves existing items", "type": "INTEGRATION", "verifies": "Pagination failure is non-destructive" }
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": ["New notification type templates added to the notification-card component without page changes"],
+    "sealed_points": ["Page route: /pages/notifications/notifications", "Navigation entry point: only from messages page Stub row"],
+    "state_owned": ["notification list state (loaded items, hasMore flag, pagination cursor)"],
+    "state_shared": []
+  },
+  {
+    "module_id": "messages-page",
+    "module_name": "Messages Page (Modified)",
+    "interfaces": [
+      {
+        "signature": "Modified onShow: additionally fetches unread notification count for Stub badge",
+        "preconditions": ["User is logged in"],
+        "postconditions": ["Conversation list rendered with Stub row at position 0", "Stub shows aggregate unread badge", "Tab bar badge shows stub unread + total conversation unread"],
+        "failure_modes": [
+          {
+            "id": "FM-MP01",
+            "trigger": "Unread count fetch fails while conversation list succeeds",
+            "behavior": "Stub row renders with unreadCount: 0 (no badge), conversation list renders normally",
+            "propagation": "User can still see and interact with DM conversations",
+            "test_contracts": [
+              { "scenario": "Unread count query fails but conversation list still renders", "type": "INTEGRATION", "verifies": "Stub failure does not block DM list", "boundary_ref": "BC-003" }
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": ["Tab bar badge logic supports additional badge sources"],
+    "sealed_points": ["Stub row is always at index 0", "Messages page is a tab bar page (cannot change route)"],
+    "state_owned": ["conversations list state", "stubUnreadCount state"],
+    "state_shared": []
+  },
+  {
+    "module_id": "comments-cloud",
+    "module_name": "Comments Cloud Function (Extended)",
+    "interfaces": [
+      {
+        "signature": "createComment (modified): after successful comment creation, calls createNotification if comment is top-level (depth 0) and post author is different from commenter",
+        "preconditions": ["Comment was successfully created with status 'published'"],
+        "postconditions": ["If applicable, a 'comment' type notification is created for the post author"],
+        "failure_modes": [
+          {
+            "id": "FM-CC01",
+            "trigger": "Notification creation fails (quota, network, etc.)",
+            "behavior": "Error is logged, comment creation is NOT rolled back, response includes flagged: notification_failed",
+            "propagation": "Comment succeeds regardless; notification is best-effort",
+            "test_contracts": [
+              { "scenario": "Notification creation failure does not rollback comment", "type": "INTEGRATION", "verifies": "Notification is fire-and-forget", "boundary_ref": "BC-006" }
+            ]
+          }
+        ],
+        "side_effects": "STATE_MUTATION"
+      }
+    ],
+    "extension_points": ["Other comment actions (reply, like) can emit their own notification types"],
+    "sealed_points": ["Only top-level comments (depth=0) create notifications in initial implementation; replies are out of scope"],
+    "state_owned": [],
+    "state_shared": ["notifications collection (writes)"]
+  }
+]

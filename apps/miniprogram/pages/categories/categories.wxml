@@ -1,0 +1,37 @@
+<nav-bar title="话题圈" showBack="{{true}}" />
+<!-- topics: topic circles -->
+<view class="topics-page">
+  <view class="topics-header">
+    <text class="topics-title">话题圈</text>
+    <text class="text-sm text-secondary">选择你感兴趣的话题参与讨论</text>
+  </view>
+
+  <view wx:if="{{state === 'loading'}}" class="topics-skeleton">
+    <view wx:for="{{skRows4}}" wx:key="*this" class="topic-sk-card">
+      <view class="sk-line sk-line-lg sk-w-40"></view>
+      <view class="sk-line sk-w-80"></view>
+      <view class="sk-line sk-line-xs sk-w-30"></view>
+    </view>
+  </view>
+
+  <view wx:elif="{{state === 'error'}}" class="topics-empty" bindtap="loadTopics">
+    <text class="text-secondary">加载失败，点击重试</text>
+  </view>
+
+  <view wx:elif="{{topics.length === 0}}" class="topics-empty">
+    <text class="text-secondary">暂无话题</text>
+  </view>
+
+  <view wx:else class="topics-grid">
+    <view
+      wx:for="{{topics}}" wx:key="_id"
+      class="topic-card"
+      data-id="{{item._id}}"
+      bindtap="onTopicTap"
+    >
+      <text class="topic-name">{{item.name}}</text>
+      <text class="topic-desc text-sm text-secondary">{{item.description}}</text>
+      <text class="topic-count text-xs text-secondary">{{item.post_count}} 篇帖子</text>
+    </view>
+  </view>
+</view>

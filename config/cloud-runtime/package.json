@@ -1,0 +1,11 @@
+{
+  "name": "@lucky/cloud-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "wx-server-sdk": "4.0.2"
+  },
+  "overrides": {
+    "axios": "0.33.0"
+  }
+}

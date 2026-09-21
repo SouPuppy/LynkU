@@ -1,0 +1,1 @@
+{"usingComponents": {"avatar": "/components/avatar/avatar", "feed-list": "/components/feed-list/feed-list", "post-item": "/components/post-item/post-item", "nav-bar": "/components/nav-bar/nav-bar"}, "navigationStyle": "custom"}

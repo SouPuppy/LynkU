@@ -1,0 +1,852 @@
+[
+  {
+    "module_id": "mp-pages",
+    "module_name": "Mini-Program Pages",
+    "interfaces": [
+      {
+        "signature": "Page: forum-feed(index) — onLoad() → loads categories + paginated posts via mp-services; onPullDownRefresh() → reloads; onReachBottom() → loads next page",
+        "preconditions": ["CloudBase initialized (wx.cloud.init() called in app.ts)", "User profile cached or fetched"],
+        "postconditions": ["Category tabs rendered at top", "Post list rendered with post-card components", "LoadState managed: idle→loading→loaded|empty|error"],
+        "failure_modes": [
+          {
+            "id": "FM-001",
+            "trigger": "Network error during post list fetch",
+            "behavior": "setData({state: 'error', errorMessage: '加载失败'}). <error-view> shown with retry button.",
+            "propagation": "mp-services throws → page catch block → LoadState='error'. Retry calls onLoad() again.",
+            "test_contracts": [
+              {"scenario": "Network offline shows error state with retry", "type": "INTEGRATION", "verifies": "Error state renders retry UI", "boundary_ref": "BC-001"},
+              {"scenario": "Empty category shows empty state with CTA", "type": "UNIT", "verifies": "Empty state renders message + 'create first post' button", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "Page: chat-room — onLoad(conversationId) → opens mp-watch subscription; onUnload() → closes watcher; onSend(content) → calls mp-services.messages.send()",
+        "preconditions": ["User is authenticated", "conversation peer exists"],
+        "postconditions": ["Real-time message list rendered with chat-bubble components", "New messages arrive via watch without manual refresh", "Sent messages show 'sent' status immediately"],
+        "failure_modes": [
+          {
+            "id": "FM-002",
+            "trigger": "watch() onError fires (subscription limit exceeded, network loss)",
+            "behavior": "Fall back to polling mode: setInterval calls messages.getConversation() every 5s. Show '连接不稳定' banner.",
+            "propagation": "mp-watch onError → page switches to polling fallback. Banner shown until watch recovers.",
+            "test_contracts": [
+              {"scenario": "Watch fails, falls back to polling", "type": "INTEGRATION", "verifies": "Polling starts after watch error, banner shown", "boundary_ref": "BC-003"}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      }
+    ],
+    "extension_points": ["New pages added via app.json pages array + subpackage config. Page lifecycle follows WeChat onLoad/onShow/onHide/onUnload contract."],
+    "sealed_points": ["Pages never call wx.cloud.* directly — always through mp-services. Pages manage LoadState explicitly for every data-fetching path."],
+    "state_owned": ["Current page data (posts list, messages list, scroll position, LoadState per view)"],
+    "state_shared": []
+  },
+  {
+    "module_id": "mp-components",
+    "module_name": "Mini-Program Components",
+    "interfaces": [
+      {
+        "signature": "post-card: properties={post: Post, showCategory: boolean} → renders title, excerpt, author avatar, category tag, comment count, timestamp",
+        "preconditions": ["Post object has required fields: _id, title, content, author.nickname, category_id, comment_count, created_at"],
+        "postconditions": ["Card rendered with all visible fields", "Tap emits 'select' event with {postId}"],
+        "failure_modes": [
+          {
+            "id": "FM-003",
+            "trigger": "post.author.avatar_url is missing or empty",
+            "behavior": "Render <avatar> component with default placeholder image. No crash.",
+            "propagation": "Handled internally via wx:if conditional in WXML.",
+            "test_contracts": [
+              {"scenario": "Post with missing avatar renders default", "type": "UNIT", "verifies": "Default avatar shown, no console error", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "chat-bubble: properties={message: Message, isMine: boolean} → renders bubble aligned left/right, content text, timestamp, status icon",
+        "preconditions": ["Message object has: content, created_at, status", "isMine is correctly set by parent"],
+        "postconditions": ["Bubble rendered with correct alignment", "Status icon shows: pending -> sent -> delivered (if implemented)"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "comment-item: properties={comment: Comment, depth: number} → renders author, content, timestamp, reply button (hidden if depth>=1)",
+        "preconditions": ["Comment has: author.nickname, content, created_at, depth"],
+        "postconditions": ["Comment rendered with indent for depth=1", "Reply button visible only when depth < 1", "Tap reply emits 'reply' event with {commentId, authorName}"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "empty-state: properties={icon: string?, message: string, actionLabel: string?} → renders centered icon + message + optional action button",
+        "preconditions": [],
+        "postconditions": ["Empty state rendered", "If actionLabel set, button shown. Tap emits 'action' event."],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "error-view: properties={message: string, retryLabel: string?} → renders error icon + message + retry button",
+        "preconditions": [],
+        "postconditions": ["Error view rendered", "Retry button tap emits 'retry' event"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "nav-bar: properties={title: string, showBack: boolean} → custom navigation bar (Skyline requires custom nav)",
+        "preconditions": ["Page config has navigationStyle: 'custom'"],
+        "postconditions": ["Custom nav bar rendered with title and optional back arrow", "Back tap calls wx.navigateBack()"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "avatar: properties={src: string, size: string} → renders circular avatar image with fallback",
+        "preconditions": [],
+        "postconditions": ["Avatar rendered at specified size", "Broken image shows default placeholder"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "loading-skeleton: properties={type: 'post-card'|'chat-bubble'|'comment', count: number} → renders skeleton placeholder rows",
+        "preconditions": [],
+        "postconditions": ["Skeleton rows rendered matching count", "CSS animation for shimmer effect"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "category-tag: properties={name: string, active: boolean} → renders styled category label",
+        "preconditions": [],
+        "postconditions": ["Tag rendered with category name", "Active state uses --color-primary background"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["New components added in components/ directory, Glass-Easel Chaining API for TypeScript support"],
+    "sealed_points": ["All components use static styleIsolation: 'apply-shared' (Skyline requirement). No direct CloudBase SDK calls in any component. Data flows IN via properties, OUT via triggerEvent."],
+    "state_owned": ["Component-local UI state (expanded/collapsed, image preview mode)"],
+    "state_shared": []
+  },
+  {
+    "module_id": "mp-services",
+    "module_name": "Mini-Program Service Layer",
+    "interfaces": [
+      {
+        "signature": "auth.ensureUser() -> Promise<User> — calls cf-login, caches profile in wx.Storage",
+        "preconditions": ["wx.cloud.init() has been called"],
+        "postconditions": ["User document exists in db-users", "User profile cached locally", "Returns User object"],
+        "failure_modes": [
+          {
+            "id": "FM-004",
+            "trigger": "Cloud function call fails (network, cloud function error)",
+            "behavior": "Throw CloudError with code and message. Caller handles retry.",
+            "propagation": "Caller (app.ts or page) catches and shows error UI with retry.",
+            "test_contracts": [
+              {"scenario": "Login cloud function timeout", "type": "INTEGRATION", "verifies": "CloudError thrown with RETRYABLE flag", "boundary_ref": "BC-001"}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      },
+      {
+        "signature": "posts.list(params: {categoryId?, status?, offset, limit}) -> Promise<{items: Post[], total: number}> — direct DB read from db-posts",
+        "preconditions": ["CloudBase initialized"],
+        "postconditions": ["Paginated post list with denormalized author data", "Filtered by category and status='published'"],
+        "failure_modes": [
+          {
+            "id": "FM-005",
+            "trigger": "Database permission denied (unexpected — published posts are public-read)",
+            "behavior": "Return empty items array. Log error.",
+            "propagation": "Page renders empty state. Error logged for investigation.",
+            "test_contracts": [
+              {"scenario": "Database read returns posts", "type": "INTEGRATION", "verifies": "Post array with author.nickname populated", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "posts.create(data: {title, content, categoryId}) -> Promise<Post> — calls cf-posts cloud function",
+        "preconditions": ["title 1-200 chars", "content 1-10000 chars", "categoryId is a valid category"],
+        "postconditions": ["Post created with status 'published' or 'flagged' (if sensitive words detected)", "Author data denormalized into post document"],
+        "failure_modes": [
+          {
+            "id": "FM-006",
+            "trigger": "Content contains sensitive words",
+            "behavior": "Post created with status='flagged'. Return post with warning flag. Author sees 'under review' badge.",
+            "propagation": "Cloud function returns {post, flagged: true}. Service passes through to page. Page shows confirmation with moderation notice.",
+            "test_contracts": [
+              {"scenario": "Post with sensitive word is flagged", "type": "INTEGRATION", "verifies": "status='flagged', flagged=true in response", "boundary_ref": "BC-005"}
+            ]
+          },
+          {
+            "id": "FM-007",
+            "trigger": "Rate limit exceeded (>10 posts per hour per user)",
+            "behavior": "Cloud function returns 429 error. Service throws RateLimitError with retryAfter.",
+            "propagation": "Page catches → shows toast with cooldown timer.",
+            "test_contracts": [
+              {"scenario": "11th post in one hour is rate limited", "type": "INTEGRATION", "verifies": "RateLimitError with retryAfter field", "boundary_ref": "BC-009"}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      },
+      {
+        "signature": "posts.search(query: string, offset: number, limit: number) -> Promise<{items: Post[], total: number}> — calls cf-posts with action='search'",
+        "preconditions": ["query is 1-200 chars"],
+        "postconditions": ["Posts matching query via RegExp on title+content. Ranked by created_at desc."],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "comments.byPost(postId: string) -> Promise<Comment[]> — direct DB read, then client-side tree building",
+        "preconditions": ["postId is a valid post _id"],
+        "postconditions": ["All published comments for post. Tree built in-memory: top-level comments with nested replies array."],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "comments.create(data: {postId, content, parentId?}) -> Promise<Comment> — calls cf-comments cloud function",
+        "preconditions": ["postId exists", "content 1-2000 chars", "parentId (if set) references comment on same post with depth=0"],
+        "postconditions": ["Comment created with depth computed", "Post comment_count incremented"],
+        "failure_modes": [
+          {
+            "id": "FM-008",
+            "trigger": "parentId references depth=1 comment (attempting 3rd level)",
+            "behavior": "Cloud function returns 400. Service throws MaxDepthError.",
+            "propagation": "Page shows toast '回复已达最大深度'.",
+            "test_contracts": [
+              {"scenario": "Reply to level-2 comment is rejected", "type": "INTEGRATION", "verifies": "MaxDepthError with max=2", "boundary_ref": "BC-010"}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      },
+      {
+        "signature": "messages.send(data: {to: string, content: string, msgId: string}) -> Promise<MessageDeliveryResult> — calls cf-messages cloud function",
+        "preconditions": ["to is a valid user openid", "content 1-5000 chars", "msgId is unique (client-generated UUID)"],
+        "postconditions": ["Message persisted with status='sent'", "If recipient has active watch, delivered via real-time push", "Idempotent: duplicate msgId returns existing message status"],
+        "failure_modes": [
+          {
+            "id": "FM-009",
+            "trigger": "Recipient user does not exist",
+            "behavior": "Cloud function returns 404. Service throws UserNotFoundError.",
+            "propagation": "Page shows toast '用户不存在'.",
+            "test_contracts": [
+              {"scenario": "Message to nonexistent user returns 404", "type": "INTEGRATION", "verifies": "UserNotFoundError thrown", "boundary_ref": "BC-006"}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      },
+      {
+        "signature": "messages.getConversations() -> Promise<Conversation[]> — calls cf-messages cloud function",
+        "preconditions": ["User authenticated (context.OPENID in cloud function)"],
+        "postconditions": ["List of conversations grouped by other user. Each: {peer: UserBrief, lastMessage: Message, unreadCount: number}."],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "messages.getConversation(peerOpenid: string, beforeId?: string, limit?: number) -> Promise<Message[]> — calls cf-messages cloud function",
+        "preconditions": ["peerOpenid is a valid user"],
+        "postconditions": ["Paginated message history between current user and peer. Ordered by created_at desc."],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "categories.list() -> Promise<Category[]> — direct DB read from db-categories",
+        "preconditions": [],
+        "postconditions": ["All active categories ordered by sort_order. Includes post_count."],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "users.getProfile(openid: string) -> Promise<UserPublic> — direct DB read from db-users (public fields only)",
+        "preconditions": ["openid is valid"],
+        "postconditions": ["User public profile: nickname, avatar_url, role. Excludes sensitive fields."],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "users.updateProfile(data: {nickname?, avatar_url?}) -> Promise<User> — calls cf-users cloud function",
+        "preconditions": ["At least one field provided"],
+        "postconditions": ["Profile updated. cf-users syncs denormalized author data to existing posts/comments (eventually consistent)."],
+        "failure_modes": [],
+        "side_effects": "IO, STATE_MUTATION"
+      }
+    ],
+    "extension_points": ["New service modules added per domain: services/notifications.ts, services/reports.ts, etc."],
+    "sealed_points": ["All CloudBase SDK calls go through this layer. Pages never import wx.cloud directly. Service functions return typed promises — no raw SDK responses leak to pages."],
+    "state_owned": ["User profile cache (wx.Storage)", "Pending request count (for global loading indicator)"],
+    "state_shared": []
+  },
+  {
+    "module_id": "mp-watch",
+    "module_name": "Mini-Program Watch Manager",
+    "interfaces": [
+      {
+        "signature": "watch.postsByCategory(categoryId: string, onChange: WatchCallback<Post>, onError: WatchErrorCallback) -> WatcherHandle",
+        "preconditions": ["CloudBase initialized", "categoryId is valid"],
+        "postconditions": ["Watch subscription active on posts collection filtered by category_id and status='published'", "Returns handle with close() method"],
+        "failure_modes": [
+          {
+            "id": "FM-010",
+            "trigger": "Subscription limit exceeded or network loss",
+            "behavior": "onError callback invoked with error details. Caller decides fallback strategy (polling).",
+            "propagation": "onError → page handler → switch to polling mode. Watcher handle is null.",
+            "test_contracts": [
+              {"scenario": "Watch subscription error triggers fallback", "type": "INTEGRATION", "verifies": "onError called, polling fallback activates", "boundary_ref": "BC-003"}
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "watch.commentsByPost(postId: string, onChange: WatchCallback<Comment[]>, onError: WatchErrorCallback) -> WatcherHandle",
+        "preconditions": ["postId is valid"],
+        "postconditions": ["Watch subscription active on comments collection filtered by post_id and status='published'", "Returns handle with close() method"],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "watch.messagesBetween(peerOpenid: string, onChange: WatchCallback<Message[]>, onError: WatchErrorCallback) -> WatcherHandle",
+        "preconditions": ["peerOpenid is valid", "CloudBase initialized"],
+        "postconditions": ["Watch subscription active on messages collection where (from=me AND to=peer) OR (from=peer AND to=me)", "Returns handle with close() method"],
+        "failure_modes": [
+          {
+            "id": "FM-011",
+            "trigger": "messages collection permission is admin-only — watch subscription may fail if not called via cloud function proxy",
+            "behavior": "Watch works because the subscription uses the authenticated user's openid — CloudBase applies the same permission model. Since messages are admin-only, watch on messages MUST be done differently: subscribe to a 'message_notifications' cache collection that a cloud function writes to. Or: keep messages admin-only and use polling instead of watch.",
+            "propagation": "Design note: messages collection watch requires architectural decision. Option A: change messages permission to 'creator read/write' and dual-write. Option B: use polling. Option C: notification cache collection. See BC-008.",
+            "test_contracts": [
+              {"scenario": "Message watch requires permission-compatible design", "type": "INTEGRATION", "verifies": "Design handles messages permission model correctly", "boundary_ref": "BC-008"}
+            ]
+          }
+        ],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "WatcherHandle.close() -> void — closes the watch subscription",
+        "preconditions": ["WatcherHandle was returned from a watch.* call"],
+        "postconditions": ["Subscription closed. No further onChange calls. Resources released."],
+        "failure_modes": [],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": ["Additional watch targets: presence collection, notification collection"],
+    "sealed_points": ["ponytail: page-scoped lifecycle. One watch per active page. Always call close() in onUnload. Messages watch design TBD based on permission model decision."],
+    "state_owned": ["Active watcher references", "Connection state per subscription"],
+    "state_shared": []
+  },
+  {
+    "module_id": "mp-utils",
+    "module_name": "Mini-Program Utilities",
+    "interfaces": [
+      {
+        "signature": "formatTime(date: Date | string) -> string — returns relative time (刚刚/5分钟前/3小时前/2天前/2024-01-15)",
+        "preconditions": ["date is a valid Date or ISO string or CloudBase serverDate"],
+        "postconditions": ["Human-readable relative or absolute time string"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "storage.get<T>(key: string) -> T | null — typed wx.Storage read",
+        "preconditions": [],
+        "postconditions": ["Parsed value or null if not found/corrupt"],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "storage.set<T>(key: string, value: T) -> void — typed wx.Storage write",
+        "preconditions": [],
+        "postconditions": ["Value JSON-serialized and stored"],
+        "failure_modes": [],
+        "side_effects": "IO, STATE_MUTATION"
+      },
+      {
+        "signature": "type LoadState = 'idle' | 'loading' | 'loaded' | 'empty' | 'error'",
+        "preconditions": [],
+        "postconditions": ["Type used by all pages for consistent state management"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "debounce<T extends (...args: any[]) => any>(fn: T, ms: number) -> T — debounce utility for search input",
+        "preconditions": [],
+        "postconditions": ["Function called at most once per ms milliseconds"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["New pure utility functions added as needed"],
+    "sealed_points": ["No business logic. No CloudBase SDK calls. Pure functions + typed storage wrapper only."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "cf-login",
+    "module_name": "Cloud Function — Login",
+    "interfaces": [
+      {
+        "signature": "main(event: {action: 'ensure', nickname?: string, avatar_url?: string}, context: CloudContext) -> Promise<{user: User}>",
+        "preconditions": ["context.OPENID is available (WeChat runtime guarantees this)"],
+        "postconditions": ["User document exists in db-users (created on first call)", "Returns user profile with _openid, nickname, avatar_url, role"],
+        "failure_modes": [
+          {
+            "id": "FM-012",
+            "trigger": "context.OPENID is empty or undefined (should never happen)",
+            "behavior": "Return {error: 'IDENTITY_UNAVAILABLE', code: 'AUTH_FAILED'}",
+            "propagation": "mp-services auth.ts receives error, throws CloudError. App shows 'please restart mini-program'.",
+            "test_contracts": [
+              {"scenario": "Missing OPENID returns auth error", "type": "UNIT", "verifies": "Error response with AUTH_FAILED code", "boundary_ref": "BC-002"}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      }
+    ],
+    "extension_points": [],
+    "sealed_points": ["Only authentication method: context.OPENID from WeChat runtime. No password, no email, no SSO. User creation is automatic on first call."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "cf-posts",
+    "module_name": "Cloud Function — Posts",
+    "interfaces": [
+      {
+        "signature": "main(event: {action: 'create', title: string, content: string, category_id: string}, context) -> Promise<{post: Post, flagged?: boolean}>",
+        "preconditions": ["context.OPENID is valid", "title 1-200 chars", "content 1-10000 chars", "category_id references existing category"],
+        "postconditions": ["Post created in db-posts with denormalized author data from db-users", "Category post_count incremented", "Status set based on sensitive word check"],
+        "failure_modes": [
+          {
+            "id": "FM-013",
+            "trigger": "Content matches sensitive word filter",
+            "behavior": "Post created with status='flagged'. Response includes {flagged: true}. Post not visible in public listings.",
+            "propagation": "mp-services receives flagged:true. Page shows 'under review' confirmation to author.",
+            "test_contracts": [
+              {"scenario": "Sensitive word triggers flag", "type": "INTEGRATION", "verifies": "status='flagged', public listing excludes it", "boundary_ref": "BC-005"}
+            ]
+          },
+          {
+            "id": "FM-014",
+            "trigger": "Category does not exist",
+            "behavior": "Return 400 {error: 'INVALID_CATEGORY', code: 'BAD_REQUEST'}",
+            "propagation": "mp-services throws ValidationError. Page shows '分类不存在'.",
+            "test_contracts": [
+              {"scenario": "Create post with invalid category", "type": "INTEGRATION", "verifies": "400 with INVALID_CATEGORY code", "boundary_ref": null}
+            ]
+          },
+          {
+            "id": "FM-015",
+            "trigger": "Rate limit exceeded — user exceeded max posts per hour",
+            "behavior": "Return 429 {error: 'RATE_LIMITED', code: 'RATE_LIMITED', retry_after: seconds}",
+            "propagation": "mp-services throws RateLimitError. Page shows cooldown timer.",
+            "test_contracts": [
+              {"scenario": "Exceed post rate limit", "type": "INTEGRATION", "verifies": "429 with retry_after field", "boundary_ref": "BC-009"}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      },
+      {
+        "signature": "main(event: {action: 'search', query: string, offset: number, limit: number}, context) -> Promise<{items: Post[], total: number}>",
+        "preconditions": ["query 1-200 chars", "limit between 1 and 50"],
+        "postconditions": ["Posts where title OR content matches query via db.RegExp({regexp: query, options: 'i'})"],
+        "failure_modes": [],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": ["Additional actions: 'update', 'delete', 'flag', 'unflag'", "Future: admin bulk operations, pin/unpin"],
+    "sealed_points": ["Soft-delete only (status='deleted'). Posts never hard-deleted. Title 200 char limit. Content 10000 char limit. Sensitive word filter always applied on create and update."],
+    "state_owned": ["Per-user rate counter (in-memory Map<openid, {count, window_start}>). ponytail: in-memory resets on cold start. Add DB-backed counters if abuse becomes problem."],
+    "state_shared": []
+  },
+  {
+    "module_id": "cf-comments",
+    "module_name": "Cloud Function — Comments",
+    "interfaces": [
+      {
+        "signature": "main(event: {action: 'create', post_id: string, content: string, parent_id?: string}, context) -> Promise<{comment: Comment}>",
+        "preconditions": ["context.OPENID is valid", "post_id exists", "content 1-2000 chars", "parent_id (if set) references existing comment on same post with depth=0"],
+        "postconditions": ["Comment created with depth: 0 if no parent, 1 if parent_id set", "Post comment_count incremented atomically via db.command.inc(1)"],
+        "failure_modes": [
+          {
+            "id": "FM-016",
+            "trigger": "parent_id references comment with depth=1 (attempting 3rd level nesting)",
+            "behavior": "Return 400 {error: 'MAX_DEPTH', code: 'MAX_DEPTH', max: 2}",
+            "propagation": "mp-services throws MaxDepthError. Page shows toast and disables reply button on that comment.",
+            "test_contracts": [
+              {"scenario": "Reply to depth-1 comment rejected", "type": "INTEGRATION", "verifies": "400 with MAX_DEPTH, max=2", "boundary_ref": "BC-010"}
+            ]
+          },
+          {
+            "id": "FM-017",
+            "trigger": "parent_id references comment on a different post",
+            "behavior": "Return 400 {error: 'PARENT_MISMATCH', code: 'BAD_REQUEST'}",
+            "propagation": "mp-services throws ValidationError. Page shows generic error.",
+            "test_contracts": [
+              {"scenario": "Reply with wrong post parent combo", "type": "UNIT", "verifies": "400 with PARENT_MISMATCH", "boundary_ref": null}
+            ]
+          },
+          {
+            "id": "FM-018",
+            "trigger": "Post does not exist",
+            "behavior": "Return 404 {error: 'POST_NOT_FOUND', code: 'NOT_FOUND'}",
+            "propagation": "mp-services throws NotFoundError.",
+            "test_contracts": [
+              {"scenario": "Comment on nonexistent post", "type": "INTEGRATION", "verifies": "404 with POST_NOT_FOUND", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      }
+    ],
+    "extension_points": ["Additional actions: 'delete', 'flag'"],
+    "sealed_points": ["Max comment depth = 2 (post → comment → reply). Content 2000 char limit. Soft-delete only. Sensitive word filter applied on create."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "cf-messages",
+    "module_name": "Cloud Function — Messages",
+    "interfaces": [
+      {
+        "signature": "main(event: {action: 'send', to: string, content: string, msg_id: string}, context) -> Promise<{message: Message, status: string}>",
+        "preconditions": ["context.OPENID is valid (sender)", "to is a valid user openid", "content 1-5000 chars", "msg_id is unique"],
+        "postconditions": ["Message persisted with status='sent'", "Idempotent: if msg_id already exists, return existing message (no duplicate)"],
+        "failure_modes": [
+          {
+            "id": "FM-019",
+            "trigger": "Recipient does not exist in db-users",
+            "behavior": "Return 404 {error: 'USER_NOT_FOUND', code: 'NOT_FOUND'}",
+            "propagation": "mp-services throws UserNotFoundError. Page shows toast.",
+            "test_contracts": [
+              {"scenario": "Message to nonexistent user", "type": "INTEGRATION", "verifies": "404 with USER_NOT_FOUND", "boundary_ref": "BC-006"}
+            ]
+          },
+          {
+            "id": "FM-020",
+            "trigger": "Duplicate msg_id (client retry)",
+            "behavior": "Return existing message document. No new document created.",
+            "propagation": "Transparent to sender — they get the original message status.",
+            "test_contracts": [
+              {"scenario": "Duplicate msg_id is idempotent", "type": "INTEGRATION", "verifies": "No duplicate document, same status returned", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      },
+      {
+        "signature": "main(event: {action: 'listConversations'}, context) -> Promise<{conversations: Conversation[]}>",
+        "preconditions": ["context.OPENID is valid"],
+        "postconditions": ["Conversations grouped by peer user. Each: {peer: {_openid, nickname, avatar_url}, lastMessage: Message, unreadCount: number}. Ordered by lastMessage.created_at desc."],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "main(event: {action: 'getConversation', peer: string, beforeId?: string, limit?: number}, context) -> Promise<{messages: Message[], hasMore: boolean}>",
+        "preconditions": ["context.OPENID is valid", "peer is a valid user openid"],
+        "postconditions": ["Paginated messages between current user and peer. Ordered by created_at desc. Up to 50 per page."],
+        "failure_modes": [],
+        "side_effects": "IO"
+      },
+      {
+        "signature": "main(event: {action: 'markRead', peer: string, msgIds?: string[]}, context) -> Promise<{updated: number}>",
+        "preconditions": ["context.OPENID is valid", "peer is valid"],
+        "postconditions": ["Messages from peer to current user marked as status='read'. Returns count of updated messages."],
+        "failure_modes": [],
+        "side_effects": "IO, STATE_MUTATION"
+      }
+    ],
+    "extension_points": ["Additional actions: 'deleteConversation', 'markDelivered'", "Future: group chat, message reactions, typing indicators"],
+    "sealed_points": ["Content 5000 char limit. No file/attachment support in MVP. Messages collection permission: admin-only (all access through cloud functions). msg_id is the idempotency key."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "cf-categories",
+    "module_name": "Cloud Function — Categories",
+    "interfaces": [
+      {
+        "signature": "main(event: {action: 'create', name: string, description: string}, context) -> Promise<{category: Category}>",
+        "preconditions": ["context.OPENID has admin role in db-users", "name 1-50 chars, unique"],
+        "postconditions": ["New category persisted with auto-incremented sort_order"],
+        "failure_modes": [
+          {
+            "id": "FM-021",
+            "trigger": "Caller is not admin",
+            "behavior": "Return 403 {error: 'FORBIDDEN', code: 'FORBIDDEN'}",
+            "propagation": "mp-services throws ForbiddenError. Page shows '需要管理员权限'.",
+            "test_contracts": [
+              {"scenario": "Non-admin creates category", "type": "INTEGRATION", "verifies": "403 FORBIDDEN", "boundary_ref": null}
+            ]
+          }
+        ],
+        "side_effects": "IO, STATE_MUTATION"
+      },
+      {
+        "signature": "main(event: {action: 'list'}, context) -> Promise<{categories: Category[]}>",
+        "preconditions": [],
+        "postconditions": ["All active categories ordered by sort_order with post_count"],
+        "failure_modes": [],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": ["Additional actions: 'update', 'hide', 'reorder'"],
+    "sealed_points": ["Categories are flat (no nesting). Sort order is numeric ascending. Read path: clients may read directly from db-categories (public data). Write path: cloud function only."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "cf-users",
+    "module_name": "Cloud Function — Users",
+    "interfaces": [
+      {
+        "signature": "main(event: {action: 'updateProfile', nickname?: string, avatar_url?: string}, context) -> Promise<{user: User}>",
+        "preconditions": ["context.OPENID is valid", "At least one field provided"],
+        "postconditions": ["User profile updated in db-users", "Denormalized author data in db-posts and db-comments updated async (eventually consistent)"],
+        "failure_modes": [],
+        "side_effects": "IO, STATE_MUTATION"
+      },
+      {
+        "signature": "main(event: {action: 'getProfile', openid: string}, context) -> Promise<{user: UserPublic}>",
+        "preconditions": ["openid is valid"],
+        "postconditions": ["Public user profile: nickname, avatar_url, role"],
+        "failure_modes": [],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": ["Additional actions: 'listUsers' (admin), 'muteUser' (admin), 'banUser' (admin)"],
+    "sealed_points": ["User role is a simple string: 'user' | 'admin'. Profile updates sync denormalized author data to posts and comments — eventual consistency, not transactional."],
+    "state_owned": [],
+    "state_shared": []
+  },
+  {
+    "module_id": "cf-utils",
+    "module_name": "Cloud Function — Shared Utilities (Layer)",
+    "interfaces": [
+      {
+        "signature": "filterSensitiveWords(text: string) -> {clean: boolean, matches: string[]} — checks text against sensitive word list",
+        "preconditions": [],
+        "postconditions": ["clean=true if no matches, clean=false with matches array if words found"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "validateInput(value: string, rules: {minLen?, maxLen?, pattern?}) -> {valid: boolean, error?: string}",
+        "preconditions": [],
+        "postconditions": ["valid=true if input passes all rules, otherwise error message"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "formatResponse(data: any) -> {data: any} | formatError(error: string, code: string) -> {error: string, code: string}",
+        "preconditions": [],
+        "postconditions": ["Consistent response envelope: success returns {data}, error returns {error, code}"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "checkAdmin(openid: string, db: Database) -> Promise<boolean> — checks if user has admin role",
+        "preconditions": ["openid is valid"],
+        "postconditions": ["True if user.role === 'admin', false otherwise"],
+        "failure_modes": [],
+        "side_effects": "IO"
+      }
+    ],
+    "extension_points": ["Additional shared utilities: image moderation via ext-wechat, template message sending"],
+    "sealed_points": ["Deployed as CloudBase '层' (layer). All other cloud functions import from this layer. No standalone invocation — utility only."],
+    "state_owned": ["Sensitive word list (hardcoded array in module)"],
+    "state_shared": []
+  },
+  {
+    "module_id": "db-posts",
+    "module_name": "Database Collection — Posts",
+    "interfaces": [
+      {
+        "signature": "Document shape: {_id: string, _openid: string, title: string, content: string, category_id: string, status: 'published'|'flagged'|'hidden'|'deleted', author: {_openid: string, nickname: string, avatar_url: string}, view_count: number, comment_count: number, created_at: Date, updated_at: Date}",
+        "preconditions": [],
+        "postconditions": [],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "Indexes: (category_id, status, created_at), (status, created_at), (_openid, created_at)",
+        "preconditions": ["Created via CloudBase console or cloud function migration script"],
+        "postconditions": ["Queries filtered by category+status+time use compound index", "User's own posts query uses _openid index"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "Permission: all users read {status:'published'} documents; creator read/write own documents; cloud functions read/write all (admin bypass)",
+        "preconditions": ["Configured in CloudBase console collection permissions"],
+        "postconditions": ["Client-side reads return only published posts", "Client-side writes limited to own posts"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["New fields: pinned (admin), locked (no new comments), edited_at (edit history)"],
+    "sealed_points": ["Soft-delete only (status='deleted'). No hard delete. title max 200 chars enforced by cloud function + client validation. content max 10000 chars."],
+    "state_owned": [],
+    "state_shared": ["Documents are shared state. Coordination via CloudBase permission rules + cloud function logic."]
+  },
+  {
+    "module_id": "db-comments",
+    "module_name": "Database Collection — Comments",
+    "interfaces": [
+      {
+        "signature": "Document shape: {_id: string, _openid: string, post_id: string, parent_id: string|null, depth: 0|1, content: string, author: {_openid, nickname, avatar_url}, status: 'published'|'flagged'|'deleted', created_at: Date}",
+        "preconditions": [],
+        "postconditions": [],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "Indexes: (post_id, status, created_at), (_openid, created_at)",
+        "preconditions": ["Created via CloudBase console"],
+        "postconditions": ["Comments by post query uses compound index"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "Permission: all users read {status:'published'}; creator read/write own; cloud functions read/write all",
+        "preconditions": ["Configured in CloudBase console"],
+        "postconditions": ["Public comments visible; writes gated by creator ownership or admin role"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["New fields: edited_at, like_count"],
+    "sealed_points": ["Soft-delete only. max depth=2 enforced by cf-comments. content max 2000 chars."],
+    "state_owned": [],
+    "state_shared": ["Documents shared. Coordination via CloudBase permissions + cloud function depth checks."]
+  },
+  {
+    "module_id": "db-messages",
+    "module_name": "Database Collection — Messages",
+    "interfaces": [
+      {
+        "signature": "Document shape: {_id: string, msg_id: string (unique), from: string (openid), to: string (openid), content: string, status: 'sent'|'delivered'|'read', created_at: Date}",
+        "preconditions": [],
+        "postconditions": [],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "Indexes: (msg_id) unique, (from, to, created_at), (to, from, created_at)",
+        "preconditions": ["Created via CloudBase console"],
+        "postconditions": ["Idempotency via unique msg_id index", "Conversation queries use from-to compound indexes"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "Permission: admin only (all access via cloud functions). No direct client read/write.",
+        "preconditions": ["Configured in CloudBase console"],
+        "postconditions": ["Private message data protected from direct client access", "All access mediated by cf-messages"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["New fields: message_type ('text'|'image'|'system'), replied_to (quote reply)"],
+    "sealed_points": ["content max 5000 chars enforced by cloud function. msg_id unique constraint enforces idempotency. Admin-only permission — no direct client access."],
+    "state_owned": [],
+    "state_shared": ["Messages are private data. Access controlled entirely through cloud functions."]
+  },
+  {
+    "module_id": "db-users",
+    "module_name": "Database Collection — Users",
+    "interfaces": [
+      {
+        "signature": "Document shape: {_openid: string (PK), nickname: string, avatar_url: string, role: 'user'|'admin', created_at: Date, updated_at: Date}",
+        "preconditions": [],
+        "postconditions": [],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "Indexes: (_openid) unique, (role)",
+        "preconditions": ["Created via CloudBase console"],
+        "postconditions": ["User lookup by openid uses unique index", "Admin listing uses role index"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "Permission: all users read public fields (nickname, avatar_url, role); creator read/write own document; cloud functions read/write all",
+        "preconditions": ["Configured in CloudBase console"],
+        "postconditions": ["Public profiles readable by any authenticated user", "Own profile editable via cloud function"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["New fields: bio, major, year (student info — opt-in)"],
+    "sealed_points": ["_openid is the primary key — set manually (not auto-generated) to match context.OPENID. role defaults to 'user'. No password, no email."],
+    "state_owned": [],
+    "state_shared": ["User documents shared across all collections via denormalized author data"]
+  },
+  {
+    "module_id": "db-categories",
+    "module_name": "Database Collection — Categories",
+    "interfaces": [
+      {
+        "signature": "Document shape: {_id: string (auto), name: string (unique), description: string, sort_order: number, post_count: number, status: 'active'|'hidden'}",
+        "preconditions": [],
+        "postconditions": [],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "Indexes: (status, sort_order)",
+        "preconditions": ["Created via CloudBase console"],
+        "postconditions": ["Active category listing sorted by sort_order"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      },
+      {
+        "signature": "Permission: all users read; admin write (via cloud function)",
+        "preconditions": ["Configured in CloudBase console"],
+        "postconditions": ["Public category data readable by any authenticated user", "Writes gated by cf-categories admin check"],
+        "failure_modes": [],
+        "side_effects": "NONE"
+      }
+    ],
+    "extension_points": ["New fields: icon, color (for visual distinction)"],
+    "sealed_points": ["Flat structure — no nesting. sort_order is numeric ascending. name is unique."],
+    "state_owned": [],
+    "state_shared": ["Category documents referenced in posts. post_count updated atomically by cf-posts and cf-comments."]
+  },
+  {
+    "module_id": "ext-wechat",
+    "module_name": "WeChat External APIs",
+    "interfaces": [
+      {
+        "signature": "cloud.openapi.security.msgSecCheck({content, version, openid, scene, title?}) -> Promise<{result: {suggest: 'pass'|'risky'|'review', label: number}}>",
+        "preconditions": ["CloudBase environment has WeChat API permissions", "content is text to check"],
+        "postconditions": ["WeChat AI content moderation result returned"],
+        "failure_modes": [
+          {
+            "id": "FM-022",
+            "trigger": "WeChat API call fails (rate limit, network error)",
+            "behavior": "Cloud function catches error, falls back to local sensitive word filter only",
+            "propagation": "Transparent to user. Post moderation uses local filter when WeChat API unavailable.",
+            "test_contracts": [
+              {"scenario": "WeChat API unavailable, fallback to local filter", "type": "INTEGRATION", "verifies": "Local filter applied, post created normally", "boundary_ref": "BC-005"}
+            ]
+          }
+        ],
+        "side_effects": "NETWORK"
+      },
+      {
+        "signature": "cloud.openapi.subscribeMessage.send({touser, templateId, data, page?}) -> Promise<void> — send template message to user",
+        "preconditions": ["User has subscribed to the template", "templateId is valid"],
+        "postconditions": ["Template message delivered to user's WeChat service notification"],
+        "failure_modes": [],
+        "side_effects": "NETWORK"
+      }
+    ],
+    "extension_points": ["Additional WeChat APIs: getUserProfile, getPhoneNumber, imgSecCheck"],
+    "sealed_points": ["External service — not owned by this project. All calls mediated by cloud functions (never called directly from client). Use cloud.call for native WeChat API integration."],
+    "state_owned": [],
+    "state_shared": []
+  }
+]

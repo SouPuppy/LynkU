@@ -1,0 +1,85 @@
+<nav-bar title="用户资料" showBack="{{true}}" />
+<scroll-view class="profile-page" scroll-y style="height: calc(100vh - {{navHeight}}px);" bindscrolltolower="onLoadMore" lower-threshold="120">
+  <!-- Loading -->
+  <view wx:if="{{state === 'loading'}}" style="padding-top:120rpx;">
+    <view class="user-skeleton">
+      <view class="sk-circle user-sk-avatar"></view>
+      <view class="sk-line sk-line-lg user-sk-name"></view>
+      <view class="sk-line sk-line-sm sk-w-30"></view>
+      <view class="user-sk-stats">
+        <view class="sk-line sk-line-sm sk-w-20"></view>
+        <view class="sk-line sk-line-sm sk-w-30"></view>
+      </view>
+      <view class="sk-block user-sk-button"></view>
+    </view>
+  </view>
+
+  <!-- Error -->
+  <view wx:elif="{{state === 'error'}}" class="profile-empty" bindtap="onRetry">
+    <text class="text-secondary">加载失败，点击重试</text>
+  </view>
+
+  <!-- Loaded -->
+  <view wx:elif="{{state === 'empty'}}" class="profile-empty">
+    <text class="text-secondary">该用户资料不存在</text>
+  </view>
+  <block wx:else>
+    <!-- Profile header -->
+    <view class="profile-header">
+      <avatar src="{{profile.avatar_url}}" size="lg" />
+      <text class="profile-name">{{profile.nickname}}</text>
+      <text class="profile-handle text-sm text-secondary">@{{handle}}</text>
+      <view class="profile-stats flex-row">
+        <text class="text-sm text-secondary">{{postCount === null ? '帖子数暂不可用' : postCount + ' 篇公开实名帖子'}}</text>
+        <text wx:if="{{joinDate}}" class="text-sm text-secondary">·</text>
+        <text wx:if="{{joinDate}}" class="text-sm text-secondary">{{joinDate}} 加入</text>
+      </view>
+      <view wx:if="{{!isSelf}}" class="profile-contact" hover-class="profile-contact-pressed" bindtap="onSendMessage">
+        <view class="contact-mark"></view>
+        <text>聊一聊</text>
+      </view>
+    </view>
+
+    <!-- Divider -->
+    <view class="section-divider">
+      <text class="text-sm text-secondary">最近帖子</text>
+    </view>
+
+    <!-- Posts -->
+    <view wx:if="{{postState === 'loading'}}" style="padding-top:40rpx;">
+      <view class="user-posts-skeleton">
+        <view wx:for="{{skRows3}}" wx:key="*this" class="user-post-sk-row">
+          <view class="sk-line sk-line-lg sk-w-80"></view>
+          <view class="sk-line sk-w-90"></view>
+          <view class="sk-line sk-line-xs sk-w-40"></view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:elif="{{postState === 'empty'}}" class="profile-empty">
+      <text class="text-secondary">暂无帖子</text>
+    </view>
+
+    <view wx:elif="{{postState === 'error'}}" class="profile-empty">
+      <text class="text-secondary">加载失败</text>
+    </view>
+
+    <block wx:else>
+      <post-item
+        wx:for="{{posts}}"
+        wx:key="_id"
+        post="{{item}}"
+        data-id="{{item._id}}"
+        bindtap="onPostTap"
+      />
+
+      <view wx:if="{{loadingMore}}" class="list-footer text-secondary text-sm">
+        <text>加载中...</text>
+      </view>
+
+      <view wx:elif="{{!hasMore && posts.length > 0}}" class="list-footer text-secondary text-sm">
+        <text>没有更多了</text>
+      </view>
+    </block>
+  </block>
+</scroll-view>

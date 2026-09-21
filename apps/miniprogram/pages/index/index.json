@@ -1,0 +1,1 @@
+{"usingComponents": {"search-bar": "/components/search-bar/search-bar", "feed-list": "/components/feed-list/feed-list", "post-item": "/components/post-item/post-item"}, "navigationStyle": "custom"}

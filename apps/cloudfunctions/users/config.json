@@ -1,0 +1,10 @@
+{
+  "timeout": 20,
+  "triggers": [
+    {
+      "name": "profile-outbox",
+      "type": "timer",
+      "config": "0 */1 * * * * *"
+    }
+  ]
+}

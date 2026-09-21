@@ -1,0 +1,20 @@
+/* notifications page */
+.notif-page { display: flex; flex-direction: column; overflow: hidden; }
+.notif-feed { flex: 1; overflow: hidden; }
+.notif-empty { padding: 120rpx var(--spacing-md); text-align: center; }
+.notif-footer { padding: var(--spacing-md); text-align: center; }
+.notif-skeleton { padding: var(--spacing-md); background: var(--color-bg-white); }
+.notif-sk-card {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) 0;
+  border-bottom: 1rpx solid var(--color-border);
+}
+.notif-sk-avatar { width: 80rpx; height: 80rpx; }
+.notif-sk-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  min-width: 0;
+}
