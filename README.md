@@ -57,7 +57,7 @@ We welcome contributions, bug reports, and feature proposals from students and d
 Distributed under the [WTFPL License](LICENSE).
 
 
-[Version]: https://img.shields.io/badge/Beta-0.0.1-111111?style=for-the-badge
+[Version]: https://img.shields.io/badge/Beta-0.1-111111?style=for-the-badge
 
 [CloudBase]: https://img.shields.io/badge/CloudBase-07C160?style=for-the-badge&logo=wechat&logoColor=white
 [CloudBase-url]: https://developers.weixin.qq.com/miniprogram/dev/wxcloud/basis/getting-started.html
