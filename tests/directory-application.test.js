@@ -2,7 +2,7 @@ const assert = require('node:assert/strict')
 const test = require('node:test')
 const { listConversationDirectory, InvalidDirectoryRequest } = require('@lynku/server')
 const principal = { ownerId: 'alice', scope: 'a'.repeat(64) }
-const context = { source_type: 'post', source_id: 'post-id', initiator_openid: 'alice', target_openid: 'bob', thread_id: 'b'.repeat(64) }
+const context = { protocol_version: 3, source_type: 'post', source_id: 'post-id', initiator_openid: 'alice', target_openid: 'bob', thread_id: 'b'.repeat(64), initiator_visibility: 'anonymous', target_visibility: 'anonymous' }
 function row(overrides = {}) {
   return { _id: 'c'.repeat(64), owner_openid: 'alice', peer_openid: 'bob', updated_at: new Date('2026-09-21T01:00:00.000Z'),
     anonymous_context: null, unread_count: 3, last_message: { _id: 'message-id', from: 'bob', to: 'alice', content: 'hello', created_at: new Date('2026-09-21T01:00:00.000Z') }, ...overrides }

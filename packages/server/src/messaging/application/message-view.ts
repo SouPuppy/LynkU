@@ -5,6 +5,7 @@ export interface AuthorizedConversation {
   viewer: string
   peer: string
   anonymousThread?: string
+  peerVisibility?: 'anonymous' | 'real'
 }
 
 /** Shared database boundary for historical and incremental message reads. */
@@ -17,14 +18,18 @@ export function projectMessage(value: unknown, conversation: AuthorizedConversat
   const context = row.anonymous_context
   if (conversation.anonymousThread) {
     if (!context || typeof context !== 'object' || !('thread_id' in context)
-      || context.thread_id !== conversation.anonymousThread) throw new Error('Anonymous thread mismatch')
+      || context.thread_id !== conversation.anonymousThread || !('protocol_version' in context)
+      || context.protocol_version !== 3 || !('initiator_visibility' in context) || !('target_visibility' in context)
+      || (context.initiator_visibility !== 'anonymous' && context.initiator_visibility !== 'real')
+      || (context.target_visibility !== 'anonymous' && context.target_visibility !== 'real')) throw new Error('Anonymous thread mismatch')
   } else if (context !== undefined && context !== null) throw new Error('Unexpected anonymous message')
   if (!(row.created_at instanceof Date) && typeof row.created_at !== 'string') throw new Error('Invalid message date')
+  const hiddenPeer = conversation.anonymousThread && conversation.peerVisibility === 'anonymous'
   return parsePublicMessage({
-    _id: row._id, msg_id: conversation.anonymousThread && row.from === conversation.peer ? row._id : row.msg_id,
+    _id: row._id, msg_id: hiddenPeer && row.from === conversation.peer ? row._id : row.msg_id,
     content: row.content, status: row.status,
-    from: conversation.anonymousThread && row.from === conversation.peer ? 'anonymous_peer' : row.from,
-    to: conversation.anonymousThread && row.to === conversation.peer ? 'anonymous_peer' : row.to,
+    from: hiddenPeer && row.from === conversation.peer ? 'anonymous_peer' : row.from,
+    to: hiddenPeer && row.to === conversation.peer ? 'anonymous_peer' : row.to,
     created_at: new Date(row.created_at).toISOString(),
     conversation_id: row.conversation_id, sync_sequence: row.sync_sequence,
   })

@@ -98,10 +98,10 @@ Page({
     // Created once per page opening; retries, foreground returns and sends retain it.
     const initiation_id = Date.now().toString(36) + '_' + Math.random().toString(36).slice(2).padEnd(13, '0') + Math.random().toString(36).slice(2).padEnd(13, '0')
     if ((type === 'post' || type === 'comment') && id) {
-      return { anonymous: true, type, id, initiation_id }
+      return { anonymous: true, type, id, initiation_id, initiator_visibility: isAnonymous() ? 'anonymous' : 'real' }
     }
     if (options.peer && options.existing !== '1' && isAnonymous()) {
-      return { anonymous: true, type: 'user', id: options.peer, initiation_id }
+      return { anonymous: true, type: 'user', id: options.peer, initiation_id, initiator_visibility: 'anonymous' }
     }
     return null
   },

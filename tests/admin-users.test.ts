@@ -10,7 +10,7 @@ test('admin users traverse same-time records without duplicates and expose only 
   records.sort((a, b) => a._id > b._id ? -1 : a._id < b._id ? 1 : 0)
   let page = await readAdminUsers(store, { verification: 'verified', limit: 20 })
   const ids = page.items.map(user => user.id)
-  assert.equal(page.items[0]!.email, 'p***@nottingham.edu.cn')
+  assert.equal(page.items[0]!.email, 'pr***te@nottingham.edu.cn')
   assert.equal(JSON.stringify(page).includes('private-wechat'), false)
   assert.equal(JSON.stringify(page).includes('private@'), false)
   while (page.nextCursor) {
@@ -32,7 +32,7 @@ test('admin users reject wrong database scope, broken verification and malformed
 })
 test('selected user detail exposes the school address without exposing OpenID or accepting malformed email', () => {
   const detail = projectAdminUserDetail(records[0]!)
-  assert.equal(detail.email, 'p***@nottingham.edu.cn')
+  assert.equal(detail.email, 'pr***te@nottingham.edu.cn')
   assert.equal(detail.contactEmail, 'private@nottingham.edu.cn')
   assert.equal(JSON.stringify(detail).includes('private-wechat'), false)
   assert.throws(() => projectAdminUserDetail({ ...records[0], email: 'not an email' }))

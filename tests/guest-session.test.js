@@ -1182,7 +1182,7 @@ test('directory service rejects malformed payloads and strips private anonymous 
   const r = runtime()
   r.load('apps/miniprogram/services/session.ts').set({ ...profile, verified: true })
   const service = r.load('apps/miniprogram/services/messages.ts')
-  const summary = { peer: { _openid: 'secret-peer', nickname: '匿名用户', avatar_url: '' },
+  const summary = { peer: { nickname: '匿名用户', avatar_url: '' },
     lastMessage: { _id: 'message', content: 'hello', created_at: '2026-09-21T01:00:00.000Z', from: 'secret-peer', anonymous_context: { target_openid: 'secret-peer' } },
     unreadCount: 1, chat_target: { anonymous: true, thread_id: 'a'.repeat(64) } }
   let payload = { conversations: [summary], hasMore: false, nextCursor: null }
@@ -1513,7 +1513,7 @@ test('anonymous history returns a stable public target without consulting delete
     if (name === 'conversation_entries') return { doc: id => {
       assert.equal(id, hash('conversation_entry', 'alice', conversationId))
       return { get: async () => ({ data: { owner_openid: 'alice', peer_openid: 'bob-user', conversation_id: conversationId,
-        anonymous_context: { source_type: 'post', source_id: 'post', target_openid: 'bob-user', initiator_openid: 'alice', thread_id: thread } } }) }
+        anonymous_context: { protocol_version: 3, source_type: 'post', source_id: 'post', target_openid: 'bob-user', initiator_openid: 'alice', thread_id: thread, initiator_visibility: 'anonymous', target_visibility: 'anonymous' } } }) }
     } }
     assert.equal(name, 'messages')
     return { where: condition => {

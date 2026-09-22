@@ -45,8 +45,8 @@ test('history rejects old protocols, wrong scopes and damaged records', async ()
     { ...message(1), anonymous_context: { thread_id: 'private' } }, { ...message(1), sync_sequence: undefined }]) {
     await assert.rejects(readMessageHistory({ list: async () => [bad] }, conversation, {}))
   }
-  const anonymous = await readMessageHistory({ list: async () => [{ ...message(1), anonymous_context: { thread_id: 'thread' } }] },
-    { ...conversation, anonymousThread: 'thread' }, {})
+  const anonymous = await readMessageHistory({ list: async () => [{ ...message(1), anonymous_context: { protocol_version: 3, thread_id: 'thread', initiator_visibility: 'anonymous', target_visibility: 'anonymous' } }] },
+    { ...conversation, anonymousThread: 'thread', peerVisibility: 'anonymous' }, {})
   assert.equal(anonymous.messages[0].from, 'anonymous_peer')
   assert.equal(JSON.stringify(anonymous).includes('bob'), false)
 })

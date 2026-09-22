@@ -29,6 +29,10 @@ function timestamp(value: unknown): string {
   return date.toISOString()
 }
 
+function visibility(value: unknown): 'anonymous' | 'real' | null {
+  return value === 'anonymous' || value === 'real' ? value : null
+}
+
 function decodeEntry(value: unknown, ownerId: string) {
   const entry = record(value)
   if (entry.owner_openid !== ownerId) throw new Error('Directory owner mismatch')
@@ -37,18 +41,23 @@ function decodeEntry(value: unknown, ownerId: string) {
   const peerId = identifier(entry.peer_openid)
   const last = record(entry.last_message)
   let target: Record<string, unknown> | undefined
+  let peerVisibility: 'anonymous' | 'real' = 'real'
   if (entry.anonymous_context !== undefined && entry.anonymous_context !== null) {
     const context = record(entry.anonymous_context)
     if (!((context.initiator_openid === ownerId && context.target_openid === peerId)
-      || (context.target_openid === ownerId && context.initiator_openid === peerId))) {
+      || (context.target_openid === ownerId && context.initiator_openid === peerId))
+      || context.protocol_version !== 3 || typeof context.thread_id !== 'string'
+      || !/^[a-f0-9]{64}$/.test(context.thread_id)
+      || !visibility(context.initiator_visibility) || !visibility(context.target_visibility)) {
       throw new Error('Invalid anonymous directory participants')
     }
     target = { anonymous: true, thread_id: context.thread_id }
+    peerVisibility = ownerId === context.initiator_openid ? visibility(context.target_visibility)! : visibility(context.initiator_visibility)!
   } else if (last.anonymous_context !== undefined && last.anonymous_context !== null) {
     throw new Error('Anonymous directory context is missing')
   }
   return {
-    id, peerId, updatedAt: timestamp(entry.updated_at), target,
+    id, peerId, updatedAt: timestamp(entry.updated_at), target, peerVisibility,
     lastMessage: { _id: last._id, content: last.content, created_at: timestamp(last.created_at) },
     unreadCount: entry.unread_count,
   }
@@ -70,7 +79,7 @@ export async function listConversationDirectory(
   const rows = await store.list(principal.ownerId, request.cursor, request.limit + 1)
   if (rows.length > request.limit + 1) throw new Error('Unbounded directory response')
   const entries = rows.slice(0, request.limit).map(row => decodeEntry(row, principal.ownerId))
-  const peerIds = [...new Set(entries.filter(entry => !entry.target).map(entry => entry.peerId))]
+  const peerIds = [...new Set(entries.filter(entry => entry.peerVisibility === 'real').map(entry => entry.peerId))]
   const profiles = new Map<string, Record<string, unknown>>()
   if (peerIds.length) {
     for (const value of await store.profiles(peerIds)) {
@@ -80,13 +89,19 @@ export async function listConversationDirectory(
       profiles.set(id, profile)
     }
   }
-  const conversations = entries.map(entry => ({
-    peer: entry.target ? { nickname: '匿名用户', avatar_url: '/assets/anonymous.png' }
-      : profiles.get(entry.peerId) || { _openid: entry.peerId, nickname: '用户', avatar_url: '' },
+  const conversations = entries.map(entry => {
+    const profile = profiles.get(entry.peerId)
+    const namedPeer = {
+      _openid: entry.peerId,
+      nickname: typeof profile?.nickname === 'string' && profile.nickname ? profile.nickname : '用户',
+      avatar_url: typeof profile?.avatar_url === 'string' ? profile.avatar_url : '',
+    }
+    return {
+    peer: entry.peerVisibility === 'anonymous' ? { nickname: '匿名用户', avatar_url: '/assets/anonymous.png' } : namedPeer,
     lastMessage: entry.lastMessage,
     unreadCount: entry.unreadCount,
     chat_target: entry.target,
-  }))
+  }})
   const hasMore = rows.length > request.limit
   const last = entries[entries.length - 1]
   return parseConversationDirectoryPage({ conversations, hasMore,

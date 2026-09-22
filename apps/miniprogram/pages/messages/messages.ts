@@ -145,7 +145,7 @@ Page({
         conversationKey: conversation.chat_target
           ? `anon:${conversation.chat_target.thread_id}`
           : conversation.peer._openid || '',
-        peerAnonymous: !!conversation.chat_target,
+        peerAnonymous: !!conversation.chat_target && !conversation.peer._openid,
       }))
       if (seq !== this._conversationSeq || revision !== session.getRevision()) return
       const merged = new Map((more ? this.data.conversations : []).map(item => [item.conversationKey, item]))

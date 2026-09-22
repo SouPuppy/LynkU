@@ -21,8 +21,9 @@ async function verify() {
   }, {
     _id: 'b'.repeat(64), owner_openid: owner, peer_openid: privatePeer,
     updated_at: timestamp, unread_count: 1,
-    anonymous_context: { initiator_openid: owner, target_openid: privatePeer,
-      source_type: 'post', source_id: 'public-source', thread_id: 'c'.repeat(64) },
+    anonymous_context: { protocol_version: 3, initiator_openid: owner, target_openid: privatePeer,
+      source_type: 'post', source_id: 'public-source', thread_id: 'c'.repeat(64),
+      initiator_visibility: 'real', target_visibility: 'anonymous' },
     last_message: { _id: 'message-anonymous', content: 'anonymous bundle probe', created_at: timestamp },
   }]
   const database = {

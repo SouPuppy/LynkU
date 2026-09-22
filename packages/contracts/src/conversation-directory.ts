@@ -78,6 +78,7 @@ export function parseConversationSummary(value: unknown): ConversationSummary {
       throw new Error('Invalid anonymous target')
     }
     result.chat_target = { anonymous: true, thread_id: digest(target.thread_id) }
+    if (peer._openid !== undefined) result.peer._openid = text(peer._openid, 128)
   } else {
     result.peer._openid = text(peer._openid, 128)
   }

@@ -1,11 +1,14 @@
 import { parseConversationTarget } from '@lynku/contracts'
 
 export interface AnonymousConversationContext {
+  protocol_version: 3
   source_type: 'post' | 'comment' | 'user'
   source_id: string
   target_openid: string
   initiator_openid: string
   thread_id: string
+  initiator_visibility: 'anonymous' | 'real'
+  target_visibility: 'anonymous' | 'real'
 }
 
 export interface TargetStore {
@@ -20,6 +23,10 @@ export class ConversationTargetNotFound extends Error {}
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid stored conversation')
   return value as Record<string, unknown>
+}
+
+function visibility(value: unknown): 'anonymous' | 'real' | null {
+  return value === 'anonymous' || value === 'real' ? value : null
 }
 
 /** An established thread is authorized by its owner-scoped directory, independent of source visibility. */
@@ -42,18 +49,20 @@ export async function resolveConversationTarget(store: TargetStore, owner: strin
       const entry = record(value)
       const context = record(entry.anonymous_context)
       if (entry.owner_openid !== owner || entry.conversation_id !== conversationId
-        || context.thread_id !== threadId
+        || context.protocol_version !== 3 || context.thread_id !== threadId
         || !['post', 'comment', 'user'].includes(String(context.source_type)) || typeof context.source_id !== 'string'
         || typeof context.initiator_openid !== 'string' || !context.initiator_openid
         || typeof context.target_openid !== 'string' || !context.target_openid
-        || context.initiator_openid === context.target_openid) throw new ConversationTargetNotFound('Conversation not found')
+        || context.initiator_openid === context.target_openid
+        || !visibility(context.initiator_visibility) || !visibility(context.target_visibility)) throw new ConversationTargetNotFound('Conversation not found')
       const peer = owner === context.initiator_openid ? context.target_openid
         : owner === context.target_openid ? context.initiator_openid : null
       if (!peer || entry.peer_openid !== peer) {
         throw new ConversationTargetNotFound('Conversation not found')
       }
-      return { peer, anonymousContext: { source_type: context.source_type as AnonymousConversationContext['source_type'], source_id: context.source_id,
-        target_openid: context.target_openid, initiator_openid: context.initiator_openid, thread_id: threadId } }
+      return { peer, anonymousContext: { protocol_version: 3, source_type: context.source_type as AnonymousConversationContext['source_type'], source_id: context.source_id,
+        target_openid: context.target_openid, initiator_openid: context.initiator_openid, thread_id: threadId,
+        initiator_visibility: visibility(context.initiator_visibility)!, target_visibility: visibility(context.target_visibility)! } }
     }
   }
   if ('thread_id' in target) throw new ConversationTargetNotFound('Conversation not found')
@@ -71,6 +80,8 @@ export async function resolveConversationTarget(store: TargetStore, owner: strin
     const parent = record(parentValue)
     if (parent._id !== source.post_id || parent.status !== 'published') throw new ConversationTargetNotFound('Source not found')
   }
-  return { peer: source._openid, anonymousContext: { source_type: target.type, source_id: target.id,
-    target_openid: source._openid, initiator_openid: owner, thread_id: threadId } }
+  const targetVisibility = target.type === 'user' ? 'real' : source.anonymous === true ? 'anonymous' : 'real'
+  return { peer: source._openid, anonymousContext: { protocol_version: 3, source_type: target.type, source_id: target.id,
+    target_openid: source._openid, initiator_openid: owner, thread_id: threadId,
+    initiator_visibility: target.initiator_visibility, target_visibility: targetVisibility } }
 }

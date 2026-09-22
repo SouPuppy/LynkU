@@ -23,7 +23,8 @@ function maskEmail(value: unknown): string {
   if (typeof value !== 'string' || !value) return ''
   const [local, domain] = value.split('@')
   if (!local || !domain) return ''
-  return `${local.slice(0, 1)}***@${domain}`
+  if (local.length <= 4) return `${local.slice(0, 1)}***${local.slice(-1)}@${domain}`
+  return `${local.slice(0, 2)}***${local.slice(-2)}@${domain}`
 }
 
 /** Management projections intentionally exclude OPENID, raw author snapshots and anonymous mappings. */

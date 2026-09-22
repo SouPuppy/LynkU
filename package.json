@@ -18,6 +18,7 @@
     "build:admin": "npm run build --workspace=@lynku/admin",
     "deploy:admin": "npm run build:admin && node tooling/deploy-admin-hosting.mjs",
     "migrate:admin-categories": "node tooling/migrate-admin-categories.mjs",
+    "reset:message-protocol": "node tooling/reset-message-protocol.mjs",
     "provision:admin-cloud": "node tooling/provision-admin-cloud.mjs",
     "build:contracts": "tsc -p packages/contracts/tsconfig.json && node tooling/build-client-contracts.js",
     "build:server": "npm run build:contracts && tsc -p packages/server/tsconfig.json",

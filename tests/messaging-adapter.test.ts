@@ -197,12 +197,12 @@ test('every anonymous initiation isolates history, unread, receipts and director
   const f = fixture()
   f.seed('users', 'bob-user', { _openid: 'bob', verified: true })
   f.seed('posts', 'source', { _openid: 'bob', anonymous: true, status: 'published' })
-  const targets = ['a', 'b'].map(key => ({ anonymous_target: { type: 'post', id: 'source', initiation_id: key.repeat(32) } }))
+  const targets = ['a', 'b'].map(key => ({ anonymous_target: { type: 'post', id: 'source', initiation_id: key.repeat(32), initiator_visibility: 'real' as const } }))
   const resolved = await Promise.all(targets.map(target => resolveConversationTarget(f.adapters.targetStore, 'alice', target)))
   const conversations = resolved.map(value => {
     assert.ok(value.anonymousContext)
     return { id: identifier('conversation', 'anonymous', value.anonymousContext.thread_id), viewer: 'alice', peer: value.peer,
-      anonymousThread: value.anonymousContext.thread_id }
+      anonymousThread: value.anonymousContext.thread_id, peerVisibility: value.anonymousContext.target_visibility }
   })
   assert.notEqual(conversations[0]?.id, conversations[1]?.id)
   const sent = []
@@ -213,29 +213,34 @@ test('every anonymous initiation isolates history, unread, receipts and director
     const results = await Promise.all([sendNewMessage(store, c, context, request), sendNewMessage(store, c, context, request)])
     assert.deepEqual(results.map(value => value.status).sort(), ['duplicate', 'sent'])
     sent.push(results[0]!.message)
+    assert.equal(results[0]!.message.to, 'anonymous_peer')
     assert.equal(f.row('conversation_counters', c.id)?.last_sequence, 1)
   }
   await sendNewMessage(f.adapters.createSendStore(conversation.id, 'alice', 'bob'), conversation, null, { msg_id: 'real', content: 'real-name' })
   const first = conversations[0]!, second = conversations[1]!
-  const reader = { ...first, viewer: 'bob', peer: 'alice' }
+  const reader = { ...first, viewer: 'bob', peer: 'alice', peerVisibility: 'real' as const }
   await assert.rejects(markMessagesRead(f.adapters.createReadStore(first.id, 'bob'), reader, [sent[1]!._id]))
   assert.equal(await markMessagesRead(f.adapters.createReadStore(first.id, 'bob'), reader, [sent[0]!._id]), 1)
   assert.equal(f.row('conversation_entries', identifier('conversation_entry', 'bob', second.id))?.unread_count, 1)
   assert.deepEqual(await readReceipts(f.adapters.readReceiptStore, second, [sent[0]!._id]), [])
   const history = await readMessageHistory(f.adapters.historyStore, reader, {})
   assert.deepEqual(history.messages.map(message => message.content), ['private-0'])
-  assert.ok(history.messages.every(message => message.from === 'anonymous_peer'))
+  assert.ok(history.messages.every(message => message.from === 'alice'))
   const directory = await listConversationDirectory(f.adapters.directoryStore, { ownerId: 'bob', scope: 'd'.repeat(64) }, {})
   assert.equal(directory.conversations.length, 3)
   for (const row of directory.conversations.filter(row => row.chat_target)) {
     assert.deepEqual(Object.keys(row.chat_target!).sort(), ['anonymous', 'thread_id'])
-    assert.equal(row.peer._openid, undefined)
+    assert.equal(row.peer._openid, 'alice')
   }
+  const initiatorDirectory = await listConversationDirectory(f.adapters.directoryStore, { ownerId: 'alice', scope: 'e'.repeat(64) }, {})
+  const anonymousRows = initiatorDirectory.conversations.filter(row => row.chat_target)
+  assert.equal(anonymousRows.length, 2)
+  assert.ok(anonymousRows.every(row => row.peer.nickname === '匿名用户' && row.peer._openid === undefined))
   f.seed('posts', 'source', { _openid: 'bob', status: 'deleted' })
   assert.equal((await resolveConversationTarget(f.adapters.targetStore, 'alice', targets[0])).anonymousContext?.thread_id, first.anonymousThread)
   assert.equal((await resolveConversationTarget(f.adapters.targetStore, 'bob', { anonymous_target: { thread_id: first.anonymousThread } })).peer, 'alice')
   await assert.rejects(resolveConversationTarget(f.adapters.targetStore, 'mallory', { anonymous_target: { thread_id: first.anonymousThread } }))
-  const fresh = await resolveConversationTarget(f.adapters.targetStore, 'alice', { anonymous_target: { type: 'user', id: 'bob', initiation_id: 'c'.repeat(32) } })
+  const fresh = await resolveConversationTarget(f.adapters.targetStore, 'alice', { anonymous_target: { type: 'user', id: 'bob', initiation_id: 'c'.repeat(32), initiator_visibility: 'anonymous' } })
   assert.notEqual(fresh.anonymousContext?.thread_id, first.anonymousThread)
   // Final transaction must reject even when the earlier contact check reported allowed.
   f.seed('messaging_blocks', identifier('messaging:block', 'alice', 'bob'), { blockedBy: ['bob'], version: 1 })
@@ -337,12 +342,23 @@ test('CloudBase target adapter authorizes existing anonymous conversations after
   f.seed('posts', 'source', { status: 'deleted', anonymous: true, _openid: 'bob' })
   f.seed('conversation_entries', identifier('conversation_entry', 'alice', conversationId), {
     owner_openid: 'alice', peer_openid: 'bob', conversation_id: conversationId,
-    anonymous_context: { source_type: 'post', source_id: 'source', initiator_openid: 'alice', target_openid: 'bob', thread_id: thread },
+    anonymous_context: { protocol_version: 3, source_type: 'post', source_id: 'source', initiator_openid: 'alice', target_openid: 'bob', thread_id: thread, initiator_visibility: 'anonymous', target_visibility: 'anonymous' },
   })
   const input = { anonymous_target: { anonymous: true, thread_id: thread } }
   const resolved = await resolveConversationTarget(f.adapters.targetStore, 'alice', input)
   assert.equal(resolved.peer, 'bob')
   await assert.rejects(resolveConversationTarget(f.adapters.targetStore, 'mallory', input))
+})
+
+test('legacy anonymous contexts are rejected after the one-time protocol cutover', async () => {
+  const f = fixture()
+  const thread = identifier('legacy-thread')
+  const conversationId = identifier('conversation', 'anonymous', thread)
+  f.seed('conversation_entries', identifier('conversation_entry', 'alice', conversationId), {
+    owner_openid: 'alice', peer_openid: 'bob', conversation_id: conversationId,
+    anonymous_context: { source_type: 'post', source_id: 'source', initiator_openid: 'alice', target_openid: 'bob', thread_id: thread },
+  })
+  await assert.rejects(resolveConversationTarget(f.adapters.targetStore, 'alice', { anonymous_target: { anonymous: true, thread_id: thread } }))
 })
 
 test('CloudBase adapter rejects malformed envelopes and propagates policy failures before writes', async () => {

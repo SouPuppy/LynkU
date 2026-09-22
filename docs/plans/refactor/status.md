@@ -348,3 +348,5 @@ A06 角标修复：新增 verified 权限的 `messages.getUnreadMessageCount`，
 已完成事项不要在下一次更新丢失，但用精简证据替代反复追加同义日记。本页是本轮唯一状态来源。
 
 成员管理切片随后已部署admin云函数与/admin静态网页，CLI分别返回成功（dist/admin-members-function-deploy.log、admin-members-hosting-deploy.log）。未对真实管理员执行撤权或修改角色。
+
+2026-09-22 匿名私信 v3 一次性切换完成：匿名会话冻结双方对端可见性。当前查看者的对端匿名时只收到“匿名用户”和通道编号；对端实名时收到其公开昵称、头像和资料标识。服务端从来源内容派生对方可见性，客户端只能声明自己是否匿名；每次匿名发起仍独立建通道。旧上下文缺 `protocol_version:3` 或可见性字段即拒绝。`npm run check` 实测通过（318 项），覆盖匿名双向投影、目录资料查询收口、旧协议拒绝、会话隔离、权限与独立云函数包验证。已部署 messages 云函数；随后运行 `npm run reset:message-protocol -- --apply`，已备份并校验后删除当前环境 7 条 messages、4 条 conversation_entries 和 2 条 conversation_counters，备份及核验报告在 `dist/private-backups/message-protocol-reset/2026-09-22T14-01-12.139Z/`。账号、认证、帖子、通知及 messaging_blocks 未修改。admin 云函数和 `/admin/` 静态后台也已部署，用户邮箱掩码改为保留前两位和后两位（短前缀保留首尾）。微信小程序正式上传/审核仍需由运营者在开发者工具执行；本次未代为提交正式发布。

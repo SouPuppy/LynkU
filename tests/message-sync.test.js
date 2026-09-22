@@ -1,11 +1,11 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
 const { syncMessages, InvalidMessageSyncRequest } = require('@lynku/server')
-const conversation = { id: 'conversation', viewer: 'alice', peer: 'bob', anonymousThread: 'thread' }
+const conversation = { id: 'conversation', viewer: 'alice', peer: 'bob', anonymousThread: 'thread', peerVisibility: 'anonymous' }
 const cursor = { version: 2, conversation_id: 'conversation', sequence: 3 }
 const message = { _id: 'm4', msg_id: 'request4', from: 'bob', to: 'alice', content: 'hello', status: 'sent',
   created_at: new Date('2026-09-21T01:00:00.000Z'), conversation_id: 'conversation', sync_sequence: 4,
-  request_fingerprint: 'private', anonymous_context: { thread_id: 'thread' } }
+  request_fingerprint: 'private', anonymous_context: { protocol_version: 3, thread_id: 'thread', initiator_visibility: 'anonymous', target_visibility: 'anonymous' } }
 
 test('sync application validates records and shares the private-safe history projection', async () => {
   const result = await syncMessages({ list: async (id, after, take) => {

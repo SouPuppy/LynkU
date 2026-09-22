@@ -3,15 +3,15 @@ const test = require('node:test')
 const { createHash } = require('node:crypto')
 const { resolveConversationTarget, InvalidConversationTarget, ConversationTargetNotFound } = require('@lynku/server')
 const hash = (...parts) => createHash('sha256').update(parts.join('\0')).digest('hex')
-const context = { source_type: 'post', source_id: 'post', initiator_openid: 'alice', target_openid: 'bob',
-  thread_id: hash('anonymous_chat', 'post', 'post', 'alice', 'bob') }
+const context = { protocol_version: 3, source_type: 'post', source_id: 'post', initiator_openid: 'alice', target_openid: 'bob',
+  thread_id: hash('anonymous_chat', 'post', 'post', 'alice', 'bob'), initiator_visibility: 'anonymous', target_visibility: 'anonymous' }
 const conversationId = hash('conversation', 'anonymous', context.thread_id)
 const target = { thread_id: context.thread_id }
 
 test('anonymous channels are keyed by discovery source and visitor, never by the real person alone', async () => {
   const store = { identifier: hash, directory: async () => null,
     source: async (type, id) => ({ _id: id, _openid: 'bob-user', status: 'published', anonymous: true, post_id: 'parent' }) }
-  const resolve = (owner, type, id, initiation_id = 'a'.repeat(32)) => resolveConversationTarget(store, owner, { anonymous_target: { type, id, initiation_id } })
+  const resolve = (owner, type, id, initiation_id = 'a'.repeat(32)) => resolveConversationTarget(store, owner, { anonymous_target: { type, id, initiation_id, initiator_visibility: 'anonymous' } })
   const first = await resolve('alice', 'post', 'source-a')
   const repeated = await resolve('alice', 'post', 'source-a')
   const second = await resolve('alice', 'post', 'source-b')
@@ -52,17 +52,17 @@ test('existing anonymous threads survive deleted sources and remain participant-
 
 test('new anonymous threads need published sources and reject unowned thread IDs', async () => {
   const store = { identifier: hash, directory: async () => null, source: async () => ({ _id: 'post', _openid: 'bob', status: 'published', anonymous: true }) }
-  const resolved = await resolveConversationTarget(store, 'alice', { anonymous_target: { type: 'post', id: 'post', initiation_id: 'a'.repeat(32) } })
+  const resolved = await resolveConversationTarget(store, 'alice', { anonymous_target: { type: 'post', id: 'post', initiation_id: 'a'.repeat(32), initiator_visibility: 'anonymous' } })
   assert.equal(resolved.peer, 'bob')
   assert.equal(resolved.anonymousContext.thread_id, hash('anonymous-initiation', 'alice', 'post', 'post', 'a'.repeat(32)))
   await assert.rejects(resolveConversationTarget(store, 'alice', { anonymous_target: target }), ConversationTargetNotFound)
   await assert.rejects(resolveConversationTarget(store, 'alice', { anonymous_target: { ...target, thread_id: 'f'.repeat(64) } }), ConversationTargetNotFound)
   for (const source of [null, { _id: 'post', _openid: 'bob', status: 'deleted', anonymous: true }]) {
-    await assert.rejects(resolveConversationTarget({ ...store, source: async () => source }, 'alice', { anonymous_target: { type: 'post', id: 'post', initiation_id: 'a'.repeat(32) } }), ConversationTargetNotFound)
+    await assert.rejects(resolveConversationTarget({ ...store, source: async () => source }, 'alice', { anonymous_target: { type: 'post', id: 'post', initiation_id: 'a'.repeat(32), initiator_visibility: 'anonymous' } }), ConversationTargetNotFound)
   }
   await assert.rejects(resolveConversationTarget({ ...store, source: async type => type === 'comment'
     ? { _id: 'comment', post_id: 'post', _openid: 'bob', status: 'published', anonymous: true }
-    : { _id: 'post', status: 'flagged' } }, 'alice', { anonymous_target: { type: 'comment', id: 'comment', initiation_id: 'a'.repeat(32) } }), ConversationTargetNotFound)
+    : { _id: 'post', status: 'flagged' } }, 'alice', { anonymous_target: { type: 'comment', id: 'comment', initiation_id: 'a'.repeat(32), initiator_visibility: 'anonymous' } }), ConversationTargetNotFound)
 })
 
 test('ambiguous or old target protocols fail before storage and query faults stay faults', async () => {
@@ -73,5 +73,5 @@ test('ambiguous or old target protocols fail before storage and query faults sta
     await assert.rejects(resolveConversationTarget(store, 'alice', input), InvalidConversationTarget)
   }
   assert.equal(reads, 0)
-  await assert.rejects(resolveConversationTarget(store, 'alice', { anonymous_target: { type: 'post', id: 'post', initiation_id: 'a'.repeat(32) } }), /database offline/)
+  await assert.rejects(resolveConversationTarget(store, 'alice', { anonymous_target: { type: 'post', id: 'post', initiation_id: 'a'.repeat(32), initiator_visibility: 'anonymous' } }), /database offline/)
 })

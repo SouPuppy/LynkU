@@ -71,7 +71,10 @@ function conversationIdFor(openid: string, resolved: ResolvedConversation) {
 }
 function authorizedConversation(openid: string, resolved: ResolvedConversation) {
   const base = { id: conversationIdFor(openid, resolved), viewer: openid, peer: resolved.peer }
-  return resolved.anonymousContext ? { ...base, anonymousThread: resolved.anonymousContext.thread_id } : base
+  if (!resolved.anonymousContext) return base
+  const context = resolved.anonymousContext
+  const peerVisibility = openid === context.initiator_openid ? context.target_visibility : context.initiator_visibility
+  return { ...base, anonymousThread: context.thread_id, peerVisibility }
 }
 
 async function resolveConversationPeer(openid: string, event: unknown): Promise<ResolveResult> {
