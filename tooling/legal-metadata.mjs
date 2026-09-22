@@ -37,9 +37,11 @@ export function validateLegalMetadata(value) {
 }
 
 export function assertLegalMetadataReady(value) {
-  const unresolved = LEGAL_KEYS.filter(key => value[key] === null || (typeof value[key] === 'string' && /\*|待填|待核|尚待|\{\{/.test(value[key])))
+  // Public articles can be finalized without publishing optional personal or unverified metadata.
+  const unresolved = ['supportEmail', 'termsVersion', 'privacyVersion', 'rulesVersion', 'updatedAt', 'effectiveAt']
+    .filter(key => value[key] === null || (typeof value[key] === 'string' && /\*|待填|待核|尚待|\{\{/.test(value[key])))
   if (unresolved.length) throw new Error(`Unverified policy facts: ${unresolved.join(', ')}`)
-  if (!value.filingNumberVerified || !/^[\u4e00-\u9fff]ICP备\d{8,12}号-\d+X$/.test(value.filingNumber)) {
+  if (value.filingNumberVerified && !/^[\u4e00-\u9fff]ICP备\d{8,12}号-\d+X$/.test(value.filingNumber)) {
     throw new Error('Filing display must match a verified mini-program filing record')
   }
 }

@@ -1,34 +1,37 @@
 <nav-bar title="{{title}}" showBack="{{true}}" />
 <scroll-view class="legal-scroll" scroll-y enhanced>
   <view class="legal-page">
-    <view class="legal-links">
-      <button data-kind="about" bindtap="openDocument">关于</button>
-      <button data-kind="terms" bindtap="openDocument">用户协议</button>
-      <button data-kind="privacy" bindtap="openDocument">隐私政策</button>
-      <button data-kind="rules" bindtap="openDocument">社区规范</button>
-    </view>
     <view wx:if="{{error}}" class="legal-notice"><text>{{error}}</text></view>
-    <block wx:if="{{document}}">
-      <view wx:if="{{document.status === 'draft'}}" class="legal-notice">
-        <text>文案草案，尚未生效。正在完善相关功能及运营资料。</text>
+    <block wx:if="{{document.kind === 'about'}}">
+      <view class="about-brand">
+        <text class="about-name">{{appName}}</text>
+        <text class="about-tagline">连接校园，分享日常</text>
+        <text class="about-version">版本 {{appVersion}}</text>
       </view>
-      <text class="legal-meta">{{document.kind === 'about' ? '小程序版本 ' + appVersion : '文档版本 ' + document.version}}</text>
-      <view wx:for="{{document.sections}}" wx:key="id" class="legal-section">
-        <text wx:if="{{item.heading}}" class="legal-heading" user-select>{{item.heading}}</text>
-        <text wx:for="{{item.paragraphs}}" wx:for-item="paragraph" wx:key="*this" class="legal-paragraph" user-select>{{paragraph}}</text>
+      <view class="about-intro">
+        <block wx:for="{{document.sections}}" wx:key="id">
+          <text wx:for="{{item.paragraphs}}" wx:for-item="paragraph" wx:key="*this" class="about-description">{{paragraph}}</text>
+        </block>
       </view>
+      <view class="about-links">
+        <view class="about-row" data-kind="terms" bindtap="openDocument"><text>用户协议</text><view class="about-arrow"></view></view>
+        <view class="about-row" data-kind="privacy" bindtap="openDocument"><text>隐私政策</text><view class="about-arrow"></view></view>
+        <view class="about-row" data-kind="rules" bindtap="openDocument"><text>社区规范</text><view class="about-arrow"></view></view>
+      </view>
+      <view class="about-contact">
+        <text class="contact-label">反馈与联系</text>
+        <text class="contact-email">{{supportEmail}}</text>
+      </view>
+      <text wx:if="{{filingNumber}}" class="about-filing">{{filingNumber}}</text>
     </block>
-    <view class="legal-footer">
-      <block wx:if="{{document.kind === 'terms' || document.kind === 'rules'}}">
-        <text>确认前请阅读用户协议和社区规范。此确认不代表学校邮箱认证，也不替代隐私授权。</text>
-        <button wx:if="{{agreementReady && !accepted}}" bindtap="acceptAgreement" loading="{{accepting}}" disabled="{{accepting}}">我已阅读并同意用户协议及社区规范</button>
-        <text wx:if="{{accepted}}">本次协议确认已记录</text>
-      </block>
-      <text user-select>联系与投诉：{{supportEmail}}</text>
-      <button bindtap="copyContact">复制联系邮箱</button>
-      <text user-select>备案号：{{filingNumber}}</text>
-      <button bindtap="copyFiling">复制备案号</button>
-      <button bindtap="openWechatPrivacy">微信用户隐私保护指引</button>
-    </view>
+    <block wx:elif="{{document}}">
+      <view class="legal-article">
+        <view wx:for="{{document.sections}}" wx:key="id" class="legal-section">
+          <text wx:if="{{item.heading && index > 0}}" class="legal-heading">{{item.heading}}</text>
+          <text wx:for="{{item.paragraphs}}" wx:for-item="paragraph" wx:key="*this" class="legal-paragraph">{{paragraph}}</text>
+        </view>
+      </view>
+      <button wx:if="{{document.kind === 'privacy'}}" class="privacy-link" bindtap="openWechatPrivacy">微信用户隐私保护指引</button>
+    </block>
   </view>
 </scroll-view>

@@ -48,14 +48,11 @@ function sectionsFromMarkdown(markdown) {
 /** Pure compilation: only the three public articles are bundled, never authoring notes. */
 export function compileLegalBundle(config, source) {
   const legal = validateLegalMetadata(config.legal)
-  const value = item => item === null ? '尚待核实' : item
   const variables = {
-    APP_NAME: config.name, OPERATOR_NAME: value(legal.operatorName), SUPPORT_EMAIL: legal.supportEmail,
-    FILING_NUMBER: legal.filingNumber, EFFECTIVE_DATE: legal.effectiveAt || '尚未生效', UPDATED_DATE: legal.updatedAt || '草案',
+    APP_NAME: config.name, SUPPORT_EMAIL: legal.supportEmail,
+    EFFECTIVE_DATE: legal.effectiveAt, UPDATED_DATE: legal.updatedAt,
     TERMS_VERSION: legal.termsVersion, PRIVACY_VERSION: legal.privacyVersion, RULES_VERSION: legal.rulesVersion,
-    WECHAT_PROVIDER: value(legal.wechatProviderName), CLOUD_PROVIDER: value(legal.cloudProviderName),
-    CLOUD_REGION: value(legal.cloudRegion), MAIL_PROVIDER: value(legal.mailProviderName),
-    MAIL_PRIVACY_CONTACT: value(legal.mailPrivacyContact), THIRD_PARTY_VERSION: legal.thirdPartyVersion,
+    THIRD_PARTY_VERSION: legal.thirdPartyVersion,
   }
   const documents = {}
   const normalized = source.replace(/\r\n/g, '\n')
@@ -67,6 +64,7 @@ export function compileLegalBundle(config, source) {
     const markdown = normalized.slice(start + marker.length, next < 0 ? undefined : next).trim()
       .replace(/\{\{([A-Z_]+)\}\}/g, (_, key) => {
         if (!Object.hasOwn(variables, key)) throw new Error(`Unknown public policy variable: ${key}`)
+        if (variables[key] === null) throw new Error(`Missing public policy variable: ${key}`)
         return variables[key]
       })
     if (markdown.includes('{{')) throw new Error('Unresolved policy template')
@@ -77,13 +75,13 @@ export function compileLegalBundle(config, source) {
     documents[kind] = { ...body, title: sections[0].heading, hash: createHash('sha256').update(JSON.stringify(body)).digest('hex') }
   }
   const sections = [{ id: 'about', heading: config.name, paragraphs: [
-    '校园交流社区。独立运营，非宁波诺丁汉大学官方服务。学校邮箱认证不代表学校对内容或运营者背书。',
-    `运营者：${value(legal.operatorName)}`, `联系邮箱：${legal.supportEmail}`, `小程序备案号：${legal.filingNumber}`,
+    '面向 UNNC 的校园交流社区，分享校园日常，交流想法与经验。',
+    'LynkU 独立运营，非宁波诺丁汉大学官方服务。',
   ] }]
   const about = { kind: 'about', title: `关于 ${config.name}`, version: legal.thirdPartyVersion,
     status: legal.status, updatedAt: legal.updatedAt, effectiveAt: legal.effectiveAt, sections }
   documents.about = { ...about, hash: createHash('sha256').update(JSON.stringify(about)).digest('hex') }
-  return { appName: config.name, supportEmail: legal.supportEmail, filingNumber: legal.filingNumber,
+  return { appName: config.name, supportEmail: legal.supportEmail, filingNumber: legal.filingNumberVerified ? legal.filingNumber : '',
     filingNumberVerified: legal.filingNumberVerified, documents }
 }
 

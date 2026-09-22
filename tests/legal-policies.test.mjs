@@ -3,26 +3,63 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import vm from 'node:vm'
+import ts from 'typescript'
+import { createRequire } from 'node:module'
 import { compileLegalBundle, generateLegalBundle } from '../tooling/build-legal-policies.mjs'
 import { validateLegalMetadata } from '../tooling/legal-metadata.mjs'
 
 const config = JSON.parse(fs.readFileSync(new URL('../config/project.json', import.meta.url), 'utf8'))
 const source = fs.readFileSync(new URL('../docs/product/community-policies.md', import.meta.url), 'utf8')
 
-test('bundled public articles preserve full policy tables and exclude internal authoring notes', () => {
+test('about navigation opens a child document and never copies contact data or records agreement', () => {
+  const navigations = [], require = createRequire(import.meta.url)
+  let page
+  const code = ts.transpileModule(fs.readFileSync(new URL('../apps/miniprogram/pages/legal/legal.ts', import.meta.url), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText
+  vm.runInNewContext(code, {
+    exports: {},
+    require: name => {
+      if (name.endsWith('/contracts/index')) return require('@lynku/contracts')
+      if (name.endsWith('/legal-policies')) return { legalPolicies: compileLegalBundle(config, source) }
+      if (name.endsWith('/version')) return { APP_VERSION: '0.2.0' }
+      throw new Error(`Unexpected page dependency: ${name}`)
+    },
+    wx: { navigateTo: options => navigations.push(options.url) },
+    Page: definition => { page = definition; page.setData = change => Object.assign(page.data, change) },
+  })
+  page.onLoad({})
+  assert.equal(page.data.document.kind, 'about')
+  assert.equal(page.data.supportEmail, 'quin@asro.cc')
+  assert.equal(page.data.filingNumber, '')
+  for (const kind of ['terms', 'privacy', 'rules', 'about', 'invalid']) page.openDocument({ currentTarget: { dataset: { kind } } })
+  assert.deepEqual(navigations, ['terms', 'privacy', 'rules'].map(kind => `/pages/legal/legal?kind=${kind}`))
+  page.onLoad({ kind: 'privacy' })
+  assert.equal(page.data.title, 'LynkU 隐私政策')
+  assert.equal(page.copyContact, undefined)
+  assert.equal(page.copyFiling, undefined)
+  assert.equal(page.acceptAgreement, undefined)
+  page.onLoad({ kind: 'invalid' })
+  assert.ok(page.data.error)
+})
+
+test('public articles describe current services without private identity, placeholders or future screens', () => {
   const bundle = compileLegalBundle(config, source)
   assert.deepEqual(Object.keys(bundle.documents), ['terms', 'privacy', 'rules', 'about'])
   const text = JSON.stringify(bundle)
-  assert.match(text, /备案号/)
-  assert.match(text, /同意记录/)
-  assert.match(text, /最小关闭/)
-  assert.match(text, /网络安全日志/)
+  assert.match(text, /quin@asro.cc/)
+  assert.match(text, /Mailgun/)
+  assert.match(text, /美国区域接口/)
   assert.match(text, /注销账号/)
   assert.match(text, /不需要等待人工批准/)
-  assert.doesNotMatch(text, /可直接使用的短文案|发布时的替换字段|MAIL_PROVIDER|\{\{/)
-  assert.equal(bundle.filingNumber, '浙CP备2026058998号-1X')
-  assert.equal(bundle.documents.privacy.status, 'draft')
-  assert.equal(bundle.documents.privacy.effectiveAt, null)
+  assert.doesNotMatch(text, /zihannuo|outlook|尚待|待核实|草案|个人信息与同意|保护模式|内部保留规则|最小关闭|MAIL_PROVIDER|\{\{|\uFFFD/)
+  assert.equal(bundle.filingNumber, '')
+  assert.equal(bundle.documents.privacy.status, 'active')
+  assert.equal(bundle.documents.privacy.effectiveAt, '2026-09-22')
+  const privateMetadata = compileLegalBundle({ ...config, legal: { ...config.legal, operatorName: 'PRIVATE_OPERATOR',
+    mailProviderName: 'PRIVATE_PROVIDER' } }, source)
+  assert.doesNotMatch(JSON.stringify(privateMetadata), /PRIVATE_OPERATOR|PRIVATE_PROVIDER/)
 })
 
 test('policy evidence changes with the actual article or public operator facts and is reproducible', () => {
@@ -31,16 +68,17 @@ test('policy evidence changes with the actual article or public operator facts a
   const textChange = compileLegalBundle(config, source.replace('用于方便再次搜索', '用于再次搜索').replace('本政策说明', '本政策具体说明'))
   assert.notEqual(textChange.documents.privacy.hash, first.documents.privacy.hash)
   assert.equal(textChange.documents.terms.hash, first.documents.terms.hash)
-  const metadataChange = compileLegalBundle({ ...config, legal: { ...config.legal, operatorName: '测试运营者' } }, source)
+  const metadataChange = compileLegalBundle({ ...config, legal: { ...config.legal, supportEmail: 'support@example.com' } }, source)
   assert.notEqual(metadataChange.documents.terms.hash, first.documents.terms.hash)
-  assert.throws(() => compileLegalBundle(config, source.replace('{{OPERATOR_NAME}}', '{{SECRET}}')), /Unknown public policy variable/)
+  assert.throws(() => compileLegalBundle(config, source.replace('{{SUPPORT_EMAIL}}', '{{SECRET}}')), /Unknown public policy variable/)
+  assert.throws(() => compileLegalBundle(config, source.replace('{{SUPPORT_EMAIL}}', '{{OPERATOR_NAME}}')), /Unknown public policy variable/)
   assert.throws(() => compileLegalBundle(config, source.replace('## 2. 隐私政策正文', '## removed')), /Missing or duplicate/)
 })
 
-test('unverified facts, malformed metadata and hidden secret keys cannot become active public policies', () => {
+test('formal articles require real dates and contact; optional facts are omitted rather than invented', () => {
   const legal = config.legal
   for (const patch of [
-    { status: 'active' }, { status: 'enabled' }, { supportEmail: 'bad' },
+    { effectiveAt: null }, { updatedAt: null }, { status: 'enabled' }, { supportEmail: 'bad' },
     { mailPrivacyUrl: 'javascript:alert(1)' }, { mailPrivacyUrl: 'https://secret@example.com/' },
     { updatedAt: '2026-02-30' }, { updatedAt: '2026-10-01', effectiveAt: '2026-09-21' },
     { operatorName: '<script>' }, { MAILGUN_API_KEY: 'fixture-secret' }, { filingNumberVerified: 'true' },
@@ -51,8 +89,10 @@ test('unverified facts, malformed metadata and hidden secret keys cannot become 
     cloudProviderName: '测试云服务方', cloudPrivacyUrl: 'https://example.com/cloud', cloudRegion: '测试地区',
     mailProviderName: '测试邮件服务方' }
   assert.doesNotThrow(() => validateLegalMetadata(ready))
-  assert.throws(() => validateLegalMetadata({ ...ready, operatorName: '郑**' }), /Unverified/)
+  assert.doesNotThrow(() => validateLegalMetadata(legal))
+  assert.throws(() => validateLegalMetadata({ ...ready, termsVersion: '待核实' }), /Unverified/)
   assert.throws(() => validateLegalMetadata({ ...ready, filingNumber: legal.filingNumber }), /Filing display/)
+  assert.equal(compileLegalBundle({ ...config, legal: ready }, source).filingNumber, ready.filingNumber)
 })
 
 test('client articles and server version manifest use identical hashes; check mode never repairs drift', t => {

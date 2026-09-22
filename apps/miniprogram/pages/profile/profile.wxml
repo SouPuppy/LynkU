@@ -16,7 +16,7 @@
       <view class="menu-row">
         <view class="toggle-info">
           <text>匿名模式</text>
-          <text class="toggle-desc text-xs text-secondary">{{anonymousMode ? '发帖评论显示为匿名用户' : '发帖评论显示真实身份'}}</text>
+          <text class="toggle-desc text-xs text-secondary">{{anonymousMode ? '发帖评论显示为匿名用户' : '发帖评论显示你的昵称'}}</text>
         </view>
         <switch checked="{{anonymousMode}}" bindchange="onToggleAnonymous" color="#8E8E93" />
       </view>
@@ -48,5 +48,5 @@
   <text class="access-title">微信身份尚未就绪</text>
   <text class="access-description">可以继续浏览公开内容，恢复微信身份后可查看个人资料。</text>
   <button class="access-button" bindtap="onLogin">恢复微信身份</button>
-  <button class="access-button" bindtap="onSettings">关于与规则</button>
+  <button class="access-button" bindtap="onSettings">设置</button>
 </view>

@@ -1,7 +1,6 @@
 import { openLogin } from '../../utils/guard'
 import { openVerification } from '../../services/verification'
 import config from '../../config'
-import { legalDocumentKind } from '../../generated/contracts/index'
 // pages/settings — account settings
 import type { IUserPublic } from '../../typings/cloudbase'
 import * as session from '../../services/session'
@@ -75,11 +74,6 @@ Page({
     wx.navigateTo({ url: '/pages/legal/legal?kind=about' })
   },
   onReports() { wx.navigateTo({ url: '/pages/reports/reports' }) },
-
-  onLegal(event: WechatMiniprogram.TouchEvent) {
-    const kind = legalDocumentKind(event.currentTarget.dataset.kind)
-    if (kind) wx.navigateTo({ url: `/pages/legal/legal?kind=${kind}` })
-  },
 
   handleLogout() {
     wx.showModal({
