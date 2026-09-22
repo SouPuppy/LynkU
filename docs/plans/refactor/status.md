@@ -4,7 +4,7 @@
 
 ## 上线保护 goal 实施中（2026-09-21）
 
-- 2026-09-22：用户与认证列表的筛选、分页游标和选中用户详情已进入 `#users` URL；刷新、关闭详情和返回列表保留当前定位，畸形链接显示独立错误且不请求后台。管理端 TypeScript 构建通过（dist/admin-user-routing-typecheck.log），强制重建后静态网页已部署，当前入口引用 `index-CDtOstZh.js`（dist/admin-user-routing-build.log、admin-user-routing-deploy.log）。
+- 2026-09-22：用户与认证列表的筛选、分页游标和选中用户详情已进入 `#users` URL；刷新、关闭详情和返回列表保留当前定位，畸形链接显示独立错误且不请求后台。完整 npm run check 通过317项（dist/admin-route-full-check.log）；强制重建后静态网页已部署，当前入口引用 `index-CDtOstZh.js`（dist/admin-user-routing-build.log、admin-user-routing-deploy.log）。
 
 - 2026-09-22：按管理端实际使用反馈补强“用户与认证”识别。批量列表新增稳定账号编号、业务角色及详情入口，学校邮箱在列表继续脱敏；受控单账号详情（仍要求 users:read）才返回完整学校邮箱、注册时间和能力限制，未增加 OPENID、匿名映射、私信或草稿访问。新增契约／投影验证拒绝畸形邮箱并证明详情不含 OpenID。完整 npm run check 通过317项（dist/admin-user-identification-check.log），admin 云函数部署后回读 Active/30秒，静态网页已部署且入口、JS、CSS、logo SHA256 均与本地产物一致（dist/admin-user-identification-function-detail.log、admin-user-identification-hosting-verified.json）。
 
