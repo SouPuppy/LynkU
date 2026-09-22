@@ -2,6 +2,14 @@ import { parseCategoryView, type CategoryView } from './categories'
 export interface ManagedCategory extends CategoryView { managementRevision: number }
 export interface CategoryChange { requestId: string; category: ManagedCategory; reason: string }
 export interface CategoryChangeReceipt { requestId: string; category: ManagedCategory; appliedAt: string }
+export interface CategoryCreation { requestId: string; name: string; description: string; sort_order: number; status: 'active' | 'hidden'; reason: string }
+export function parseCategoryCreation(value: unknown): CategoryCreation {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('Invalid category creation')
+  const input = value as Record<string, unknown>
+  if (Object.keys(input).some(key => !['action', 'requestId', 'name', 'description', 'sort_order', 'status', 'reason'].includes(key))) throw Error('Unknown category creation field')
+  const parsed = parseCategoryChange({ requestId: input.requestId, reason: input.reason, category: { _id: 'new', name: input.name, description: input.description, sort_order: input.sort_order, status: input.status, post_count: 0, managementRevision: 0 } })
+  return { requestId: parsed.requestId, reason: parsed.reason, name: parsed.category.name, description: parsed.category.description, sort_order: parsed.category.sort_order, status: parsed.category.status }
+}
 export function parseManagedCategoryList(value: unknown): ManagedCategory[] {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('Invalid managed categories')
   const rows = (value as Record<string, unknown>).categories

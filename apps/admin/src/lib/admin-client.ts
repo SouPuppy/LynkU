@@ -1,4 +1,5 @@
 import cloudbase from '@cloudbase/js-sdk'
+import { parseCategoryCreation, type CategoryCreation } from '@lynku/contracts'
 import { parseOperationRetry, parseOperationRetryReceipt, type OperationRetry } from '@lynku/contracts'
 import { parseOperationQuery, parseOperationPage, parseOperationTask, type OperationQuery, type OperationKind } from '@lynku/contracts'
 import { parseAdminCaseQuery, parseAdminCasePage, type AdminCaseQuery } from '@lynku/contracts'
@@ -154,6 +155,22 @@ export async function updateCategory(input: CategoryChange) {
     if (receipt.requestId !== request.requestId || receipt.category._id !== request.category._id || receipt.category.managementRevision !== request.category.managementRevision + 1) throw Error('Wrong receipt')
     return receipt
   } catch { throw new AdminRequestError('回执无法确认，请使用原请求重试。', 'UNCONFIRMED', true) }
+}
+export async function createCategory(input: CategoryCreation) {
+  const request = parseCategoryCreation(input)
+  let response: CloudResult<unknown>
+  try { response = await invoke<unknown>({ ...request, action: 'createCategory' }) }
+  catch { throw new AdminRequestError('创建结果未确认，请确认原请求。', 'UNCONFIRMED', true) }
+  const result = response.result
+  if (response.code || !result || result.code || result.error) {
+    const code = result?.code || response.code || 'UNCONFIRMED'
+    throw new AdminRequestError(result?.error || response.message || '创建未完成', code, !['CONFLICT', 'INVALID_INPUT', 'INVALID_CATEGORY', 'FORBIDDEN', 'AUTH_FAILED'].includes(code))
+  }
+  try {
+    const receipt = parseCategoryChangeReceipt(result.data)
+    if (receipt.requestId !== request.requestId || receipt.category.managementRevision !== 1 || receipt.category.name !== request.name || receipt.category.post_count !== 0) throw Error('Invalid create receipt')
+    return receipt
+  } catch { throw new AdminRequestError('创建回执未确认，请确认原请求。', 'UNCONFIRMED', true) }
 }
 
 async function read<T>(action: string, input: object = {}): Promise<T> {

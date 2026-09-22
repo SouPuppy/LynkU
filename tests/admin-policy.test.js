@@ -20,7 +20,7 @@ test('authorization rejects duplicate, wrong-owner and malformed account results
       assert.equal(take, 2)
       return { get: async () => ({ data }) }
     } }) }) }
-    assert.equal((await authorizeAction(db, 'alice', 'categories', 'create')).response.code, 'AUTH_UNAVAILABLE')
+    assert.equal((await authorizeAction(db, 'alice', 'drafts', 'list')).response.code, 'AUTH_UNAVAILABLE')
     assert.equal(await checkAdmin(db, 'alice'), false)
   }
 })

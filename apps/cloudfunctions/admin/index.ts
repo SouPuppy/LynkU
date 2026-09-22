@@ -1,4 +1,5 @@
 import * as cloud from 'wx-server-sdk'
+import { applyCategoryCreation } from './category-create'
 import { applyOperationRetry } from './operation-retry'
 import { OutboxRetryFailure } from '@lynku/server'
 import { readOperationTasks, readOperationTask, AdminOperationFailure } from '@lynku/server'
@@ -26,11 +27,12 @@ import { fail, ok, stableDocumentId } from '../common'
 cloud.init()
 const db = connectDatabase(cloud.database(CLOUD_DATABASE_OPTIONS))
 
-type Action = 'retryOperation' | 'listOperationTasks' | 'readOperationTask' | 'readAudit' | 'readUserProtection' | 'updateUserProtection' | 'listMembers' | 'updateMember' | 'session' | 'overview' | 'listCategories' | 'updateCategory' | 'listPosts' | 'readPost' | 'listComments' | 'readComment' | 'listUsers' | 'listCases' | 'readCase' | 'closeCase' | 'listOperations' | 'listAudit'
+type Action = 'createCategory' | 'retryOperation' | 'listOperationTasks' | 'readOperationTask' | 'readAudit' | 'readUserProtection' | 'updateUserProtection' | 'listMembers' | 'updateMember' | 'session' | 'overview' | 'listCategories' | 'updateCategory' | 'listPosts' | 'readPost' | 'listComments' | 'readComment' | 'listUsers' | 'listCases' | 'readCase' | 'closeCase' | 'listOperations' | 'listAudit'
 
 function actionOf(value: unknown): Action | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const action = (value as Row).action
+  if (action === 'createCategory') return action
   if (action === 'retryOperation') return action
   if (action === 'listOperationTasks' || action === 'readOperationTask') return action
   if (action === 'readAudit') return action
@@ -93,6 +95,7 @@ export async function main(event: unknown, context?: unknown) {
   try {
     const principal = await authorizeAdmin(authorizationStore, webUid)
     switch (action) {
+      case 'createCategory': return ok(await applyCategoryCreation(db, webUid, event))
       case 'retryOperation': return ok(await applyOperationRetry(db, webUid, event))
       case 'readUserProtection': {
         if (!hasAdminCapability(principal, 'users:read')) return fail('当前账号没有用户查看权限', 'FORBIDDEN')

@@ -157,7 +157,8 @@ test('action policy rejects unknown actions and applies server-owned account sta
   user.verified = true
   assert.equal((await authorizeAction(database, 'user', 'drafts', 'list')).allowed, true)
   user.role = 'admin'
-  assert.equal((await authorizeAction(database, 'user', 'categories', 'create')).allowed, true)
+  assert.equal((await authorizeAction(database, 'user', 'categories', 'create')).response.code, 'UNKNOWN_ACTION')
+  assert.equal((await authorizeAction(database, 'user', 'categories', 'seed')).response.code, 'UNKNOWN_ACTION')
 })
 
 test('cloud boundary rejects malformed events and suppresses internal exception details', async () => {

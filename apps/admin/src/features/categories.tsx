@@ -13,6 +13,7 @@ export function CategoriesPanel({ canEdit }: { canEdit: boolean }) {
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [selected, setSelected] = useState<AdminCategory | null>(null)
+  const [creating, setCreating] = useState(false)
   useEffect(() => {
     let active = true
     setItems(null); setError(null)
@@ -23,7 +24,7 @@ export function CategoriesPanel({ canEdit }: { canEdit: boolean }) {
   return <section aria-label="分类列表" aria-busy={items === null && !error}>
     <div className="mb-4 flex items-center justify-between gap-3">
       <p className="text-xs text-muted-foreground">全部分类 · 包含停用项 · 按展示顺序排列</p>
-      <Button variant="outline" size="sm" onClick={() => setAttempt(value => value + 1)}><RefreshCw />刷新</Button>
+      <div className="flex gap-2">{canEdit && <Button size="sm" disabled={items === null || items.length >= 100} onClick={() => setCreating(true)}>新增分类</Button>}<Button variant="outline" size="sm" onClick={() => setAttempt(value => value + 1)}><RefreshCw />刷新</Button></div>
     </div>
     <Card className="overflow-hidden py-0 shadow-none">
       {error ? <p role="alert" className="p-6 text-sm text-destructive">{error}</p>
@@ -40,5 +41,6 @@ export function CategoriesPanel({ canEdit }: { canEdit: boolean }) {
         </Table>}
     </Card>
     {selected && <CategoryEditor key={selected._id} category={selected} onClose={() => setSelected(null)} onSaved={() => setAttempt(value => value + 1)} />}
+    {creating && <CategoryEditor key="new" category={null} onClose={() => setCreating(false)} onSaved={() => setAttempt(value => value + 1)} />}
   </section>
 }

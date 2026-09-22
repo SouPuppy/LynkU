@@ -50,7 +50,7 @@ Create these collections in the CloudBase console. Content and identity collecti
 
 Create the indexes before traffic is enabled. The users `_openid` and categories name unique indexes are also the concurrency boundary for user bootstrap and category creation.
 
-Seed categories by invoking `categories` with `{ "action": "seed" }` as an existing admin. Ordinary users cannot seed or mutate categories.
+Manage categories through the authorized admin website. The mini-program `categories` function is read-only; its old seed/create actions are removed. Before enabling admin creation, provision `category_catalog`, deploy the read-only categories function, then run `node tooling/initialize-category-catalog.mjs` (dry-run) and `--apply` to initialize its bounded counter from a verified backup. Existing category IDs and counts are preserved. Category creation commits the new record, catalog count, receipt and audit together; the name unique index also applies to edits.
 
 ## Cloud Functions
 

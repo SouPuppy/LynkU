@@ -83,7 +83,7 @@ identity 更新资料后发出版本化事件，内容/通知模块更新自己�
 |---|---|---|
 | users、email_verifications、公开标识映射 | identity | 服务端私有 |
 | account_lifecycle、同意／协议记录、privacy_requests | identity | 服务端私有；仅本人必要权利及受限处理角色可经接口访问 |
-| posts、categories、drafts | content | 客户端均经接口；categories 旧只读权限在兼容窗口内保留 |
+| posts、categories、category_catalog、drafts | content | 客户端均经接口；分类总量与新增记录同事务更新，小程序分类入口只读 |
 | comments | interaction | 服务端私有 |
 | messages、会话/成员/同步数据 | messaging | 服务端私有 |
 | notifications | notifications | 服务端私有 |

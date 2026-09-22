@@ -1,6 +1,7 @@
 {
   "version": 2,
   "collections": [
+    { "name": "category_catalog", "clientPermission": "admin-only", "documentId": "total; transactionally bounded category count" },
     { "name": "admin_operation_receipts", "clientPermission": "admin-only", "documentId": "hash of action, trusted Web UID and request ID", "indexes": [{ "fields": ["actor", "createdAt"] }] },
     { "name": "users", "clientPermission": "admin-only", "documentId": "new accounts: stableDocumentId(account, OPENID); existing account IDs retained", "indexes": [{ "fields": ["_openid"], "unique": true }, { "fields": ["created_at", "_id"] }, { "fields": ["verified", "created_at", "_id"] }] },
     { "name": "posts", "clientPermission": "admin-only", "indexes": [{ "fields": ["status", "created_at", "_id"] }, { "fields": ["status", "category_id", "created_at", "_id"] }, { "fields": ["status", "_openid", "anonymous", "created_at", "_id"] }, { "fields": ["_openid", "status", "created_at", "_id"] }] },

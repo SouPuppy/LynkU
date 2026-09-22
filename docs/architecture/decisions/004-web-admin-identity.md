@@ -14,6 +14,8 @@ LynkU 新增 `apps/admin` 作为桌面网页管理端，并新增 `admin` 云函
 
 ## 后果
 
+分类新增由content的createManagedCategory拥有，通过admin.createCategory要求categories:write。输入不接受ID/帖子数/版本等服务端字段；ID按操作者与请求ID确定，初始帖子数0、管理版本1。新分类、category_catalog/total总量、回执和审计同一事务写入；包含停用项最多100个，分类name唯一索引防止重名。旧小程序categories.create/seed关闭，不保留兼容路由。迁移顺序为检查产物→部署只读categories→备份全量现有分类并初始化catalog总量→部署admin/网页。初始化工具拒绝覆写已有不一致计数，默认dry-run，不修改既有分类ID、内容数量或账号。后续若增加真正删除分类的功能，必须在同一事务维护此计数。
+
 受控`retryOperation`仅授予所有者`operations:retry`能力，前端要求原因并展示任务尝试次数/重试版本；服务端事务重验成员资格、任务状态、尝试次数及retry_revision，检查来源账号/内容仍存在且适用，已有lifecycle记录必须active。只允许明确DELIVERY_FAILED的pending任务或租约已过期的processing任务。保持原任务和attempt_count不变，推进retry_revision、设置pending/next_attempt_at并清空租约，回执与审计同事务；同一操作者请求ID返回原回执，负载不符拒绝。过期处理者不能以旧租约完成新的任务。没有重放验证码或任意函数调用，实际投递继续由现有幂等调度器完成，回执语义为scheduled而非delivered。尚未迁入统一lifecycle屏障的账号仍存在当前数据生命周期限制；来源与收件人的关闭/删除并发保护须在该整体迁移中完成，不能将本接口视为注销治理验收。
 
 运行任务查询`listOperationTasks/readOperationTask`要求`operations:read`，数据源白名单仅业务通知和资料投影outbox，不接受任意集合名。列表按(created_at,_id)倒序分页、游标绑定任务类型与状态；详情仅返回状态、尝试次数、各时间及白名单错误分类，不返回notification、openid、正文或原始错误。完成任务可能仍有历史last_error，页面明确区分历史错误和当前状态。页面支持深链接、状态刷新和空/故障状态；这两个查询接口只读，受控重试另走上述retryOperation；邮件/审核/清理运行采集尚未完成，不能据此宣称整个运行模块完成。
