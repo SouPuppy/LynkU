@@ -1,7 +1,6 @@
-import { parseAdminPostSummary, type AdminPostSummary } from '@lynku/contracts'
+import { parseAdminPostSummary, parseAdminCaseSummary, type AdminPostSummary, type AdminCaseSummary } from '@lynku/contracts'
 export type AdminPostView = AdminPostSummary
 export interface AdminUserView { id: string; displayName: string; email: string; verified: boolean; role: string; createdAt: string }
-export interface AdminCaseView { id: string; targetType: 'post' | 'comment'; targetId: string; reason: string; status: string; createdAt: string }
 
 function row(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('Invalid administration record')
@@ -46,9 +45,9 @@ export function projectAdminUser(value: unknown): AdminUserView {
     role: text(source.role, 32), createdAt: timestamp(source.created_at) }
 }
 
-export function projectAdminCase(value: unknown): AdminCaseView {
+export function projectAdminCase(value: unknown): AdminCaseSummary {
   const source = row(value)
   if (source.targetType !== 'post' && source.targetType !== 'comment') throw Error('Invalid administration case target')
-  return { id: text(source._id, 128), targetType: source.targetType, targetId: text(source.targetId, 128), reason: text(source.reasonCode, 100),
-    status: text(source.status, 32), createdAt: timestamp(source.createdAt) }
+  return parseAdminCaseSummary({ id: text(source._id, 128), targetType: source.targetType, targetId: text(source.targetId, 128), reason: text(source.reasonCode, 100),
+    status: source.status, createdAt: timestamp(source.createdAt), updatedAt: timestamp(source.updatedAt), appealed: source.appeal !== undefined })
 }

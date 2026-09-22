@@ -2,12 +2,12 @@ import { spawnSync } from 'node:child_process'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { root, project } from './cloudbase-api.mjs'
-import { parseAdminPostPage, parseAdminUserPage, parseManagedCategoryList, parseAdminMembers, parseAdminAuditPage } from '@lynku/contracts'
+import { parseAdminPostPage, parseAdminUserPage, parseManagedCategoryList, parseAdminMembers, parseAdminAuditPage, parseAdminCasePage } from '@lynku/contracts'
 const checks = [
   ['session', value => { if (value.role !== 'owner' || !Array.isArray(value.capabilities)) throw Error('Unexpected operator session') }],
   ['overview', value => { for (const key of ['users', 'verifiedUsers', 'posts', 'openCases']) { const metric = value.metrics?.[key]; if (!metric || metric.state !== 'available' || !Number.isSafeInteger(metric.value)) throw Error(`Unavailable metric: ${key}`) } }],
   ['listPosts', parseAdminPostPage], ['listUsers', parseAdminUserPage], ['listCategories', parseManagedCategoryList],
-  ['listCases', value => { if (!Array.isArray(value.cases)) throw Error('Invalid cases') }],
+  ['listCases', parseAdminCasePage],
   ['listOperations', value => { if (!Number.isSafeInteger(value.pendingNotifications) || !Number.isSafeInteger(value.pendingProfiles)) throw Error('Invalid operation counts') }],
   ['listAudit', parseAdminAuditPage],
   ['listMembers', value => parseAdminMembers(value.members)],

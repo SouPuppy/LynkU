@@ -1,4 +1,5 @@
 import * as cloud from 'wx-server-sdk'
+import { readAdminCases, AdminCaseInputFailure } from '@lynku/server'
 import { readAdminAudit, readAdminAuditEvent, AdminAuditInputFailure, AdminAuditNotFound } from '@lynku/server'
 import { applyAccountRestriction } from './account-restrictions'
 import { AccountRestrictionFailure, projectAdminUser } from '@lynku/server'
@@ -15,7 +16,7 @@ import { PostGovernanceFailure } from '@lynku/server'
 import { readGovernanceComment, CommentGovernanceFailure } from '@lynku/server'
 import { applyCaseDecision } from './case-decision'
 import { readAdminOverview, readAdminUsers, AdminUserInputFailure } from '@lynku/server'
-import { authorizeAdmin, AdminAuthorizationFailure, hasAdminCapability, listAdminCategories, projectAdminCase, type AdminAuthorizationStore } from '@lynku/server'
+import { authorizeAdmin, AdminAuthorizationFailure, hasAdminCapability, listAdminCategories, type AdminAuthorizationStore } from '@lynku/server'
 import { connectDatabase, CLOUD_DATABASE_OPTIONS, text, type Row } from '../common/database'
 import { fail, ok, stableDocumentId } from '../common'
 
@@ -177,8 +178,19 @@ export async function main(event: unknown, context?: unknown) {
       }
       case 'listCases': {
         if (!hasAdminCapability(principal, 'governance:write')) return fail('当前账号没有查看治理案件的权限', 'FORBIDDEN')
-        const rows = await db.collection('governance_cases').orderBy('updatedAt', 'desc').orderBy('_id', 'desc').limit(50).get()
-        return ok({ cases: rows.data.map(projectAdminCase) })
+        return ok(await readAdminCases({ list: async (query, take) => {
+          const conditions: object[] = []
+          if (query.status !== 'all') conditions.push({ status: query.status })
+          if (query.targetType !== 'all') conditions.push({ targetType: query.targetType })
+          if (query.targetId) conditions.push({ targetId: query.targetId })
+          if (query.cursor) conditions.push(db.command.or([
+            { updatedAt: db.command.lt(query.cursor.updatedAt) },
+            { updatedAt: query.cursor.updatedAt, _id: db.command.lt(query.cursor.id) },
+          ]))
+          return (await db.collection('governance_cases').where(conditions.length ? db.command.and(conditions) : {})
+            .orderBy('updatedAt', 'desc').orderBy('_id', 'desc').limit(take)
+            .field({ _id: true, targetType: true, targetId: true, reasonCode: true, status: true, createdAt: true, updatedAt: true, 'appeal.submittedAt': true }).get()).data
+        } }, event))
       }
       case 'listOperations': {
         if (!hasAdminCapability(principal, 'operations:read')) return fail('当前账号没有查看运行状态的权限', 'FORBIDDEN')
@@ -209,6 +221,7 @@ export async function main(event: unknown, context?: unknown) {
       }
     }
   } catch (error) {
+    if (error instanceof AdminCaseInputFailure) return fail('案件筛选或翻页参数无效', 'INVALID_INPUT')
     if (error instanceof AdminAuditInputFailure) return fail('操作记录筛选或翻页参数无效', 'INVALID_INPUT')
     if (error instanceof AdminAuditNotFound) return fail('操作记录不存在', 'NOT_FOUND')
     if (error instanceof AccountRestrictionFailure) return fail(error.message, error.code)

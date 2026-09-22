@@ -1,4 +1,5 @@
 import cloudbase from '@cloudbase/js-sdk'
+import { parseAdminCaseQuery, parseAdminCasePage, type AdminCaseQuery } from '@lynku/contracts'
 import { parseAccountRestrictions, parseRestrictionChange, type RestrictionChange } from '@lynku/contracts'
 import { parseAdminMembers, parseAdminMember, parseAdminMemberChange, type AdminMemberChange } from '@lynku/contracts'
 import { AdminSessionScope } from './session-scope'
@@ -12,7 +13,6 @@ export type AdminSession = { accountId: string; capabilities: string[]; memberVe
 export type AdminCategory = ManagedCategory
 export type AdminOverview = { metrics: Record<'users' | 'verifiedUsers' | 'posts' | 'openCases', { value: number | null; state: 'available' | 'unavailable' | 'forbidden' }>; observedAt: string }
 export type AdminUser = { id: string; displayName: string; email: string; verified: boolean; role: string; createdAt: string }
-export type AdminCase = { id: string; targetType: 'post' | 'comment'; targetId: string; reason: string; status: string; createdAt: string }
 type CloudResult<T> = { code?: string; message?: string; result?: { code?: string; error?: string; data?: T } }
 const app = cloudbase.init({ env: __LYNKU_CLOUDBASE_ENV__, auth: { detectSessionInUrl: true } })
 const sessionScope = new AdminSessionScope()
@@ -183,24 +183,7 @@ function responseObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('后台返回格式异常')
   return value as Record<string, unknown>
 }
-function responseText(value: unknown, max = 128): string {
-  if (typeof value !== 'string' || !value || value.length > max) throw Error('后台返回字段异常')
-  return value
-}
-function responseDate(value: unknown): string {
-  const date = responseText(value, 30)
-  if (!Number.isFinite(Date.parse(date))) throw Error('后台返回时间异常')
-  return date
-}
-export async function listCases(): Promise<AdminCase[]> {
-  const result = responseObject(await read<unknown>('listCases'))
-  if (!Array.isArray(result.cases) || result.cases.length > 50) throw Error('案件列表异常')
-  return result.cases.map(value => {
-    const row = responseObject(value)
-    if (row.targetType !== 'post' && row.targetType !== 'comment') throw Error('案件对象异常')
-    return { id: responseText(row.id), targetType: row.targetType, targetId: responseText(row.targetId), reason: responseText(row.reason, 100), status: responseText(row.status, 32), createdAt: responseDate(row.createdAt) }
-  })
-}
+export const listCases = (input: AdminCaseQuery) => read<unknown>('listCases', parseAdminCaseQuery(input)).then(parseAdminCasePage)
 export async function loadOperations() {
   const row = responseObject(await read<unknown>('listOperations'))
   const pendingNotifications = row.pendingNotifications, pendingProfiles = row.pendingProfiles
