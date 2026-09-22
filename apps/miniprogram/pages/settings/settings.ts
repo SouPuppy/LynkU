@@ -1,7 +1,7 @@
 import { openLogin } from '../../utils/guard'
 import { openVerification } from '../../services/verification'
 import config from '../../config'
-import { legalDocumentKind } from '../../generated/contracts'
+import { legalDocumentKind } from '../../generated/contracts/index'
 // pages/settings — account settings
 import type { IUserPublic } from '../../typings/cloudbase'
 import * as session from '../../services/session'

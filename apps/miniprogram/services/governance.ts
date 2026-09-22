@@ -1,6 +1,6 @@
 import { callCloud, CloudCallError } from './cloud'
 import { createRequestId } from '../utils/util'
-import { parseReportPage, type ReportCursor } from '../generated/contracts'
+import { parseReportPage, type ReportCursor } from '../generated/contracts/index'
 export interface AppealRequest { id: string; expectedVersion: number; requestId: string; statement: string }
 export async function appealReport(request: AppealRequest): Promise<void> {
   const result = await callCloud<unknown>('governance', { ...request, action: 'appealReport' })

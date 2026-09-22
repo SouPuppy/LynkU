@@ -3,7 +3,7 @@ import { CloudCallError } from '../../services/cloud'
 import { createRequestId } from '../../utils/util'
 import * as session from '../../services/session'
 import { openLogin } from '../../utils/guard'
-import type { ReportCursor, ReportResult } from '../../generated/contracts'
+import type { ReportCursor, ReportResult } from '../../generated/contracts/index'
 type DisplayReport = ReportResult & { statusLabel: string; outcomeLabel: string; dateLabel: string }
 const outcomes = { no_violation: '未发现违规', duplicate: '重复举报', hide_post: '违规帖子已下架', remove_comment: '违规评论已移除' }
 Page({
@@ -14,7 +14,7 @@ Page({
   onShow() { this.refresh() },
   onHide() { this.clear() },
   onUnload() { this.clear() },
-  clear() { this._generation += 1; this.setData({ items: [], cursor: null, loading: false, loaded: false, error: '' }) },
+  clear() { this._generation += 1; this.setData({ items: [], cursor: null, loading: false, loaded: false, error: '', appealBusy: false }) },
   onLogin() { openLogin() },
   refresh() {
     this.clear()

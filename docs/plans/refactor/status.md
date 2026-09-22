@@ -4,6 +4,12 @@
 
 ## 上线保护 goal 实施中（2026-09-21）
 
+- 2026-09-22：帖子详情同样经governance服务触发目录模块加载失败，已随设置页修复统一为明确文件引用，不增加兼容入口。客户端回归加载器移除Node式目录回退，实际执行settings/legal/reports/post模块注册，并验证帖子详情读取当前DTO、请求失败后重试及匿名字段保护。完整`npm run check`通过298项；微信实际`npm run demo:preview`成功（dist/page-load-fix-check.log、page-load-fix-preview.log）。当前版本仍为0.2.0，无账号或云数据变更；本轮未取得真机页面运行证据，编译成功不代替设备验收。
+
+- 2026-09-22：用户提供设置页白屏日志，确切异常是`generated/contracts.js is not defined`，而非Skyline提示。修复settings/legal/governance服务及reports类型引用为明确的generated/contracts/index，并修订法律文本生成器中的同类入口。新增check-client-imports.js并纳入typecheck:client（亦进入check/CI），拦截TS能解析而微信运行时不支持的目录导入。微信实际preview通过（dist/settings-white-screen-preview.log），typecheck:client与check:runtime-config通过。自动化端口尚未连接成功，未冒充设置页运行时自动巡检通过；以用户日志定位、源码修复和实际重新编译作为当前证据。
+
+- 2026-09-22：举报人对已结案举报提出一次申诉的链路已实现：可信本人身份、事务内归属/版本检查、固定请求重试回执、保留原结论/理由、重新进入open案件；不自动恢复任何内容。小程序举报结果页新增输入/提交/重试，管理详情展示原决定和申诉理由，现有结案流程提供复核结果。governance_cases新增updatedAt/_id索引并读回；管理列表按更新顺序显示。完整check通过296项，governance/admin与静态后台部署成功，实际微信preview成功（dist/report-appeal-check.log及appeal-*-deploy/preview.log）。此为举报人异议复核，不代替被处罚作者的申诉、账号限制通知、内容恢复或完整治理生命周期；这些仍未完成。
+
 - 2026-09-22：用户明确确认当前线上后台“人工检查过OK”，记录为用户提供的页面验收，不再重复浏览器巡检；不能将此扩大成未经说明的并发/匿名越权/真机业务验收。已启动的云端只读检查完成：session、overview、listPosts、listUsers、listCategories、listCases、listOperations、listAudit、listMembers全部返回成功并通过对应结构检查，总览四项均available；证据dist/admin-read-smoke.json，工具tooling/admin-read-smoke.mjs。该检查使用有效所有者CLI身份，不修改数据，不代表普通身份越权测试。当前整体goal尚有申诉、完整运行处置等未完成要求，保持进行中。
 
 - 2026-09-22：按用户最新“快速解决发布阻塞”暂缓操作记录分页扩展，退出本轮未完成的接口变更，保留已部署的最近50条查询。修复reports.wxml第15/16行表达式中的HTML实体&amp;，改为微信表达式原生&&；扫描小程序WXML无同类实体遗留。npm run demo:preview实际微信编译成功，AppID wxba2bcb0c71a5f33d，产物dist/demo/preview.png与preview-info.json，日志dist/release-preview-fix.log。后台按用户要求复用根assets/logo.png，登录页、侧栏及favicon统一，Vite直接导入生成带hash资源，无手工复制第二份图片；网页生产构建和静态托管部署成功（dist/admin-logo-build.log、admin-logo-deploy.log）。本条证明修复编译及更新品牌图标，不代表未完成的申诉/完整上线保护已完成。

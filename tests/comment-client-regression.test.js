@@ -36,7 +36,8 @@ function runtime() {
       require: spec => {
         if (!spec.startsWith('.')) return require(spec)
         const target = path.resolve(path.dirname(filename), spec)
-        const found = [target + '.ts', target + '.js', path.join(target, 'index.ts')].find(fs.existsSync)
+        // WeChat requires an explicit file; Node's directory/index fallback hides page crashes.
+        const found = [target + '.ts', target + '.js'].find(fs.existsSync)
         if (!found) throw new Error(`Missing dependency: ${spec}`)
         return load(found)
       },
@@ -53,6 +54,42 @@ const comment = {
 }
 const profile = { profile_version: 0, _openid: 'viewer', verified: true, nickname: 'Viewer', avatar_url: '', role: 'user', email: '' }
 const tick = () => new Promise(resolve => setImmediate(resolve))
+
+test('settings, legal, reports and post register with WeChat file-only module resolution', () => {
+  for (const name of ['settings', 'legal', 'reports', 'post']) {
+    const r = runtime()
+    r.load(`apps/miniprogram/pages/${name}/${name}.ts`)
+    assert.ok(r.env.page, `${name} must register its page`)
+  }
+})
+
+test('post detail loads current API data and can retry after a request failure', async () => {
+  const r = runtime()
+  r.load('apps/miniprogram/pages/post/post.ts')
+  const page = r.env.page
+  page.setData({ postId: 'post' })
+  let fail = true
+  r.wx.cloud.callFunction = async ({ name, data }) => {
+    assert.equal(name, 'posts')
+    assert.equal(data.action, 'get')
+    assert.equal(data.post_id, 'post')
+    if (fail) throw new Error('Network offline')
+    return { result: { data: { post: {
+      _id: 'post', title: 'Title', content: 'Body', category_id: '', category: null,
+      anonymous: true, is_mine: false, status: 'published', revision: 1,
+      view_count: 1, comment_count: 0, author: { nickname: '匿名用户', avatar_url: '' },
+      created_at: '2026-09-21T00:00:00.000Z', updated_at: '2026-09-21T00:00:00.000Z',
+    } } } }
+  }
+  await page.loadPost()
+  assert.equal(page.data.state, 'error')
+  fail = false
+  await page.loadPost()
+  assert.equal(page.data.state, 'loaded')
+  assert.equal(page.data.post.content, 'Body')
+  assert.equal(page.data.post._openid, undefined)
+  page.onUnload()
+})
 
 test('real-name comment and reply author links use the public DTO identity field', () => {
   const r = runtime()

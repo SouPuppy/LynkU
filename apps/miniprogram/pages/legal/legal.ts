@@ -1,5 +1,5 @@
-import { legalDocumentKind } from '../../generated/contracts'
-import type { LegalDocument } from '../../generated/contracts'
+import { legalDocumentKind } from '../../generated/contracts/index'
+import type { LegalDocument } from '../../generated/contracts/index'
 import { legalPolicies } from '../../generated/legal-policies'
 import { APP_VERSION } from '../../generated/version'
 import { callCloud } from '../../services/cloud'

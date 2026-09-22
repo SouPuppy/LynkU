@@ -95,7 +95,7 @@ export function generateLegalBundle(directory = root, checkOnly = false) {
   }]))
   const outputs = [
     ['apps/miniprogram/generated/legal-policies.ts', '// Generated from config/project.json and community-policies.md.\n'
-      + "import type { LegalBundle } from './contracts'\n" + `export const legalPolicies: LegalBundle = ${JSON.stringify(bundle, null, 2)}\n`],
+      + "import type { LegalBundle } from './contracts/index'\n" + `export const legalPolicies: LegalBundle = ${JSON.stringify(bundle, null, 2)}\n`],
     ['dist/legal/manifest.json', JSON.stringify(manifest, null, 2) + '\n'],
     ['apps/cloudfunctions/common/generated/legal-manifest.ts', '// Generated from the same source as the offline policy pages.\n'
       + `export const legalManifest = ${JSON.stringify(manifest, null, 2)} as const\n`],

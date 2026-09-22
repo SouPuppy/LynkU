@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "typecheck": "npm run typecheck:client && npm run typecheck:contracts && npm run typecheck:server && npm run typecheck:adapters && npm run typecheck:tests",
-    "typecheck:client": "node tooling/build-client-contracts.js && tsc --noEmit -p apps/miniprogram/tsconfig.json",
+    "typecheck:client": "node tooling/build-client-contracts.js && node tooling/check-client-imports.js && tsc --noEmit -p apps/miniprogram/tsconfig.json",
     "typecheck:contracts": "tsc --noEmit -p packages/contracts/tsconfig.json",
     "typecheck:server": "npm run build:contracts && tsc --noEmit -p packages/server/tsconfig.json",
     "typecheck:adapters": "npm run build:server && tsc --noEmit -p packages/adapters/tsconfig.json",
