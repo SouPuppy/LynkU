@@ -4,6 +4,8 @@
 
 ## 上线保护 goal 实施中（2026-09-21）
 
+- 2026-09-22：设置与权限接入真实协议正文、公开联系信息、备案展示状态、版本/摘要/生效日期及网页对管理云函数版本核对。四份文档使用 shadcn Sheet 与 settings?document 深链接；读取失败和不一致独立显示，不将管理函数版本冒充 identity/users 或微信正式发布版本。文案由既有唯一构建链生成管理端产物；新增生成漂移失败样本、严格 manifest 日期/缺失校验。完整 check 通过 313 项（dist/admin-legal-settings-check.log），随后扩展的 6 项法律构建/契约测试通过。admin 和 /admin 网页已部署，四个线上文件 SHA256 与本地产物一致（dist/admin-legal-settings-hosting-verified.json）。真实 CLI 管理身份本次取得成功，12 项只读调用全部通过，覆盖新 readLegalManifest 与总览/内容/用户/分类/案件/两种任务/审计/成员（dist/admin-read-smoke.json、admin-legal-settings-smoke.log）；不等于浏览器登录验收。浏览器清单能发现后台，但绑定该标签仍超时，实际点击及视觉验收未完成。完整后台仍需继续成员加入、内容处置/恢复、权利请求执行及全链路设备/浏览器验收，本次不标记总目标完成。
+
 - 2026-09-22：按用户最新规则重构匿名私信：每次新发起带独立 initiation_id，原请求重试复用；同一来源同一双方再次发起仍分离。实名资料入口读取发起者匿名模式；消息列表明确恢复既有通道，不受后续匿名开关影响。匿名目录只公开 thread_id，移除来源及可跨通道关联的账户对屏蔽 ID/查询接口；消息 ID 不再以匿名账号作公开哈希输入，接收方不收到对方原始 msg_id。历史/同步/已读仍按独立通道，最终发送事务重验屏蔽。旧请求格式直接拒绝，既有账号/实名会话不改。结构图与产品规则在 behavior-contract.md，协议及切换边界在 contracts-and-data.md。完整 npm run check 通过 313 项（dist/anonymous-check.log）；同来源多通道、重复请求、历史/未读/回执、越权、屏蔽最终写入和客户端身份模式测试通过。微信真实 preview 成功（dist/anonymous-preview.log）。线上只读核对匿名 messages/conversation_entries 均为 0，未清理真实数据（dist/anonymous-cloud-inventory.json）；messages 云函数已部署成功（dist/anonymous-messages-deploy.log）；客户端需使用本次新版包，未提交微信正式发布。本轮两账号真机往返及真实云事务冲突尚未执行。
 
 - 2026-09-22：分类新增接通真实管理接口：服务端生成 ID、事务内权限/唯一名称/100 项上限、幂等回执与审计；旧 categories 创建和 seed 路由退出。npm run check 通过 311 项；categories、admin、静态网页部署成功，核对分类唯一索引。备份校验后初始化 category_catalog/total=5，原五项分类保持不变（dist/category-catalog/2026-09-22T11-08-04.609Z）。未创建测试用真实分类，新版浏览器交互尚未实测。

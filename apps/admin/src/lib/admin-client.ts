@@ -1,3 +1,4 @@
+import { parseLegalManifest } from '@lynku/contracts'
 import cloudbase from '@cloudbase/js-sdk'
 import { parseCategoryCreation, type CategoryCreation } from '@lynku/contracts'
 import { parseOperationRetry, parseOperationRetryReceipt, type OperationRetry } from '@lynku/contracts'
@@ -239,3 +240,5 @@ export async function readAudit(id: string) {
   return event
 }
 import { parseAdminAuditQuery, parseAdminAuditPage, parseAdminAuditEvent, type AdminAuditQuery } from '@lynku/contracts'
+
+export async function readLegalManifest() { return parseLegalManifest(await read<unknown>('readLegalManifest')) }

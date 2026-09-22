@@ -92,6 +92,8 @@ export function generateLegalBundle(directory = root, checkOnly = false) {
     version: doc.version, hash: doc.hash, status: doc.status, effectiveAt: doc.effectiveAt,
   }]))
   const outputs = [
+    ['apps/admin/src/generated/legal-policies.ts', '// Generated from config/project.json and community-policies.md. Do not edit.\n'
+      + "import type { LegalBundle } from '@lynku/contracts'\n" + `export const legalPolicies: LegalBundle = ${JSON.stringify(bundle, null, 2)}\n`],
     ['apps/miniprogram/generated/legal-policies.ts', '// Generated from config/project.json and community-policies.md.\n'
       + "import type { LegalBundle } from './contracts/index'\n" + `export const legalPolicies: LegalBundle = ${JSON.stringify(bundle, null, 2)}\n`],
     ['dist/legal/manifest.json', JSON.stringify(manifest, null, 2) + '\n'],

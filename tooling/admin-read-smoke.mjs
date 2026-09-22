@@ -2,9 +2,10 @@ import { spawnSync } from 'node:child_process'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { root, project } from './cloudbase-api.mjs'
-import { parseAdminPostPage, parseAdminUserPage, parseManagedCategoryList, parseAdminMembers, parseAdminAuditPage, parseAdminCasePage, parseOperationPage } from '@lynku/contracts'
+import { parseLegalManifest, parseAdminPostPage, parseAdminUserPage, parseManagedCategoryList, parseAdminMembers, parseAdminAuditPage, parseAdminCasePage, parseOperationPage } from '@lynku/contracts'
 const checks = [
   ['session', value => { if (value.role !== 'owner' || !Array.isArray(value.capabilities)) throw Error('Unexpected operator session') }],
+  ['readLegalManifest', parseLegalManifest],
   ['overview', value => { for (const key of ['users', 'verifiedUsers', 'posts', 'openCases']) { const metric = value.metrics?.[key]; if (!metric || metric.state !== 'available' || !Number.isSafeInteger(metric.value)) throw Error(`Unavailable metric: ${key}`) } }],
   ['listPosts', parseAdminPostPage], ['listUsers', parseAdminUserPage], ['listCategories', parseManagedCategoryList],
   ['listCases', parseAdminCasePage],

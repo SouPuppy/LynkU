@@ -8,6 +8,7 @@ import ts from 'typescript'
 import { createRequire } from 'node:module'
 import { compileLegalBundle, generateLegalBundle } from '../tooling/build-legal-policies.mjs'
 import { validateLegalMetadata } from '../tooling/legal-metadata.mjs'
+import { parseLegalManifest } from '@lynku/contracts'
 
 const config = JSON.parse(fs.readFileSync(new URL('../config/project.json', import.meta.url), 'utf8'))
 const source = fs.readFileSync(new URL('../docs/product/community-policies.md', import.meta.url), 'utf8')
@@ -110,4 +111,23 @@ test('client articles and server version manifest use identical hashes; check mo
   fs.writeFileSync(file, 'tampered')
   assert.throws(() => generateLegalBundle(directory, true), /drift/)
   assert.equal(fs.readFileSync(file, 'utf8'), 'tampered')
+  generateLegalBundle(directory)
+  const adminFile = path.join(directory, 'apps/admin/src/generated/legal-policies.ts')
+  assert.match(fs.readFileSync(adminFile, 'utf8'), new RegExp(bundle.documents.privacy.hash))
+  fs.writeFileSync(adminFile, 'independent admin copy')
+  assert.throws(() => generateLegalBundle(directory, true), /drift/)
+  assert.equal(fs.readFileSync(adminFile, 'utf8'), 'independent admin copy')
+})
+
+test('admin manifest boundary rejects incomplete releases and impossible dates, projecting only public metadata', () => {
+  const bundle = compileLegalBundle(config, source)
+  const manifest = Object.fromEntries(Object.entries(bundle.documents).map(([kind, doc]) => [kind, {
+    version: doc.version, hash: doc.hash, status: doc.status, effectiveAt: doc.effectiveAt,
+  }]))
+  assert.deepEqual(parseLegalManifest(manifest), manifest)
+  assert.deepEqual(parseLegalManifest({ ...manifest, secret: 'not-public', terms: { ...manifest.terms, secret: 'not-public' } }), manifest)
+  for (const patch of [{ privacy: null }, { privacy: { ...manifest.privacy, hash: 'bad' } },
+    { privacy: { ...manifest.privacy, effectiveAt: '2026-02-30' } }, { privacy: { ...manifest.privacy, status: 'published' } }]) {
+    assert.throws(() => parseLegalManifest({ ...manifest, ...patch }))
+  }
 })

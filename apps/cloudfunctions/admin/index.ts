@@ -1,3 +1,4 @@
+import { legalManifest } from '../common/generated/legal-manifest'
 import * as cloud from 'wx-server-sdk'
 import { applyCategoryCreation } from './category-create'
 import { applyOperationRetry } from './operation-retry'
@@ -27,11 +28,12 @@ import { fail, ok, stableDocumentId } from '../common'
 cloud.init()
 const db = connectDatabase(cloud.database(CLOUD_DATABASE_OPTIONS))
 
-type Action = 'createCategory' | 'retryOperation' | 'listOperationTasks' | 'readOperationTask' | 'readAudit' | 'readUserProtection' | 'updateUserProtection' | 'listMembers' | 'updateMember' | 'session' | 'overview' | 'listCategories' | 'updateCategory' | 'listPosts' | 'readPost' | 'listComments' | 'readComment' | 'listUsers' | 'listCases' | 'readCase' | 'closeCase' | 'listOperations' | 'listAudit'
+type Action = 'readLegalManifest' | 'createCategory' | 'retryOperation' | 'listOperationTasks' | 'readOperationTask' | 'readAudit' | 'readUserProtection' | 'updateUserProtection' | 'listMembers' | 'updateMember' | 'session' | 'overview' | 'listCategories' | 'updateCategory' | 'listPosts' | 'readPost' | 'listComments' | 'readComment' | 'listUsers' | 'listCases' | 'readCase' | 'closeCase' | 'listOperations' | 'listAudit'
 
 function actionOf(value: unknown): Action | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const action = (value as Row).action
+  if (action === 'readLegalManifest') return action
   if (action === 'createCategory') return action
   if (action === 'retryOperation') return action
   if (action === 'listOperationTasks' || action === 'readOperationTask') return action
@@ -95,6 +97,7 @@ export async function main(event: unknown, context?: unknown) {
   try {
     const principal = await authorizeAdmin(authorizationStore, webUid)
     switch (action) {
+      case 'readLegalManifest': return ok(legalManifest)
       case 'createCategory': return ok(await applyCategoryCreation(db, webUid, event))
       case 'retryOperation': return ok(await applyOperationRetry(db, webUid, event))
       case 'readUserProtection': {
