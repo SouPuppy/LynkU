@@ -118,7 +118,7 @@
 
 ### 管理端用户列表
 
-`admin.listUsers` 每请求验证可信 Web 身份与 `users:read` 能力。请求为昵称字面子串 `query`（最多80字符）、认证状态 `verification`（all/verified/guest）、`limit`（1–50，默认25）与可空 `cursor`。服务端先筛选，再按 `created_at DESC, _id DESC` 查询 limit+1 条；游标绑定昵称和认证筛选，改变筛选必须从首页开始。只返回显式用户摘要与 nextCursor，邮箱脱敏，不返回 OPENID 或匿名关联。列表不构成历史快照：翻页期间改变昵称／认证状态的账号需刷新首页重新获取。
+`admin.listUsers` 每请求验证可信 Web 身份与 `users:read` 能力。请求为昵称字面子串 `query`（最多80字符）、认证状态 `verification`（all/verified/guest）、`limit`（1–50，默认25）与可空 `cursor`。服务端先筛选，再按 `created_at DESC, _id DESC` 查询 limit+1 条；游标绑定昵称和认证筛选，改变筛选必须从首页开始。列表返回显式用户摘要、稳定内部账号编号与 nextCursor，邮箱继续脱敏，不返回 OPENID 或匿名关联。选中单条账号的受限能力详情才可返回该账号的完整学校邮箱，仍不返回 OPENID、匿名映射、私信或草稿。列表不构成历史快照：翻页期间改变昵称／认证状态的账号需刷新首页重新获取。
 
 上线前应用 users 的 `(created_at, _id)`、`(verified, created_at, _id)` 索引，并验证实际 SDK 的 Date 比较、同时间分页与昵称正则字面转义；不为此重建用户或修改认证。昵称子串查询可能扫描匹配项，需要在实际规模测量查询延迟；本地有界返回不代表云端性能已验收。
 

@@ -10,6 +10,9 @@ import { Skeleton } from '../components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from '../components/ui/table'
 
+const roleLabel: Record<string, string> = { admin: '业务管理员', user: '普通用户' }
+function accountReference(id: string) { return id.length <= 14 ? id : `${id.slice(0, 8)}…${id.slice(-6)}` }
+
 export function UsersPanel({ canEdit = false }: { canEdit?: boolean }) {
   const [selected, select] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -39,8 +42,8 @@ export function UsersPanel({ canEdit = false }: { canEdit?: boolean }) {
     <Card className="overflow-hidden py-0 shadow-none">
       {error ? <p role="alert" className="p-6 text-sm text-destructive">{error}</p> : !page ? <div role="status" className="grid gap-4 p-6"><span className="sr-only">正在加载用户</span>{[0, 1, 2].map(key => <Skeleton key={key} className="h-12" />)}</div>
         : page.items.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">没有符合条件的账号。</p>
-        : <Table><TableHeader className="bg-muted/50"><TableRow><TableHead className="pl-5">用户</TableHead><TableHead>学校邮箱</TableHead><TableHead>认证状态</TableHead><TableHead className="pr-5">注册时间</TableHead></TableRow></TableHeader>
-          <TableBody>{page.items.map(user => <TableRow key={user.id} className="h-16"><TableCell className="pl-5 font-medium"><Button variant="link" className="p-0" onClick={() => select(user.id)}>{user.displayName}</Button></TableCell><TableCell className="text-muted-foreground">{user.email || '未绑定'}</TableCell><TableCell><Badge variant={user.verified ? 'secondary' : 'outline'}>{user.verified ? '学校已认证' : '游客'}</Badge></TableCell><TableCell className="pr-5 text-xs tabular-nums text-muted-foreground">{new Date(user.createdAt).toLocaleString('zh-CN')}</TableCell></TableRow>)}</TableBody>
+        : <Table><TableHeader className="bg-muted/50"><TableRow><TableHead className="pl-5">用户</TableHead><TableHead>账号编号</TableHead><TableHead>学校邮箱</TableHead><TableHead>认证状态</TableHead><TableHead>角色</TableHead><TableHead className="pr-5">注册时间</TableHead></TableRow></TableHeader>
+          <TableBody>{page.items.map(user => <TableRow key={user.id} className="h-16"><TableCell className="pl-5 font-medium"><Button variant="link" className="h-auto p-0 text-left" onClick={() => select(user.id)}>{user.displayName}<span className="block text-xs font-normal text-muted-foreground">查看账号详情与受限能力</span></Button></TableCell><TableCell className="font-mono text-xs text-muted-foreground" title={user.id}>{accountReference(user.id)}</TableCell><TableCell className="text-muted-foreground">{user.email || '未绑定'}</TableCell><TableCell><Badge variant={user.verified ? 'secondary' : 'outline'}>{user.verified ? '学校已认证' : '游客'}</Badge></TableCell><TableCell className="text-xs text-muted-foreground">{roleLabel[user.role] || user.role}</TableCell><TableCell className="pr-5 text-xs tabular-nums text-muted-foreground">{new Date(user.createdAt).toLocaleString('zh-CN')}</TableCell></TableRow>)}</TableBody>
         </Table>}
     </Card>
     <div className="mt-4 flex items-center justify-between gap-3"><p className="text-xs text-muted-foreground">第 {history.length + 1} 页 · 每页最多 25 个账号</p><div className="flex gap-2">

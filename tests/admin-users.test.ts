@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readAdminUsers, AdminUserInputFailure } from '@lynku/server'
-import { adminUserPrecedes, parseAdminUserPage } from '@lynku/contracts'
+import { readAdminUsers, AdminUserInputFailure, projectAdminUserDetail } from '@lynku/server'
+import { adminUserPrecedes, parseAdminUserDetail, parseAdminUserPage } from '@lynku/contracts'
 
 const records = Array.from({ length: 53 }, (_, index) => ({ _id: String(100 - index), nickname: 'Campus User', verified: true, email: 'private@nottingham.edu.cn', role: 'user', created_at: new Date('2026-09-22T00:00:00.000Z'), _openid: 'private-wechat' }))
 test('admin users traverse same-time records without duplicates and expose only safe summaries', async () => {
@@ -29,4 +29,12 @@ test('admin users reject wrong database scope, broken verification and malformed
   await assert.rejects(readAdminUsers({ list: async () => records.slice(0, 1) }, { verification: 'guest' }))
   await assert.rejects(readAdminUsers({ list: async () => [{ ...records[0], verified: 'true' }] }, {}))
   assert.throws(() => parseAdminUserPage({ items: [], nextCursor: { id: 'x', scope: '', createdAt: '2026-09-22T00:00:00.000Z' } }))
+})
+test('selected user detail exposes the school address without exposing OpenID or accepting malformed email', () => {
+  const detail = projectAdminUserDetail(records[0]!)
+  assert.equal(detail.email, 'p***@nottingham.edu.cn')
+  assert.equal(detail.contactEmail, 'private@nottingham.edu.cn')
+  assert.equal(JSON.stringify(detail).includes('private-wechat'), false)
+  assert.throws(() => projectAdminUserDetail({ ...records[0], email: 'not an email' }))
+  assert.throws(() => parseAdminUserDetail({ ...detail, contactEmail: 'not an email' }))
 })

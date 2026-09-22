@@ -11,7 +11,7 @@ import { AdminSessionScope } from './session-scope'
 import { parseCaseDetail, parseCloseCaseRequest, type CloseCaseRequest } from '@lynku/contracts'
 import { parseAdminCommentPage, parseAdminCommentDetail, type CommentHistoryCursor } from '@lynku/contracts'
 import { parseAdminPostPage, parseAdminPostQuery, parseAdminPostDetail, parseAdminPostId, type AdminPostQuery } from '@lynku/contracts'
-import { parseAdminUserPage, parseAdminUserQuery, type AdminUserQuery } from '@lynku/contracts'
+import { parseAdminUserDetail, parseAdminUserPage, parseAdminUserQuery, type AdminUserQuery } from '@lynku/contracts'
 import { parseManagedCategoryList, parseCategoryChange, parseCategoryChangeReceipt, type ManagedCategory, type CategoryChange } from '@lynku/contracts'
 
 export type AdminSession = { accountId: string; capabilities: string[]; memberVersion: number; role: 'owner' | 'community' | 'viewer' }
@@ -80,7 +80,7 @@ export async function listMembers() {
 }
 export async function readUserProtection(accountId: string) {
   const result = await read<{ user: unknown; restrictions: unknown }>('readUserProtection', { accountId })
-  const user = parseAdminUserPage({ items: [result.user], nextCursor: null }).items[0]!
+  const user = parseAdminUserDetail(result.user)
   if (user.id !== accountId) throw Error('用户详情不匹配')
   return { user, restrictions: parseAccountRestrictions(result.restrictions) }
 }

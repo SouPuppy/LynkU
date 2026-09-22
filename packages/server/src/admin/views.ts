@@ -1,4 +1,4 @@
-import { parseAdminPostSummary, parseAdminCaseSummary, type AdminPostSummary, type AdminCaseSummary } from '@lynku/contracts'
+import { parseAdminPostSummary, parseAdminCaseSummary, parseAdminUserDetail, type AdminPostSummary, type AdminCaseSummary, type AdminUserDetail } from '@lynku/contracts'
 export type AdminPostView = AdminPostSummary
 export interface AdminUserView { id: string; displayName: string; email: string; verified: boolean; role: string; createdAt: string }
 
@@ -43,6 +43,14 @@ export function projectAdminUser(value: unknown): AdminUserView {
   if (typeof source.verified !== 'boolean') throw Error('Invalid administration verification state')
   return { id: text(source._id, 128), displayName: text(source.nickname, 100), email: maskEmail(source.email), verified: source.verified === true,
     role: text(source.role, 32), createdAt: timestamp(source.created_at) }
+}
+
+/** Full school email is available only after a manager intentionally opens one user record. */
+export function projectAdminUserDetail(value: unknown): AdminUserDetail {
+  const source = row(value)
+  const summary = projectAdminUser(source)
+  const contactEmail = source.email === undefined || source.email === null ? '' : text(source.email, 254)
+  return parseAdminUserDetail({ ...summary, contactEmail })
 }
 
 export function projectAdminCase(value: unknown): AdminCaseSummary {

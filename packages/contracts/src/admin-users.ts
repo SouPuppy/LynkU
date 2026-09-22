@@ -1,4 +1,6 @@
 export interface AdminUserSummary { id: string; displayName: string; email: string; verified: boolean; role: string; createdAt: string }
+/** A selected user record may include their school address. It is never returned by the list endpoint. */
+export interface AdminUserDetail extends AdminUserSummary { contactEmail: string }
 export interface AdminUserCursor { scope: string; id: string; createdAt: string }
 export interface AdminUserQuery { query: string; verification: 'all' | 'verified' | 'guest'; limit: number; cursor: AdminUserCursor | null }
 export interface AdminUserPage { items: AdminUserSummary[]; nextCursor: AdminUserCursor | null }
@@ -41,6 +43,13 @@ export function parseAdminUserPage(value: unknown): AdminUserPage {
   if (items.some((item, index) => !item.id || index > 0 && !adminUserPrecedes(items[index - 1]!, item))
     || nextCursor && (!last || last.id !== nextCursor.id || last.createdAt !== nextCursor.createdAt)) throw Error('Invalid admin user page order')
   return { items, nextCursor }
+}
+export function parseAdminUserDetail(value: unknown): AdminUserDetail {
+  const row = object(value)
+  const summary = parseAdminUserPage({ items: [row], nextCursor: null }).items[0]!
+  const contactEmail = text(row.contactEmail ?? '', 254)
+  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) throw Error('Invalid administrator contact email')
+  return { ...summary, contactEmail }
 }
 export function adminUserPrecedes(before: { id: string; createdAt: string }, after: { id: string; createdAt: string }): boolean {
   return before.createdAt > after.createdAt || before.createdAt === after.createdAt && before.id > after.id

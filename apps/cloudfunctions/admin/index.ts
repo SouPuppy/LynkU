@@ -7,7 +7,7 @@ import { readOperationTasks, readOperationTask, AdminOperationFailure } from '@l
 import { readAdminCases, AdminCaseInputFailure } from '@lynku/server'
 import { readAdminAudit, readAdminAuditEvent, AdminAuditInputFailure, AdminAuditNotFound } from '@lynku/server'
 import { applyAccountRestriction } from './account-restrictions'
-import { AccountRestrictionFailure, projectAdminUser } from '@lynku/server'
+import { AccountRestrictionFailure, projectAdminUserDetail } from '@lynku/server'
 import { parseAccountRestrictions } from '@lynku/contracts'
 import { applyMemberChange } from './member-change'
 import { AdminMemberChangeFailure } from '@lynku/server'
@@ -109,7 +109,7 @@ export async function main(event: unknown, context?: unknown) {
         if (typeof id !== 'string' || !id || id.length > 128 || id.trim() !== id) return fail('账号参数无效', 'INVALID_INPUT')
         const row = (await db.collection('users').doc(id).get()).data
         if (!row) return fail('账号不存在', 'NOT_FOUND')
-        return ok({ user: projectAdminUser(row), restrictions: parseAccountRestrictions(row.restrictions) })
+        return ok({ user: projectAdminUserDetail(row), restrictions: parseAccountRestrictions(row.restrictions) })
       }
       case 'updateUserProtection': return ok(await applyAccountRestriction(db, webUid, event))
       case 'listMembers': {
