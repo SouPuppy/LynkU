@@ -14,7 +14,7 @@
     { "name": "notification_outbox", "clientPermission": "admin-only", "indexes": [{ "fields": ["status", "next_attempt_at"] }, { "fields": ["status", "lease_until"] }, { "fields": ["status", "created_at"] }] },
     { "name": "profile_outbox", "clientPermission": "admin-only", "indexes": [{ "fields": ["status", "next_attempt_at"] }, { "fields": ["status", "lease_until"] }, { "fields": ["status", "created_at"] }] },
     { "name": "categories", "clientPermission": "admin-only", "indexes": [{ "fields": ["status", "sort_order", "_id"] }, { "fields": ["sort_order", "_id"] }, { "fields": ["name"], "unique": true }] },
-    { "name": "audit_events", "clientPermission": "admin-only", "indexes": [{ "fields": ["action", "at"] }] },
+    { "name": "audit_events", "clientPermission": "admin-only", "indexes": [{ "fields": ["action", "at"] }, { "fields": ["at", "_id"] }, { "fields": ["action", "at", "_id"] }, { "fields": ["actor", "at", "_id"] }, { "fields": ["target", "at", "_id"] }, { "fields": ["caseId", "at", "_id"] }] },
     { "name": "drafts", "clientPermission": "admin-only", "indexes": [{ "fields": ["_openid", "updated_at", "_id"] }] },
     { "name": "draft_counters", "clientPermission": "admin-only", "documentId": "hashed owner identifier" },
     { "name": "email_verifications", "clientPermission": "admin-only", "documentId": "hashed owner; one active challenge per WeChat account" },

@@ -70,7 +70,7 @@ export const ACTION_ACCESS = Object.freeze({
   governance: Object.freeze({ appealReport: 'account', submitReport: 'account', readReport: 'account', listReports: 'account' }),
   // Web administration uses CloudBase's trusted Web UID and a server-owned
   // admin_members binding. It deliberately cannot pass through withAuth.
-  admin: Object.freeze({ readUserProtection: 'web-admin', updateUserProtection: 'web-admin', listMembers: 'web-admin', updateMember: 'web-admin', session: 'web-admin', overview: 'web-admin', listCategories: 'web-admin', updateCategory: 'web-admin', listPosts: 'web-admin', readPost: 'web-admin', listComments: 'web-admin', listUsers: 'web-admin', listCases: 'web-admin', readCase: 'web-admin', readComment: 'web-admin', closeCase: 'web-admin', listOperations: 'web-admin', listAudit: 'web-admin' }),
+  admin: Object.freeze({ readUserProtection: 'web-admin', updateUserProtection: 'web-admin', listMembers: 'web-admin', updateMember: 'web-admin', session: 'web-admin', overview: 'web-admin', listCategories: 'web-admin', updateCategory: 'web-admin', listPosts: 'web-admin', readPost: 'web-admin', listComments: 'web-admin', listUsers: 'web-admin', listCases: 'web-admin', readCase: 'web-admin', readComment: 'web-admin', closeCase: 'web-admin', listOperations: 'web-admin', listAudit: 'web-admin', readAudit: 'web-admin' }),
 })
 
 export async function authorizeAction(db: AccountLookup, openid: string, functionName: string, action: unknown): Promise<Authorization> {

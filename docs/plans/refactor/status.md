@@ -4,6 +4,8 @@
 
 ## 上线保护 goal 实施中（2026-09-21）
 
+- 2026-09-22：后台操作记录退出最近50条截断，新增严格DTO、按(at,_id)倒序游标分页及动作/操作者/目标精确筛选；shadcn列表与只读Sheet显示理由、结果、请求与版本，筛选/页位置/详情进入URL。缺失字段显示未记录，不暴露举报人或匿名映射。新增readAudit逐请求audit:read鉴权，未提供旧events协议适配。完整check通过300项（dist/admin-audit-check.log），新增57条同时间分页、游标筛选绑定、投影隐私及异常验证。发现举报创建审计时间原为字符串，governance统一写数据库Date；迁移工具默认dry-run、备份校验、条件更新及检查点，真实库核对0条、无需改数据。5个审计索引已应用读回，governance/admin及静态后台部署成功；部署初期CLI身份未就绪，随后明确环境重新验证九类读取全部通过，审计筛选/NOT_FOUND/INVALID_INPUT真实返回通过（dist/admin-audit-cloud-smoke.json）。浏览器连接超时，本轮没有新增页面点击验收；时间范围筛选、完整运行任务处置、成员新增等完整目标仍未全部完成。共享工作区另有协议配置及版本提交，未覆盖它们，本次检查证据仅对应本批验证时源码。
+
 - 2026-09-22：帖子详情同样经governance服务触发目录模块加载失败，已随设置页修复统一为明确文件引用，不增加兼容入口。客户端回归加载器移除Node式目录回退，实际执行settings/legal/reports/post模块注册，并验证帖子详情读取当前DTO、请求失败后重试及匿名字段保护。完整`npm run check`通过298项；微信实际`npm run demo:preview`成功（dist/page-load-fix-check.log、page-load-fix-preview.log）。当前版本仍为0.2.0，无账号或云数据变更；本轮未取得真机页面运行证据，编译成功不代替设备验收。
 
 - 2026-09-22：用户提供设置页白屏日志，确切异常是`generated/contracts.js is not defined`，而非Skyline提示。修复settings/legal/governance服务及reports类型引用为明确的generated/contracts/index，并修订法律文本生成器中的同类入口。新增check-client-imports.js并纳入typecheck:client（亦进入check/CI），拦截TS能解析而微信运行时不支持的目录导入。微信实际preview通过（dist/settings-white-screen-preview.log），typecheck:client与check:runtime-config通过。自动化端口尚未连接成功，未冒充设置页运行时自动巡检通过；以用户日志定位、源码修复和实际重新编译作为当前证据。

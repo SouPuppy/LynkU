@@ -60,7 +60,7 @@ async function report(principal: Row | undefined, event: unknown) {
     run: work => db.runTransaction(transaction => work({
       existing: async id => (await transaction.collection('governance_cases').doc(id).get()).data,
       put: async (id, row) => { const { _id, ...data } = row; await transaction.collection('governance_cases').doc(id).set({ data }) },
-      audit: async (id, row) => { const { _id, ...data } = row; await transaction.collection('audit_events').doc(id).set({ data }) },
+      audit: async (id, row) => { const { _id, ...data } = row; await transaction.collection('audit_events').doc(id).set({ data: { ...data, at: new Date(text(row.at)) } }) },
     })),
   }
   try { return ok(await submitReport(store, reporterAccountId, event)) } catch (error) {

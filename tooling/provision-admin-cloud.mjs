@@ -4,15 +4,18 @@ import { createHash } from 'node:crypto'
 import { cloudApi, root, project } from './cloudbase-api.mjs'
 const schema = JSON.parse(readFileSync(path.join(root, 'config/cloudbase-schema.json'), 'utf8'))
 const apply = process.argv.includes('--apply')
+const collectionArgument = process.argv.find(value => value.startsWith('--collection='))?.slice('--collection='.length)
+const selectedCollections = collectionArgument ? schema.collections.filter(item => item.name === collectionArgument) : schema.collections
+if (!selectedCollections.length) throw Error('Requested schema collection does not exist')
 const directory = path.join(root, 'dist/admin-cloud-schema', project.cloudEnvironment)
 mkdirSync(directory, { recursive: true })
 const tables = cloudApi('DescribeTables', { MgoLimit: 100 })
 if (!Array.isArray(tables.Tables) || tables.Pager?.Total !== tables.Tables.length) throw Error('Cloud table inventory is incomplete')
 const existing = new Set(tables.Tables.map(table => table.TableName))
 const report = { environment: project.cloudEnvironment, apply, collections: [], completed: false }
-function save() { writeFileSync(path.join(directory, apply ? 'applied.json' : 'plan.json'), JSON.stringify(report, null, 2)) }
+function save() { writeFileSync(path.join(directory, `${collectionArgument ? `${collectionArgument}-` : ''}${apply ? 'applied.json' : 'plan.json'}`), JSON.stringify(report, null, 2)) }
 function sameKeys(a, b) { return JSON.stringify(a.map(key => [key.Name, String(key.Direction)])) === JSON.stringify(b.map(key => [key.Name, String(key.Direction)])) }
-for (const collection of schema.collections) {
+for (const collection of selectedCollections) {
   if (collection.clientPermission !== 'admin-only') throw Error(`Unsupported ACL policy for ${collection.name}`)
   const existed = existing.has(collection.name)
   let info = existed ? cloudApi('DescribeTable', { TableName: collection.name }) : { Indexes: [] }
