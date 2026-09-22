@@ -21,7 +21,8 @@ export function projectMessage(value: unknown, conversation: AuthorizedConversat
   } else if (context !== undefined && context !== null) throw new Error('Unexpected anonymous message')
   if (!(row.created_at instanceof Date) && typeof row.created_at !== 'string') throw new Error('Invalid message date')
   return parsePublicMessage({
-    _id: row._id, msg_id: row.msg_id, content: row.content, status: row.status,
+    _id: row._id, msg_id: conversation.anonymousThread && row.from === conversation.peer ? row._id : row.msg_id,
+    content: row.content, status: row.status,
     from: conversation.anonymousThread && row.from === conversation.peer ? 'anonymous_peer' : row.from,
     to: conversation.anonymousThread && row.to === conversation.peer ? 'anonymous_peer' : row.to,
     created_at: new Date(row.created_at).toISOString(),

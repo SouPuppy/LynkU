@@ -58,12 +58,7 @@ export interface IMessageSyncCursor {
   sequence: number
 }
 
-export interface IAnonymousChatTarget {
-  anonymous: true
-  type: 'post' | 'comment'
-  id: string
-  thread_id?: string
-}
+export type IAnonymousChatTarget = import('../generated/contracts/index').AnonymousChatTarget
 
 export interface IConversation extends ConversationSummary {
   conversationKey?: string

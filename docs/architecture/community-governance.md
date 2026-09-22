@@ -104,7 +104,7 @@ moderation 是 server 内的窄能力，不新增部署单元；内容／资料�
 | governance.listAuditForCase | 案件所需管理权限 | 有界案件相关审计；不是跨站身份／私信搜索 |
 | governance.drainGovernanceOutbox | 可信 timer；受限运维重试另有策略 | 仅案件结果投递，不包含后台自动发布任务 |
 | messages.setPrivacyPreferences | 本人，允许暂停收信和保护操作 | receiveMode/expectedVersion/requestId；当前设置 |
-| messages.blockContact / unblockContact / listBlockedContacts | 本人会话／合法实名上下文 | contextRef 或本人 opaque blockId；受限展示回执，禁止传真实匿名 peer |
+| messages.blockContact / unblockContact | 本人会话／合法实名上下文 | 本次发起凭据或本人 thread_id；回执仅确认操作，不返回跨通道账户对键，禁止传真实匿名 peer |
 
 用户举报 TargetRef 为判别联合：公开帖子／评论 ID，或 `{conversationId,messageIds}`。私信最多选择10条本人可访问消息，全部属于同一会话；提交前预览实际提供给审核者的内容，需要上下文时由用户显式选择，不能自动抓整段聊天。公开目标已不可见时不得把新举报变成未公开正文读取接口；源已失效的投诉可按“来源当前不可用”受理说明，说明文字标记为用户陈述，不能伪造服务端证据。
 

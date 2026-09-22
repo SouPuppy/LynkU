@@ -9,7 +9,7 @@ export interface ConversationSummary {
   peer: { _openid?: string; nickname: string; avatar_url: string }
   lastMessage: { _id: string; content: string; created_at: string }
   unreadCount: number
-  chat_target?: { anonymous: true; type: 'post' | 'comment'; id: string; thread_id: string }
+  chat_target?: { anonymous: true; thread_id: string }
 }
 
 export interface ConversationDirectoryPage {
@@ -74,10 +74,10 @@ export function parseConversationSummary(value: unknown): ConversationSummary {
   }
   if (input.chat_target !== undefined) {
     const target = record(input.chat_target)
-    if (target.anonymous !== true || (target.type !== 'post' && target.type !== 'comment')) {
+    if (target.anonymous !== true || Object.keys(target).some(key => key !== 'anonymous' && key !== 'thread_id')) {
       throw new Error('Invalid anonymous target')
     }
-    result.chat_target = { anonymous: true, type: target.type, id: text(target.id, 128), thread_id: digest(target.thread_id) }
+    result.chat_target = { anonymous: true, thread_id: digest(target.thread_id) }
   } else {
     result.peer._openid = text(peer._openid, 128)
   }

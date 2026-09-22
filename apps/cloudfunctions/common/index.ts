@@ -63,7 +63,7 @@ export const ACTION_ACCESS = Object.freeze({
     send: 'verified', listConversations: 'verified', getConversation: 'verified',
     syncConversation: 'verified', markRead: 'verified', listNotifications: 'verified',
     getUnreadNotificationCount: 'verified', markNotificationsRead: 'verified',
-    blockContact: 'verified', unblockContact: 'verified', listBlockedContacts: 'verified', getContactProtection: 'verified',
+    blockContact: 'verified', unblockContact: 'verified',
   }),
   categories: Object.freeze({ list: 'runtime' }),
   drafts: Object.freeze({ save: 'verified', list: 'verified', delete: 'verified' }),

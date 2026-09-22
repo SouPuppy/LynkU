@@ -13,6 +13,8 @@ test('sync application validates records and shares the private-safe history pro
     return [message]
   } }, conversation, { cursor })
   assert.equal(result.messages[0].from, 'anonymous_peer')
+  assert.equal(result.messages[0].msg_id, message._id)
+  assert.equal(JSON.stringify(result).includes('request4'), false)
   assert.equal(result.nextCursor.sequence, 4)
   assert.equal(JSON.stringify(result).includes('bob'), false)
   assert.equal(result.messages[0].request_fingerprint, undefined)

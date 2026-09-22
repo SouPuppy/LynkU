@@ -1,5 +1,5 @@
 import type { IAnonymousChatTarget } from '../typings/cloudbase'
-import { READ_BATCH_SIZE, parseReadMessageIds } from '../generated/contracts/index'
+import { READ_BATCH_SIZE, parseReadMessageIds, parseAnonymousChatTarget } from '../generated/contracts/index'
 import * as session from './session'
 import { markRead } from './messages'
 
@@ -14,7 +14,7 @@ interface ReadJob {
 const queues = new Map<string, ReadJob[]>()
 const running = new Set<string>()
 let active = true
-const storageKey = (owner: string) => `pending_message_reads_v1:${encodeURIComponent(owner)}`
+const storageKey = (owner: string) => `pending_message_reads_v2:${encodeURIComponent(owner)}`
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('已读重试记录损坏')
@@ -30,10 +30,7 @@ function parseJob(value: unknown): ReadJob {
   const job = record(value)
   let target: IAnonymousChatTarget | null = null
   if (job.target !== null) {
-    const input = record(job.target)
-    if (input.anonymous !== true || (input.type !== 'post' && input.type !== 'comment')) throw new Error('已读重试目标无效')
-    target = { anonymous: true, type: input.type, id: identifier(input.id) }
-    if (input.thread_id !== undefined) target.thread_id = identifier(input.thread_id)
+    target = parseAnonymousChatTarget(job.target)
   }
   const peer = job.peer === null ? null : identifier(job.peer)
   if ((!peer && !target) || (peer && target)
@@ -68,9 +65,8 @@ export async function acknowledgeMessages(peer: string | undefined, ids: string[
   const owner = session.getOpenid()
   if (!owner || session.getState() !== 'verified') return
   const jobs = load(owner)
-  const targetKey = JSON.stringify(target ? [target.type, target.id, target.thread_id] : [peer])
-  const known = new Set(jobs.filter(job => JSON.stringify(job.target
-    ? [job.target.type, job.target.id, job.target.thread_id] : [job.peer]) === targetKey).flatMap(job => job.ids))
+  const targetKey = JSON.stringify(target || [peer])
+  const known = new Set(jobs.filter(job => JSON.stringify(job.target || [job.peer]) === targetKey).flatMap(job => job.ids))
   const pending = [...new Set(ids)].filter(id => !known.has(id))
   if (jobs.length + Math.ceil(pending.length / READ_BATCH_SIZE) > 500) throw new Error('待重试已读记录过多，请稍后重试')
   const added: ReadJob[] = []

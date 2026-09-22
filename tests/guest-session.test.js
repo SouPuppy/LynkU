@@ -1184,7 +1184,7 @@ test('directory service rejects malformed payloads and strips private anonymous 
   const service = r.load('apps/miniprogram/services/messages.ts')
   const summary = { peer: { _openid: 'secret-peer', nickname: '匿名用户', avatar_url: '' },
     lastMessage: { _id: 'message', content: 'hello', created_at: '2026-09-21T01:00:00.000Z', from: 'secret-peer', anonymous_context: { target_openid: 'secret-peer' } },
-    unreadCount: 1, chat_target: { anonymous: true, type: 'post', id: 'post', thread_id: 'a'.repeat(64) } }
+    unreadCount: 1, chat_target: { anonymous: true, thread_id: 'a'.repeat(64) } }
   let payload = { conversations: [summary], hasMore: false, nextCursor: null }
   r.wx.cloud.callFunction = async () => ({ result: { data: payload } })
   const response = await service.listConversations()
@@ -1433,7 +1433,7 @@ test('read acknowledgements persist across restart and retry only in their own a
   r.wx.cloud.callFunction = async () => { throw new Error('network') }
   const queue = r.load('apps/miniprogram/services/read-queue.ts')
   await queue.acknowledgeMessages('bob-user', ['m1', 'm1'])
-  const key = 'pending_message_reads_v1:alice'
+  const key = 'pending_message_reads_v2:alice'
   assert.equal(r.storage.get(key).jobs.length, 1)
   assert.equal(r.storage.get(key).jobs[0].ids.length, 1)
   assert.ok(r.storage.get(key).jobs[0].retryAt > now)
@@ -1474,14 +1474,14 @@ test('read retry draining pauses between batches and resumes without dropping pe
   complete({ result: { data: { updated: 20 } } })
   await pending
   assert.equal(requests.length, 1)
-  assert.equal(r.storage.get('pending_message_reads_v1:alice').jobs.flatMap(job => job.ids).length, 25)
+  assert.equal(r.storage.get('pending_message_reads_v2:alice').jobs.flatMap(job => job.ids).length, 25)
   await queue.flushReadAcknowledgements()
   assert.equal(requests.length, 1)
   queue.setReadQueueActive(true)
   r.wx.cloud.callFunction = async args => { requests.push(args.data); return { result: { data: { updated: args.data.msgIds.length } } } }
   await queue.flushReadAcknowledgements()
   assert.equal(requests.length, 3)
-  assert.equal(r.storage.has('pending_message_reads_v1:alice'), false)
+  assert.equal(r.storage.has('pending_message_reads_v2:alice'), false)
 })
 
 test('read queue retains memory on storage failure and rejects corrupt stored jobs', async () => {
@@ -1499,10 +1499,10 @@ test('read queue retains memory on storage failure and rejects corrupt stored jo
   assert.equal(requests, 1)
   const corrupt = runtime()
   corrupt.load('apps/miniprogram/services/session.ts').set({ ...profile, verified: true })
-  corrupt.storage.set('pending_message_reads_v1:alice', { version: 1, jobs: [{ ids: ['m1'], peer: null, target: null }] })
+  corrupt.storage.set('pending_message_reads_v2:alice', { version: 1, jobs: [{ ids: ['m1'], peer: null, target: null }] })
   await assert.rejects(corrupt.load('apps/miniprogram/services/read-queue.ts').flushReadAcknowledgements())
   assert.equal(corrupt.calls.length, 0)
-  assert.equal(corrupt.storage.has('pending_message_reads_v1:alice'), true)
+  assert.equal(corrupt.storage.has('pending_message_reads_v2:alice'), true)
 })
 
 test('anonymous history returns a stable public target without consulting deleted source content', async () => {
@@ -1522,7 +1522,7 @@ test('anonymous history returns a stable public target without consulting delete
     } }
   } }
   const main = cloudHandler('messages', db, {}, { authorizeAction: async () => ({ allowed: true }) })
-  const response = await main({ action: 'getConversation', anonymous_target: { type: 'post', id: 'post', thread_id: thread } })
+  const response = await main({ action: 'getConversation', anonymous_target: { thread_id: thread } })
   assert.equal(response.data.chat_target.thread_id, thread)
   assert.equal(JSON.stringify(response).includes('bob-user'), false)
   const r = runtime()
@@ -1815,4 +1815,25 @@ test('my posts retries the same cursor after failure and ignores hidden-page res
   complete({ result: { data: { items: [], total: 0, hasMore: false, nextCursor: null } } })
   await pending
   assert.equal(writes, 0)
+})
+
+
+test('chat entry snapshots anonymity and each new opening receives a fresh initiation, existing threads stay fixed', () => {
+  const r = runtime()
+  r.load('apps/miniprogram/services/session.ts').set({ ...profile, verified: true })
+  r.storage.set('anonymous_mode', true)
+  r.load('apps/miniprogram/subpkg-chat/pages/chat/chat.ts')
+  const page = r.env.page
+  const first = page.buildAnonymousTarget({ peer: 'bob-user' })
+  const second = page.buildAnonymousTarget({ peer: 'bob-user' })
+  assert.equal(first.type, 'user')
+  assert.notEqual(first.initiation_id, second.initiation_id)
+  assert.equal(page.buildAnonymousTarget({ peer: 'bob-user', existing: '1' }), null)
+  const thread = page.buildAnonymousTarget({ anon_thread: 'a'.repeat(64) })
+  assert.deepEqual(JSON.parse(JSON.stringify(thread)), { anonymous: true, thread_id: 'a'.repeat(64) })
+  r.storage.set('anonymous_mode', false)
+  assert.equal(page.buildAnonymousTarget({ peer: 'bob-user' }), null)
+  assert.equal(page.buildAnonymousTarget({ anon_type: 'post', anon_id: 'public-post' }).type, 'post')
+  assert.equal(page.buildAnonymousTarget({ anon_type: 'comment', anon_id: 'public-comment' }).type, 'comment')
+  assert.equal(first.type, 'user', 'later global mode changes never mutate the captured channel')
 })

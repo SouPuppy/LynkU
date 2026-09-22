@@ -1,7 +1,8 @@
+import { parseConversationTarget } from '@lynku/contracts'
 import { AccountRestrictionFailure } from '@lynku/server'
 // cloud function: messages - Private messaging and notification reads
 import * as cloud from 'wx-server-sdk'
-import { connectDatabase, CLOUD_DATABASE_OPTIONS, text, type Row } from '../common/database'
+import { connectDatabase, CLOUD_DATABASE_OPTIONS, type Row } from '../common/database'
 import type { CloudEvent } from '../common'
 import type { AnonymousConversationContext } from '@lynku/server'
 cloud.init()
@@ -55,8 +56,6 @@ export const main = withAuth(cloud, async (openid, event) => {
     case 'markNotificationsRead': return markNotificationsRead(openid, event.notificationIds)
     case 'blockContact': return blockContact(openid, event)
     case 'unblockContact': return unblockContact(openid, event)
-    case 'listBlockedContacts': return listBlockedContacts(openid)
-    case 'getContactProtection': return getContactProtection(openid, event)
     default: return fail('未知操作', 'UNKNOWN_ACTION')
   }
 })
@@ -128,8 +127,8 @@ async function getConversation(openid: string, event: CloudEvent) {
   if (!isResolved(resolved)) return resolved.error
   try {
     const page = await readMessageHistory(adaptersFor(openid).historyStore, authorizedConversation(openid, resolved), event)
-    const context = resolved.anonymousContext
-    return ok({ ...page, chat_target: context ? { anonymous: true, type: context.source_type, id: context.source_id, thread_id: context.thread_id } : undefined })
+    const target = parseConversationTarget(event)
+    return ok({ ...page, chat_target: 'target' in target ? target.target : undefined })
   } catch (error) {
     if (error instanceof InvalidHistoryRequest) return fail('分页参数无效', 'INVALID_INPUT')
     console.error('[messages] conversation query failed:', error instanceof Error ? error.message : error)
@@ -208,7 +207,7 @@ async function blockContact(openid: string, event: CloudEvent) {
       await reference.set({ data: { blockedBy, version: state.version + (blockedBy.length === state.blockedBy.length ? 0 : 1),
         updatedAt: new Date(), tombstone: false } })
     })
-    return ok({ blockId: id, blocked: true })
+    return ok({ blocked: true })
   } catch (error) {
     console.error('[messages] block failed:', error instanceof Error ? error.message : error)
     return fail('屏蔽未完成，请稍后重试', 'UPDATE_ERROR')
@@ -227,32 +226,9 @@ async function unblockContact(openid: string, event: CloudEvent) {
       await reference.set({ data: { blockedBy, version: state.version + (blockedBy.length === state.blockedBy.length ? 0 : 1),
         updatedAt: new Date(), tombstone: blockedBy.length === 0 } })
     })
-    return ok({ blockId: id, blocked: false })
+    return ok({ blocked: false })
   } catch (error) {
     console.error('[messages] unblock failed:', error instanceof Error ? error.message : error)
     return fail('解除屏蔽未完成，请稍后重试', 'UPDATE_ERROR')
-  }
-}
-
-async function listBlockedContacts(openid: string) {
-  try {
-    const rows = (await safeDb.collection('messaging_blocks').where({ blockedBy: safeDb.command.in([openid]) })
-      .orderBy('updatedAt', 'desc').limit(50).get()).data
-    return ok({ blocks: rows.map(row => ({ blockId: text(row._id), blocked: true })) })
-  } catch (error) {
-    console.error('[messages] block list failed:', error instanceof Error ? error.message : error)
-    return fail('屏蔽列表暂不可用', 'QUERY_ERROR')
-  }
-}
-
-async function getContactProtection(openid: string, event: CloudEvent) {
-  const resolved = await resolveConversationPeer(openid, event)
-  if (!isResolved(resolved)) return resolved.error
-  try {
-    const state = blockRow((await safeDb.collection('messaging_blocks').doc(blockIdFor(openid, resolved.peer)).get()).data)
-    return ok({ blocked: state.blockedBy.includes(openid) })
-  } catch (error) {
-    console.error('[messages] protection lookup failed:', error instanceof Error ? error.message : error)
-    return fail('屏蔽状态暂不可用', 'QUERY_ERROR')
   }
 }

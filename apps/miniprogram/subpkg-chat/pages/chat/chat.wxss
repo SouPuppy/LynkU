@@ -63,3 +63,5 @@
 .chat-empty { padding: 160rpx var(--spacing-md); text-align: center; }
 
 .history-control { text-align: center; padding: 24rpx; color: var(--text-secondary); font-size: 24rpx; }
+
+.chat-identity-note { padding: 12rpx 24rpx; color: var(--text-secondary, #666); font-size: 22rpx; text-align: center; }

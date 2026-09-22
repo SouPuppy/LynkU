@@ -1,7 +1,7 @@
 import type { database } from 'wx-server-sdk'
 
 type Collection = 'posts' | 'comments' | 'users' | 'messages' | 'conversation_entries'
-  | 'conversation_counters' | 'notifications'
+  | 'conversation_counters' | 'notifications' | 'messaging_blocks'
 type SdkResult = Promise<unknown> | string | void
 
 /** Only the SDK operations used by messaging; all response data remains untrusted. */

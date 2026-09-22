@@ -5,6 +5,7 @@ import { acknowledgeMessages } from '../../../services/read-queue'
 import { getOpenid, getState, onChange } from '../../../services/session'
 import { pollMessages, type MessagePoller } from '../../../services/watch'
 import { requireVerified } from '../../../utils/guard'
+import { isAnonymous } from '../../../services/anonymous'
 import { mergeChatMessages } from '../../../services/message-state'
 
 Page({
@@ -44,9 +45,9 @@ Page({
     const name = options.name ? decodeURIComponent(options.name) : '聊天'
     const anonymousTarget = this.buildAnonymousTarget(options)
     this.setData({
-      peerOpenid: options.peer || '',
-      otherName: name,
-      chatTitle: name,
+      peerOpenid: anonymousTarget ? '' : options.peer || '',
+      otherName: anonymousTarget ? '匿名用户' : name,
+      chatTitle: anonymousTarget ? '匿名聊天' : name,
       anonymousTarget,
     })
     const myOpenid = getOpenid()
@@ -91,10 +92,16 @@ Page({
   },
 
   buildAnonymousTarget(options: Record<string, string | undefined>): IAnonymousChatTarget | null {
+    if (options.anon_thread) return { anonymous: true, thread_id: options.anon_thread }
     const type = options.anon_type
     const id = options.anon_id
+    // Created once per page opening; retries, foreground returns and sends retain it.
+    const initiation_id = Date.now().toString(36) + '_' + Math.random().toString(36).slice(2).padEnd(13, '0') + Math.random().toString(36).slice(2).padEnd(13, '0')
     if ((type === 'post' || type === 'comment') && id) {
-      return { anonymous: true, type, id, thread_id: options.anon_thread }
+      return { anonymous: true, type, id, initiation_id }
+    }
+    if (options.peer && options.existing !== '1' && isAnonymous()) {
+      return { anonymous: true, type: 'user', id: options.peer, initiation_id }
     }
     return null
   },

@@ -4,6 +4,10 @@
 
 ## 上线保护 goal 实施中（2026-09-21）
 
+- 2026-09-22：按用户最新规则重构匿名私信：每次新发起带独立 initiation_id，原请求重试复用；同一来源同一双方再次发起仍分离。实名资料入口读取发起者匿名模式；消息列表明确恢复既有通道，不受后续匿名开关影响。匿名目录只公开 thread_id，移除来源及可跨通道关联的账户对屏蔽 ID/查询接口；消息 ID 不再以匿名账号作公开哈希输入，接收方不收到对方原始 msg_id。历史/同步/已读仍按独立通道，最终发送事务重验屏蔽。旧请求格式直接拒绝，既有账号/实名会话不改。结构图与产品规则在 behavior-contract.md，协议及切换边界在 contracts-and-data.md。完整 npm run check 通过 313 项（dist/anonymous-check.log）；同来源多通道、重复请求、历史/未读/回执、越权、屏蔽最终写入和客户端身份模式测试通过。微信真实 preview 成功（dist/anonymous-preview.log）。线上只读核对匿名 messages/conversation_entries 均为 0，未清理真实数据（dist/anonymous-cloud-inventory.json）；messages 云函数已部署成功（dist/anonymous-messages-deploy.log）；客户端需使用本次新版包，未提交微信正式发布。本轮两账号真机往返及真实云事务冲突尚未执行。
+
+- 2026-09-22：分类新增接通真实管理接口：服务端生成 ID、事务内权限/唯一名称/100 项上限、幂等回执与审计；旧 categories 创建和 seed 路由退出。npm run check 通过 311 项；categories、admin、静态网页部署成功，核对分类唯一索引。备份校验后初始化 category_catalog/total=5，原五项分类保持不变（dist/category-catalog/2026-09-22T11-08-04.609Z）。未创建测试用真实分类，新版浏览器交互尚未实测。
+
 - 2026-09-22：运行任务新增所有者专属operations:retry，详情中填写原因、核对尝试次数与重试版本后安排原任务重试。事务内重验权限、版本、来源账号/公开内容与已有lifecycle状态；失败pending或过期processing才允许，保持原任务及尝试次数，推进retry_revision并写回执/审计。重复请求复用回执，响应不明保留原请求；页面卸载不恢复旧状态，回执明确只代表scheduled。完整check通过308项（dist/admin-operation-retry-check.log）；随后追加资料投影与closing账号用例，3项实际适配器合成事务测试通过，含并发重复/冲突、租约保护、来源删除、撤权、审计故障回滚。admin与网页已部署，线上四文件SHA256一致；真实读取comments/users均Active，notification-outbox/profile-outbox定时器均为每分钟。没有对真实任务执行重试，浏览器和真实云并发验收未完成；未迁入统一lifecycle的账号及迟到投递整体治理仍须后续完成，不能扩大为注销验收。
 
 - 2026-09-22：消息与运行新增真实通知/资料投影任务列表和详情，按类型/状态筛选、(created_at,_id)稳定分页，URL保存筛选/任务编号/当前位置。逐请求operations:read，只读白名单集合；DTO只含状态、尝试次数、时间、脱敏错误，任意原始错误映射UNCLASSIFIED_ERROR，不返回正文/收件人/验证码/身份映射。保留pending计数并独立展示列表错误；已完成与历史错误分开，不伪造邮件/审核/清理统计。完整check通过306项（dist/admin-operations-check.log），53条同时间翻页、跨类型/状态游标、隐私/错误过滤、租约必填等验证通过；4个outbox索引已应用读回，admin与网页部署成功，线上四文件SHA256与本地产物一致（dist/admin-operations-hosting-verified.json）。CLI再次未取得Web身份而返回AUTH_FAILED，真实登录后查询和浏览器交互仍未验证；受控人工重试和其他运行数据源尚未完成。本批不修改现有调度器、业务任务或真实用户数据。

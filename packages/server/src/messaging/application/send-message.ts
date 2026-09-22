@@ -43,7 +43,11 @@ export async function sendNewMessage(
       || !((context.initiator_openid === conversation.viewer && context.target_openid === conversation.peer)
         || (context.target_openid === conversation.viewer && context.initiator_openid === conversation.peer))) throw new InvalidSendRequest('Invalid anonymous participants')
   } else if (anonymousContext !== null) throw new InvalidSendRequest('Unexpected anonymous context')
-  const id = store.identifier(conversation.viewer, request.msg_id)
+  // Anonymous IDs must not be a public hash oracle for candidate account IDs.
+  const id = conversation.anonymousThread
+    ? store.identifier('anonymous-message', conversation.id,
+      record(anonymousContext).initiator_openid === conversation.viewer ? 'initiator' : 'recipient', request.msg_id)
+    : store.identifier(conversation.viewer, request.msg_id)
   const fingerprint = store.identifier('message:payload', conversation.peer, request.content, conversation.anonymousThread || '')
   const duplicate = (value: unknown): SendMessageResponse => {
     const row = record(value)

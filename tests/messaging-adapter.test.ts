@@ -193,6 +193,58 @@ test('CloudBase adapter sends atomically, preserves sequence and deduplicates co
   assert.equal(f.row('messages', identifier('alice', 'second'))?.sync_sequence, 2)
 })
 
+test('every anonymous initiation isolates history, unread, receipts and directory while retries retain one channel', async () => {
+  const f = fixture()
+  f.seed('users', 'bob-user', { _openid: 'bob', verified: true })
+  f.seed('posts', 'source', { _openid: 'bob', anonymous: true, status: 'published' })
+  const targets = ['a', 'b'].map(key => ({ anonymous_target: { type: 'post', id: 'source', initiation_id: key.repeat(32) } }))
+  const resolved = await Promise.all(targets.map(target => resolveConversationTarget(f.adapters.targetStore, 'alice', target)))
+  const conversations = resolved.map(value => {
+    assert.ok(value.anonymousContext)
+    return { id: identifier('conversation', 'anonymous', value.anonymousContext.thread_id), viewer: 'alice', peer: value.peer,
+      anonymousThread: value.anonymousContext.thread_id }
+  })
+  assert.notEqual(conversations[0]?.id, conversations[1]?.id)
+  const sent = []
+  for (let i = 0; i < conversations.length; i++) {
+    const c = conversations[i]!, context = resolved[i]!.anonymousContext
+    const store = f.adapters.createSendStore(c.id, 'alice', 'bob')
+    const request = { msg_id: `init-${i}`, content: `private-${i}` }
+    const results = await Promise.all([sendNewMessage(store, c, context, request), sendNewMessage(store, c, context, request)])
+    assert.deepEqual(results.map(value => value.status).sort(), ['duplicate', 'sent'])
+    sent.push(results[0]!.message)
+    assert.equal(f.row('conversation_counters', c.id)?.last_sequence, 1)
+  }
+  await sendNewMessage(f.adapters.createSendStore(conversation.id, 'alice', 'bob'), conversation, null, { msg_id: 'real', content: 'real-name' })
+  const first = conversations[0]!, second = conversations[1]!
+  const reader = { ...first, viewer: 'bob', peer: 'alice' }
+  await assert.rejects(markMessagesRead(f.adapters.createReadStore(first.id, 'bob'), reader, [sent[1]!._id]))
+  assert.equal(await markMessagesRead(f.adapters.createReadStore(first.id, 'bob'), reader, [sent[0]!._id]), 1)
+  assert.equal(f.row('conversation_entries', identifier('conversation_entry', 'bob', second.id))?.unread_count, 1)
+  assert.deepEqual(await readReceipts(f.adapters.readReceiptStore, second, [sent[0]!._id]), [])
+  const history = await readMessageHistory(f.adapters.historyStore, reader, {})
+  assert.deepEqual(history.messages.map(message => message.content), ['private-0'])
+  assert.ok(history.messages.every(message => message.from === 'anonymous_peer'))
+  const directory = await listConversationDirectory(f.adapters.directoryStore, { ownerId: 'bob', scope: 'd'.repeat(64) }, {})
+  assert.equal(directory.conversations.length, 3)
+  for (const row of directory.conversations.filter(row => row.chat_target)) {
+    assert.deepEqual(Object.keys(row.chat_target!).sort(), ['anonymous', 'thread_id'])
+    assert.equal(row.peer._openid, undefined)
+  }
+  f.seed('posts', 'source', { _openid: 'bob', status: 'deleted' })
+  assert.equal((await resolveConversationTarget(f.adapters.targetStore, 'alice', targets[0])).anonymousContext?.thread_id, first.anonymousThread)
+  assert.equal((await resolveConversationTarget(f.adapters.targetStore, 'bob', { anonymous_target: { thread_id: first.anonymousThread } })).peer, 'alice')
+  await assert.rejects(resolveConversationTarget(f.adapters.targetStore, 'mallory', { anonymous_target: { thread_id: first.anonymousThread } }))
+  const fresh = await resolveConversationTarget(f.adapters.targetStore, 'alice', { anonymous_target: { type: 'user', id: 'bob', initiation_id: 'c'.repeat(32) } })
+  assert.notEqual(fresh.anonymousContext?.thread_id, first.anonymousThread)
+  // Final transaction must reject even when the earlier contact check reported allowed.
+  f.seed('messaging_blocks', identifier('messaging:block', 'alice', 'bob'), { blockedBy: ['bob'], version: 1 })
+  const before = f.rows('messages').length
+  await assert.rejects(sendNewMessage(f.adapters.createSendStore(second.id, 'alice', 'bob'), second, resolved[1]!.anonymousContext,
+    { msg_id: 'blocked-new', content: 'cannot bypass with another channel' }))
+  assert.equal(f.rows('messages').length, before)
+})
+
 test('a blocked contact cannot create a message, sequence, directory entry, or unread count', async () => {
   const f = fixture(); f.block()
   await assert.rejects(sendNewMessage(f.adapters.createSendStore(conversation.id, 'alice', 'bob'), conversation, null,
@@ -287,7 +339,7 @@ test('CloudBase target adapter authorizes existing anonymous conversations after
     owner_openid: 'alice', peer_openid: 'bob', conversation_id: conversationId,
     anonymous_context: { source_type: 'post', source_id: 'source', initiator_openid: 'alice', target_openid: 'bob', thread_id: thread },
   })
-  const input = { anonymous_target: { anonymous: true, type: 'post', id: 'source', thread_id: thread } }
+  const input = { anonymous_target: { anonymous: true, thread_id: thread } }
   const resolved = await resolveConversationTarget(f.adapters.targetStore, 'alice', input)
   assert.equal(resolved.peer, 'bob')
   await assert.rejects(resolveConversationTarget(f.adapters.targetStore, 'mallory', input))

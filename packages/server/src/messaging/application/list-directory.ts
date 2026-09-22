@@ -43,7 +43,7 @@ function decodeEntry(value: unknown, ownerId: string) {
       || (context.target_openid === ownerId && context.initiator_openid === peerId))) {
       throw new Error('Invalid anonymous directory participants')
     }
-    target = { anonymous: true, type: context.source_type, id: context.source_id, thread_id: context.thread_id }
+    target = { anonymous: true, thread_id: context.thread_id }
   } else if (last.anonymous_context !== undefined && last.anonymous_context !== null) {
     throw new Error('Anonymous directory context is missing')
   }

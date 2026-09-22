@@ -61,7 +61,7 @@ test('anonymous chat uses server-resolved targets without exposing the real peer
 
   const chatService = read('apps/miniprogram/services/messages.ts')
   assert.match(chatService, /anonymous_target: anonymousTargetPayload/)
-  assert.match(chatService, /thread_id: target\.thread_id/)
+  assert.match(chatService, /return target \|\| undefined/)
 
   const postPage = read('apps/miniprogram/pages/post/post.ts')
   assert.match(postPage, /anon_type=post/)

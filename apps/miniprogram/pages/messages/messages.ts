@@ -143,7 +143,7 @@ Page({
         ...conversation,
         display_time: formatTime(conversation.lastMessage.created_at),
         conversationKey: conversation.chat_target
-          ? `anon:${conversation.chat_target.thread_id || conversation.chat_target.type + ':' + conversation.chat_target.id}`
+          ? `anon:${conversation.chat_target.thread_id}`
           : conversation.peer._openid || '',
         peerAnonymous: !!conversation.chat_target,
       }))
@@ -252,11 +252,9 @@ Page({
     const conv = (e.currentTarget.dataset as { conv: IConversation }).conv
     if (conv.chat_target) {
       const name = encodeURIComponent(conv.peer.nickname)
-      const thread = conv.chat_target.thread_id
-        ? `&anon_thread=${encodeURIComponent(conv.chat_target.thread_id)}`
-        : ''
+      const thread = encodeURIComponent(conv.chat_target.thread_id)
       wx.navigateTo({
-        url: `/subpkg-chat/pages/chat/chat?anon_type=${conv.chat_target.type}&anon_id=${encodeURIComponent(conv.chat_target.id)}${thread}&name=${name}`,
+        url: `/subpkg-chat/pages/chat/chat?anon_thread=${thread}&name=${name}`,
       })
       return
     }
@@ -264,7 +262,7 @@ Page({
     const peer = encodeURIComponent(conv.peer._openid)
     const name = encodeURIComponent(conv.peer.nickname)
     wx.navigateTo({
-      url: `/subpkg-chat/pages/chat/chat?peer=${peer}&name=${name}`,
+      url: `/subpkg-chat/pages/chat/chat?peer=${peer}&name=${name}&existing=1`,
     })
   },
 

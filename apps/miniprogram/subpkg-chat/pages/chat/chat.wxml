@@ -1,5 +1,6 @@
 <nav-bar title="{{chatTitle}}" showBack="{{true}}" />
 <view class="chat-page" style="height: calc(100vh - {{navHeight}}px);">
+  <view class="chat-identity-note">{{anonymousTarget ? "独立匿名会话 · 双方身份隐藏" : "实名会话 · 对方可见你的昵称"}}</view>
   <view wx:if="{{blocked}}" class="chat-protection" bindtap="onUnblockContact">已屏蔽，点击解除</view>
   <view wx:else class="chat-protection" bindtap="onBlockContact">屏蔽此用户</view>
   <view wx:if="{{pollingActive}}" class="sync-warning">连接不稳定，正在重试</view>

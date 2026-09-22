@@ -100,7 +100,7 @@ async function verify() {
       }, {
         peer: { nickname: '匿名用户', avatar_url: '/assets/anonymous.png' },
         lastMessage: { _id: 'message-anonymous', content: 'anonymous bundle probe', created_at: timestamp }, unreadCount: 1,
-        chat_target: { anonymous: true, type: 'post', id: 'public-source', thread_id: 'c'.repeat(64) },
+        chat_target: { anonymous: true, thread_id: 'c'.repeat(64) },
       }],
     })
     assert.equal(queries.filter(query => query.name === 'conversation_entries').length, 1)

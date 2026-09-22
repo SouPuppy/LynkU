@@ -20,6 +20,10 @@ export function createCloudBaseMessagingAdapters(db: MessagingDatabase, dependen
   const targetStore: TargetStore = {
     identifier: dependencies.identifier,
     async source(type, id) {
+      if (type === 'user') {
+        const rows = queryData(await db.collection('users').where({ _openid: id }).limit(2).get())
+        return rows.length === 1 ? rows[0] : null
+      }
       return documentData(await db.collection(type === 'post' ? 'posts' : 'comments').doc(id).get())
     },
     async directory(owner, conversation) {
@@ -94,6 +98,11 @@ export function createCloudBaseMessagingAdapters(db: MessagingDatabase, dependen
           const account = documentData(await transaction.collection('users').doc(accountId).get()) as Record<string, unknown> | null
           if (!account || account._openid !== owner || account.verified !== true) throw new AccountRestrictionFailure('FORBIDDEN', '发送账号资格已变化')
           assertAccountCapability(account, 'messages', new Date().toISOString())
+          const blockId = dependencies.identifier('messaging:block', ...[owner, peer].sort())
+          const block = documentData(await transaction.collection('messaging_blocks').doc(blockId).get()) as Record<string, unknown> | null
+          if (block && (!Array.isArray(block.blockedBy) || block.blockedBy.length > 0)) {
+            throw new AccountRestrictionFailure('FORBIDDEN', '当前无法发送给该用户')
+          }
           return operation({
           async existing() { return documentData(await transaction.collection('messages').doc(documentId).get()) },
           async counter() { return documentData(await transaction.collection('conversation_counters').doc(conversation).get()) },
