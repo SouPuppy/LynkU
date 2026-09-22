@@ -1,8 +1,8 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
 const { createHash } = require('node:crypto')
-const { listOwnedPosts } = require('@lucky/server')
-const { parseOwnedPostPage } = require('@lucky/contracts')
+const { listOwnedPosts } = require('@lynku/server')
+const { parseOwnedPostPage } = require('@lynku/contracts')
 const stamp = '2026-09-21T00:00:00.000Z'
 const row = id => ({ _id: id, _openid: 'alice', title: 'Title', content: 'Body', category_id: '', category: null,
   anonymous: true, status: 'published', revision: 1, view_count: 0, comment_count: 0, created_at: stamp, updated_at: stamp })

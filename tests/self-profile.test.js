@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { parseSelfProfile } = require('@lucky/contracts')
-const { projectSelfProfile } = require('@lucky/server')
+const { parseSelfProfile } = require('@lynku/contracts')
+const { projectSelfProfile } = require('@lynku/server')
 const profile = { _openid: 'alice', nickname: 'Alice', avatar_url: '', role: 'user', email: '', verified: false }
 test('account projection preserves verification while stripping internal database fields', () => {
   const result = projectSelfProfile({ ...profile, verified: true, role: 'admin', email: 'fixture@nottingham.edu.cn',

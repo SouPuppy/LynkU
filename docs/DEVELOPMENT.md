@@ -15,6 +15,8 @@ npm run setup
 
 ## Runtime Configuration
 
+Public legal metadata is also owned by `config/project.json`. Client builds compile the three public articles from `docs/product/community-policies.md` into the offline legal page and generate matching document hashes in `dist/legal/manifest.json`. `check:runtime-config` verifies those artifacts without repairing drift. Policies remain visibly draft until the implementation and real operator/provider facts are ready; masked names and unverified filing strings cannot be activated. This does not implement consent or account deletion by itself.
+
 Edit public settings only in `config/project.json`, then run `npm run configure`. This synchronizes `apps/miniprogram/config.ts`, `project.config.json` and `cloudbaserc.json`; `npm run check` detects drift. Open the repository root in WeChat DevTools; the project configuration points at `apps/miniprogram/` and built `dist/cloudfunctions/`. Personal DevTools overrides belong in `project.private.config.json`; that file is ignored by Git. Moving the source root does not change page URLs or subpackage routes. Never put secrets in the public manifest.
 
 The application authenticates with the server-provided `OPENID`. There is no client JWT and no separate login cloud function. `users?action=ensure` creates or retrieves the user profile.
@@ -54,7 +56,7 @@ Seed categories by invoking `categories` with `{ "action": "seed" }` as an exist
 
 `messages.getUnreadMessageCount` requires a verified account and counts all incoming unread messages for the runtime identity. The message-tab badge uses this count plus the notification count; it never estimates totals from a conversation page. The `(to, status)` index must be deployed before enabling this query in the cloud environment.
 
-The production function list is defined once in `cloudbaserc.json`; build, verification and both deployment scripts read it:
+The production function list is defined once in `cloudbaserc.json`; build, verification and the single deployment entry read it:
 
 ```text
 users posts comments messages categories drafts
@@ -62,7 +64,7 @@ users posts comments messages categories drafts
 
 Post creation requires a stable `request_id` and a boolean `anonymous`. The strict TypeScript creation application resolves category metadata from the database, validates its active state and nonnegative count in the same document-only transaction, and writes the post and published category increment atomically. Anonymous author snapshots are constructed by the application. Duplicate requests return their minimal receipt before applying new-create rate limits; missing documents use SDK `throwOnNotFound: false`, while read faults fail without attempting creation. The response is `{ post: { _id, revision, status }, flagged, status: 'created' | 'duplicate' }`; retrieve post content through the read API. Legacy records require valid fingerprints/revisions and reconciled category counts before deployment. Delete and moderation also use strict status-transition applications.
 
-`apps/cloudfunctions/common/index.js` is the only remaining shared legacy helper source. Function entries import it directly; esbuild bundles its code and local packages into each independent `dist/cloudfunctions/<name>/index.js`. There are no source `utils.js` copies. Each artifact contains its own configuration and exact `wx-server-sdk` dependency declaration. `check:cloud-artifacts` verifies manifest/runtime/configuration, artifact hashes, isolated startup for all six functions and a real message-directory application call using a synthetic SDK boundary. This does not replace real CloudBase execution.
+`apps/cloudfunctions/common/index.ts` is the only remaining shared legacy helper source. Function entries import it directly; esbuild bundles its code and local packages into each independent `dist/cloudfunctions/<name>/index.js`. There are no source `utils.js` copies. Each artifact contains its own configuration and exact `wx-server-sdk` dependency declaration. `check:cloud-artifacts` verifies manifest/runtime/configuration, artifact hashes, isolated startup for all six functions and a real message-directory application call using a synthetic SDK boundary. This does not replace real CloudBase execution.
 
 `config/cloud-runtime/package-lock.json` locks the SDK and transitive runtime dependencies. The build generates a matching lockfile for every function package; update the canonical runtime manifest/lock and source SDK declarations together. The locally checked SDK is also installed as a root development dependency for type compatibility checks. Its existing transitive audit findings are recorded in ADR 001; a passing structure check does not mean those findings are resolved.
 
@@ -78,14 +80,13 @@ Automatic post-publication cleanup passes the draft's `expected_revision` to del
 
 Nickname and avatar changes use the same pattern through `profile_outbox`. The event contains the account and profile version but no copied profile payload; its consumer re-reads the current user record before updating non-anonymous post, comment, and notification snapshots. This prevents a delayed older event from restoring stale display data. An administrator can invoke `users` with `{ "action": "drainProfileOutbox" }` while the scheduler remains pending R7 work.
 
-Deploy with either:
+Deploy using the installed WeChat tooling after validating the release inputs:
 
 ```bash
-./scripts/create-and-deploy.sh
-./scripts/deploy-functions.sh
+npm run deploy:wechat
 ```
 
-Both scripts build and verify the same artifacts before deployment. `create-and-deploy.sh` requires an already authenticated CloudBase CLI and stops on failure; `deploy-functions.sh` uses the WeChat upload key and reports failed functions. Neither uploads the source directories. There is no clear-db utility in this repository.
+The old shell deployment paths and completed prototype identity-migration executor were removed in 0.2.0. Historical backup/journal evidence remains private and untouched. There is no clear-db utility. `check:runtime-sdk` installs the production lock outside the repository and loads every bundle with the real SDK; `audit:runtime` audits that production lock separately from root development dependencies. Bundle metadata includes the version, Git state and source digests; source changes require rebuilding before deployment.
 
 ## Architecture
 
@@ -184,7 +185,7 @@ with both an unverified account and a previously verified account.
 
 `npm run build:cloud` 使用 esbuild 从当前源码解析真实依赖，将 contracts、server、adapters 和公共辅助代码直接打进各函数的 `index.js`。不依赖既有包 dist、不做导入字符串替换，也不复制整个 server 目录。CloudBase CLI 和微信项目均指向 `dist/cloudfunctions`；上传前必须先构建。隔离产物测试在仓库外临时目录加载全部六个函数（仅模拟云 SDK），可发现对本地 workspace 的意外依赖，但不替代云端执行验收。
 
-会话目录用例位于 `packages/server/src/messaging/application/list-directory.ts`，通过 `ConversationDirectoryStore` 隔离查询实现。CloudBase 入口仅提供按当前调用者过滤的目录查询、公开资料投影和错误转换。数据库记录的所有权、匿名参与者、时间与摘要字段在用例内验证；损坏记录明确失败，不能悄悄降级为可暴露身份的普通会话。构建将 `@lucky/server` 及其契约依赖一并装入函数，独立产物测试实际调用目录用例。
+会话目录用例位于 `packages/server/src/messaging/application/list-directory.ts`，通过 `ConversationDirectoryStore` 隔离查询实现。CloudBase 入口仅提供按当前调用者过滤的目录查询、公开资料投影和错误转换。数据库记录的所有权、匿名参与者、时间与摘要字段在用例内验证；损坏记录明确失败，不能悄悄降级为可暴露身份的普通会话。构建将 `@lynku/server` 及其契约依赖一并装入函数，独立产物测试实际调用目录用例。
 
 ### 聊天历史与同步边界
 
@@ -239,3 +240,6 @@ Post detail/list/search responses use the shared strict `PostView`: ISO timestam
 Post detail reads use a strict application request with boolean `for_edit`, `skip_view_inc`, and `public_only` flags. Editing requires ownership and never increments views; unpublished flagged content is visible only to its owner or a verified server-side administrator lookup. Deleted/hidden content stays inaccessible. Identity lookup faults propagate as query failures. Required DTO fields and safe view-count limits are checked before incrementing. Detail responses use the stored category snapshot, so migration must populate that snapshot where needed. List/search pagination and read-scope migration remain separate unfinished work.
 
 `posts.listMine` is a verified private read bound to the trusted caller, returning their published and flagged posts. It ignores caller-supplied owner IDs and rejects `public_only`. Public `posts.list` author filters always exclude anonymous posts, including when the viewer is the author. The private query adds the `(_openid, status, created_at)` index to the manifest; apply it before deployment. The client My Posts page clears on account changes and rejects stale results. List/search now both use runtime page validation; offset pagination and My Posts loading beyond its first 50 items remain unfinished.
+# 管理分类版本迁移
+
+`npm run migrate:admin-categories` 默认只读规划并保存本地备份；`npm run migrate:admin-categories -- --apply` 仅为缺失管理版本的分类添加managementRevision=0，保留已有版本和计数。必须先部署退出旧update动作的categories函数，备份目录为dist/admin-category-migration/<当前环境>。工具核对查询条数与集合计数，支持逐条检查点和再次执行；不得把此命令当作全库迁移。恢复时停管理写入并核对新版本写入情况，不直接导入旧分类快照覆盖实时计数。

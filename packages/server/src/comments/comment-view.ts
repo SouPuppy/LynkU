@@ -1,4 +1,4 @@
-import { parseCommentView, type CommentView } from '@lucky/contracts'
+import { parseCommentView, type CommentView } from '@lynku/contracts'
 /** Explicit public projection: stored retry keys and future private fields never cross this boundary. */
 
 function record(value: unknown): Record<string, unknown> {

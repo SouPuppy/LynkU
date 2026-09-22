@@ -43,7 +43,7 @@ dist/                generated upload artifacts; never hand-edit
 
 Use Node.js 24.21.x and run `npm run setup`. This installs locked dependencies, generates public configuration, checks the project, and builds standalone function bundles; it does not deploy. Open this repository root in WeChat DevTools. Public configuration lives in `config/project.json`; after editing it run `npm run configure`. `npm run check` rejects configuration drift.
 
-LynkU uses AppID `wxba2bcb0c71a5f33d` and its own environment `cloud1-d7gifgdpb8ad0ab8e`. The old Lucky environment and identities are preserved separately. Internal `@lucky/*` package names remain stable implementation identifiers. See the [cutover decision](docs/architecture/decisions/002-lynku-cutover.md), [demo guide](docs/DEMO.md) and [current evidence](docs/plans/refactor/status.md).
+LynkU uses AppID `wxba2bcb0c71a5f33d` and its own environment `cloud1-d7gifgdpb8ad0ab8e`. The old Lucky environment and identities are preserved separately. Internal `@lynku/*` package names remain stable implementation identifiers. See the [cutover decision](docs/architecture/decisions/002-lynku-cutover.md), [demo guide](docs/DEMO.md) and [current evidence](docs/plans/refactor/status.md).
 
 ## Contribution
 

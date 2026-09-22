@@ -1,3 +1,4 @@
+import { POST_CONTENT_LIMIT, POST_TITLE_LIMIT } from './content-limits'
 export interface Draft {
   _id: string
   title: string
@@ -30,7 +31,7 @@ export function parseDraftId(value: unknown): string { return text(value, 128, 1
 export function parseDraftSave(value: unknown): SaveDraftRequest {
   const input = object(value)
   if (typeof input.anonymous !== 'boolean') throw new Error('Invalid draft anonymity')
-  const result: SaveDraftRequest = { title: text(input.title, 200), content: text(input.content, 10000),
+  const result: SaveDraftRequest = { title: text(input.title, POST_TITLE_LIMIT), content: text(input.content, POST_CONTENT_LIMIT),
     category_id: text(input.category_id, 128), anonymous: input.anonymous }
   if (input.draft_id !== undefined) {
     result.draft_id = parseDraftId(input.draft_id)
@@ -53,7 +54,7 @@ export function parseDraft(value: unknown): Draft {
     if (new Date(result).toISOString() !== result) throw new Error('Invalid draft time')
     return result
   }
-  return { _id: parseDraftId(input._id), title: text(input.title, 200), content: text(input.content, 10000),
+  return { _id: parseDraftId(input._id), title: text(input.title, POST_TITLE_LIMIT), content: text(input.content, POST_CONTENT_LIMIT),
     category_id: text(input.category_id, 128), anonymous: input.anonymous, revision: input.revision,
     created_at: time(input.created_at), updated_at: time(input.updated_at) }
 }

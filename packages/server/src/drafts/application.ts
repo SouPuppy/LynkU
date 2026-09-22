@@ -1,4 +1,4 @@
-import { parseDraft, parseDraftSave, parseDraftId, type Draft } from '@lucky/contracts'
+import { parseDraft, parseDraftSave, parseDraftId, type Draft } from '@lynku/contracts'
 export class DraftFailure extends Error {
   constructor(readonly code: 'INVALID_INPUT' | 'NOT_FOUND' | 'FORBIDDEN' | 'DRAFT_CONFLICT' | 'CONFLICT' | 'DRAFT_LIMIT_REACHED') { super(code) }
 }

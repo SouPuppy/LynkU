@@ -1,9 +1,10 @@
 {
   "name": "cf-messages",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "description": "Private messaging — send, conversation list, history, markRead",
   "main": "index.js",
   "dependencies": {
+    "@cloudbase/node-sdk": "3.17.2",
     "wx-server-sdk": "4.0.2"
   }
 }

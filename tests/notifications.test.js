@@ -1,18 +1,18 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
 const { createHash } = require('node:crypto')
-const { listUserNotifications, markUserNotificationsRead, countUserNotifications, InvalidNotificationRequest } = require('@lucky/server')
+const { listUserNotifications, markUserNotificationsRead, countUserNotifications, InvalidNotificationRequest } = require('@lynku/server')
 const hash = (...parts) => createHash('sha256').update(parts.join('\0')).digest('hex')
 const date = '2026-09-21T00:00:00.000Z'
 const notification = id => ({ _id: id, to: 'alice', type: 'comment', anonymous: true,
   actor: { _openid: 'secret-author', nickname: 'Secret', avatar_url: '/secret', email: 'secret-email' },
-  target: { post_id: 'post', comment_preview: 'hello', private_author: 'secret-author' },
+  target: { post_id: 'post', comment_id: 'comment', comment_preview: 'hello', private_author: 'secret-author' },
   private_context: 'secret-context', read: false, created_at: new Date(date) })
 
 test('notification pagination covers tied timestamps and strips private anonymous data', async () => {
   const rows = Array.from({ length: 55 }, (_, i) => notification(`n${String(55 - i).padStart(3, '0')}`))
   let reads = 0
-  const store = { identifier: hash, list: async (owner, unreadOnly, cursor, take) => {
+  const store = { identifier: hash, contentSources: async () => ({ posts: [], comments: [] }), list: async (owner, unreadOnly, cursor, take) => {
     reads++
     assert.equal(owner, 'alice'); assert.equal(unreadOnly, false); assert.equal(take, 21)
     return rows.filter(row => !cursor || row._id < cursor.id).slice(0, take)
@@ -36,7 +36,7 @@ test('notification pagination covers tied timestamps and strips private anonymou
 
 test('notification reads require explicit IDs and propagate storage and count faults', async () => {
   let calls = 0
-  const store = { identifier: hash, markRead: async (owner, ids) => {
+  const store = { identifier: hash, contentSources: async () => ({ posts: [], comments: [] }), markRead: async (owner, ids) => {
     calls++; assert.equal(owner, 'alice'); assert.deepEqual(ids, ['n1', 'n2']); return 2
   }, unreadCount: async () => -1 }
   for (const ids of [undefined, [], Array(101).fill('n1'), ['']]) {

@@ -7,7 +7,7 @@ import ts from 'typescript'
 import { EditorController, initialEditorState, parseEditorRoute } from '../apps/miniprogram/features/editor/index'
 import type { EditorPorts, EditorRoute, EditorEvent, EditorState, EditorObserver, EditorSession } from '../apps/miniprogram/features/editor/index'
 import type { EditorRecovery } from '../apps/miniprogram/features/editor/recovery'
-import { parsePostMutationReceipt } from '../apps/miniprogram/generated/contracts/index'
+import { parsePostMutationReceipt, POST_CONTENT_LIMIT } from '../apps/miniprogram/generated/contracts/index'
 import type { Draft, PostMutationReceipt, SaveDraftRequest } from '../apps/miniprogram/generated/contracts/index'
 
 const date = '2026-09-21T00:00:00.000Z'
@@ -368,6 +368,7 @@ test('editor page wires inputs and lifecycle to the feature and cancels delayed 
       if (name.endsWith('/composition/editor')) return { createEditor: (route: EditorRoute, observer: EditorObserver) => f.make(route, observer) }
       if (name.endsWith('/features/editor/index')) return { initialEditorState, parseEditorRoute }
       if (name.endsWith('/utils/guard')) return { requireVerified: () => true }
+      if (name.endsWith('/generated/contracts/index')) return { POST_CONTENT_LIMIT }
       throw new Error(`Unexpected page dependency: ${name}`)
     },
     Page: (page: EditorPage) => {

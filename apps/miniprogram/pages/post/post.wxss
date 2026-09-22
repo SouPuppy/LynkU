@@ -10,6 +10,7 @@
 
 .post-body { padding: var(--spacing-md); }
 .post-content { font-size: var(--font-md); line-height: 1.8; white-space: pre-wrap; }
+.post-actions { display: flex; justify-content: flex-end; padding: 0 var(--spacing-md) var(--spacing-sm); }
 
 .comment-divider { padding: var(--spacing-sm) var(--spacing-md); background: var(--color-bg); }
 .comments-section { padding: 0 var(--spacing-md); }

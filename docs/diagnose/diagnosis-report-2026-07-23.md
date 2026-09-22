@@ -1,4 +1,4 @@
-# Diagnosis Report — Lucky BBS
+# Diagnosis Report — LynkU
 
 **Date**: 2026-07-23
 **Scope**: Full project (miniprogram + cloudfunctions)

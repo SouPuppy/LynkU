@@ -1,9 +1,10 @@
 import { createEditor } from '../../composition/editor'
+import { POST_CONTENT_LIMIT } from '../../generated/contracts/index'
 import { initialEditorState, parseEditorRoute, type EditorController, type EditorEvent } from '../../features/editor/index'
 import { requireVerified } from '../../utils/guard'
 
 Page({
-  data: { ...initialEditorState(), navHeight: 88 },
+  data: { ...initialEditorState(), navHeight: 88, contentLimit: POST_CONTENT_LIMIT },
   _editor: null as EditorController | null,
   _navigationTimer: null as ReturnType<typeof setTimeout> | null,
 

@@ -366,7 +366,7 @@ test('late identity mutations cannot restore logged-out or replaced sessions', a
       const rejected = assert.rejects(pending, /会话已变更/)
       session.clear()
       if (replacement) session.set(replacement)
-      complete({ result: { data: { user: { ...profile, verified: true } } } })
+      complete({ result: { data: { user: { ...profile, _id: 'account-alice', verified: true } } } })
       await rejected
       assert.equal(session.getOpenid(), replacement?._openid || null)
     }
@@ -422,7 +422,7 @@ test('email page discards late send and verify results after view disposal', asy
     page.onUnload()
     page.setData = () => { throw new Error('disposed page rendered') }
     complete({ result: { data: operation === 'send' ? { expiresIn: 600 }
-      : { user: { ...profile, verified: true } } } })
+      : { user: { ...profile, _id: 'account-alice', verified: true } } } })
     await pending
     assert.equal(r.timers.size, 0)
     assert.equal(page.redirectTimer, null)
@@ -516,11 +516,17 @@ test('logout stops active chat polling and discards a pending private response',
 
 function cloudHandler(name, db, env = {}, overrides = {}) {
   const module = { exports: {} }
-  const cloud = { init() {}, database: () => db, getWXContext: () => ({ OPENID: 'alice' }) }
-  vm.runInNewContext(fs.readFileSync(path.join(root, 'apps', 'cloudfunctions', name, 'index.js'), 'utf8'), {
+  const cloud = { init() {}, database: () => db, getWXContext: () => ({ OPENID: 'alice' }),
+    openapi: { security: { msgSecCheck: async () => ({ errcode: 0, result: { suggest: 'pass' } }) } } }
+  const filename = path.join(root, 'apps', 'cloudfunctions', name, 'index.ts')
+  const source = require('typescript').transpileModule(fs.readFileSync(filename, 'utf8'), {
+    compilerOptions: { module: 1, target: 7 },
+  }).outputText
+  vm.runInNewContext(source, {
     module, exports: module.exports, console, process: { env },
     require: spec => spec === 'wx-server-sdk' ? cloud : spec === '../common'
-      ? { ...require('../apps/cloudfunctions/common'), ...overrides } : require(spec),
+      ? { ...require('../apps/cloudfunctions/common'), ...overrides }
+      : require(spec.startsWith('.') ? path.resolve(path.dirname(filename), spec) : spec),
   })
   return module.exports.main
 }
@@ -588,6 +594,7 @@ test('idempotent content deletion still verifies ownership before returning succ
   const deletedComment = { _id: 'comment-1', _openid: 'bob', status: 'deleted' }
   const postDb = { command: {}, collection: () => ({ doc: () => ({ get: async () => ({ data: deletedPost }) }) }) }
   const commentDb = { command: {}, collection: () => ({ doc: () => ({ get: async () => ({ data: deletedComment }) }) }) }
+  commentDb.runTransaction = work => work(commentDb)
   const allowed = async () => ({ allowed: true })
   const posts = cloudHandler('posts', postDb, {}, { checkAdmin: async () => false, authorizeAction: allowed })
   const comments = cloudHandler('comments', commentDb, {}, { checkAdmin: async () => false, authorizeAction: allowed })
@@ -677,7 +684,7 @@ test('comment change sync is post-scoped and returns a monotonic cursor', async 
       if (name === 'posts') return { doc: () => ({ get: async () => ({ data: { _id: 'post-1', status: 'published' } }) }) }
       if (name === 'comments') return { doc: id => ({ get: async () => {
         if (failRead) throw new Error('database unavailable')
-        return { data: comments.get(id) }
+        return { data: comments.get(id) || null }
       } }) }
       assert.equal(name, 'comment_changes')
       return {
@@ -781,10 +788,11 @@ test('post request IDs are idempotent and reject changed payloads', async () => 
     command: {},
     serverDate: () => new Date('2026-09-21T00:00:00.000Z'),
     collection,
-    runTransaction: async callback => callback({ collection }),
+    runTransaction: async callback => callback({ collection: name => name === 'users'
+      ? { doc: () => ({ get: async () => ({ data: { ...profile, verified: true } }) }) } : collection(name) }),
   }
   const main = cloudHandler('posts', db, {}, {
-    authorizeAction: async () => ({ allowed: true, user: { ...profile, verified: true } }),
+    authorizeAction: async () => ({ allowed: true, user: { ...profile, _id: 'account-alice', verified: true } }),
     requireVerifiedUser: async () => true,
     checkRateLimit: async () => ({ allowed: true }),
     getAuthorSnapshot: async () => ({ _openid: 'alice', nickname: 'Alice', avatar_url: '' }),
@@ -809,10 +817,11 @@ test('post updates reject a stale revision before overwriting newer content', as
       get: async () => ({ data: posts.get(id) }),
       update: async ({ data }) => posts.set(id, { ...posts.get(id), ...data, _id: id }),
     }) }),
-    runTransaction: async callback => callback({ collection: () => db.collection('posts') }),
+    runTransaction: async callback => callback({ collection: name => name === 'users'
+      ? { doc: () => ({ get: async () => ({ data: { ...profile, verified: true } }) }) } : db.collection('posts') }),
   }
   const main = cloudHandler('posts', db, {}, {
-    authorizeAction: async () => ({ allowed: true, user: { ...profile, verified: true } }), requireVerifiedUser: async () => true,
+    authorizeAction: async () => ({ allowed: true, user: { ...profile, _id: 'account-alice', verified: true } }), requireVerifiedUser: async () => true,
     checkRateLimit: async () => ({ allowed: true }), getAuthorSnapshot: async () => ({ _openid: 'alice', nickname: 'Alice', avatar_url: '' }),
   })
   const stale = await main({ action: 'update', anonymous: false, post_id: 'post-1', expected_revision: 3, title: 'stale', content: 'stale', category_id: '' })
@@ -821,7 +830,7 @@ test('post updates reject a stale revision before overwriting newer content', as
   assert.equal(saved.data.post.revision, 5)
   assert.equal(posts.get('post-1').title, 'fresh')
   const unavailable = cloudHandler('posts', db, {}, {
-    authorizeAction: async () => ({ allowed: true, user: { ...profile, verified: true } }), requireVerifiedUser: async () => true,
+    authorizeAction: async () => ({ allowed: true, user: { ...profile, _id: 'account-alice', verified: true } }), requireVerifiedUser: async () => true,
     checkRateLimit: async () => ({ allowed: false, unavailable: true }), getAuthorSnapshot: async () => ({ _openid: 'alice', nickname: 'Alice', avatar_url: '' }),
   })
   const rateFailure = await unavailable({ action: 'update', anonymous: false, post_id: 'post-1', expected_revision: 5, title: 'later', content: 'later', category_id: '' })
@@ -830,6 +839,7 @@ test('post updates reject a stale revision before overwriting newer content', as
 
 test('comment creation persists and drains one idempotent notification outbox event', async () => {
   const stores = new Map([
+    ['users', new Map([['alice-account', { ...profile, _id: 'alice-account', verified: true }]])],
     ['posts', new Map([['post-1', { _id: 'post-1', _openid: 'bob', status: 'published', title: 'A post', comment_count: 0 }]])],
     ['comments', new Map()], ['comment_counters', new Map()], ['comment_changes', new Map()],
     ['notification_outbox', new Map()], ['notifications', new Map()],
@@ -866,13 +876,13 @@ test('comment creation persists and drains one idempotent notification outbox ev
     runTransaction: async callback => callback({ collection }),
   }
   const main = cloudHandler('comments', db, {}, {
-    authorizeAction: async () => ({ allowed: true, user: { ...profile, verified: true } }),
+    authorizeAction: async () => ({ allowed: true, user: { ...profile, _id: 'alice-account', verified: true } }),
     requireVerifiedUser: async () => true,
     checkRateLimit: async () => ({ allowed: true }),
     getAuthorSnapshot: async () => ({ _openid: 'alice', nickname: 'Alice', avatar_url: '' }),
     outboxCandidates: async () => [...stores.get('notification_outbox').keys()],
   })
-  const event = { action: 'create', post_id: 'post-1', content: 'Useful reply', request_id: 'comment-request-1234' }
+  const event = { action: 'create', post_id: 'post-1', content: 'Useful reply', anonymous: false, request_id: 'comment-request-1234' }
   const first = await main(event)
   const second = await main(event)
   assert.equal(first.data.status, 'created')
@@ -1292,6 +1302,8 @@ test('comment poller retains its cursor until accumulated changes are delivered'
   const requests = [], changes = []
   let failSecond = true
   r.wx.cloud.callFunction = async args => {
+    if (args.data.action === 'list') return { result: { data: { items: [], total: 0, hasMore: false, nextCursor: null,
+      syncCursor: { version: 1, post_id: 'post', sequence: 0 } } } }
     const sequence = args.data.cursor.sequence
     requests.push(sequence)
     if (sequence === 1 && failSecond) { failSecond = false; throw new Error('network') }
@@ -1301,13 +1313,16 @@ test('comment poller retains its cursor until accumulated changes are delivered'
     } }],
       has_more: sequence === 0, next_cursor: { version: 1, post_id: 'post', sequence: sequence + 1 } } } }
   }
-  const watcher = r.load('apps/miniprogram/services/watch.ts').watchComments('post', (_, batch) => changes.push(batch), () => {})
+  const watcher = r.load('apps/miniprogram/composition/comment-thread.ts').createCommentThread(state => {
+    if (state.comments.length) changes.push(state.comments)
+  })
+  await watcher.refresh('post')
   await tick()
   assert.equal(changes.length, 0)
   await [...r.timers.values()][0]()
   assert.deepEqual(requests, [0, 1, 0, 1])
-  assert.equal(changes[0].map(c => c.doc._id).join(','), 'c1,c2')
-  watcher.close()
+  assert.equal(changes[0].map(c => c._id).join(','), 'c1,c2')
+  watcher.dispose()
 })
 
 test('message sync client rejects cursor jumps, wrong scopes and non-progressing pages', async () => {
@@ -1735,7 +1750,7 @@ test('private post lists require verification and search rejects malformed respo
   assert.equal(r.calls.length, 0)
   r.wx.cloud.callFunction = async () => ({ result: { data: { items: [{ _id: 'bad' }], total: 1, hasMore: false } } })
   await assert.rejects(posts.searchPosts('campus'), error => error.code === 'INVALID_RESPONSE')
-  r.wx.cloud.callFunction = async () => ({ result: { data: { items: [], total: 0, hasMore: false } } })
+  r.wx.cloud.callFunction = async () => ({ result: { data: { items: [], total: 0, hasMore: false, nextCursor: null } } })
   assert.equal((await posts.searchPosts('campus')).items.length, 0)
 })
 

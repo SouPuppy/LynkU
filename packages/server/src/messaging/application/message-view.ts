@@ -1,4 +1,4 @@
-import { parsePublicMessage, type PublicMessage } from '@lucky/contracts'
+import { parsePublicMessage, type PublicMessage } from '@lynku/contracts'
 
 export interface AuthorizedConversation {
   id: string

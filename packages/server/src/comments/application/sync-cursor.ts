@@ -1,4 +1,4 @@
-import type { CommentChangeCursor as ContractCursor } from '@lucky/contracts'
+import type { CommentChangeCursor as ContractCursor } from '@lynku/contracts'
 import { assertCommentChangeCursorScope, createCommentChangeCursor, type CommentChangeCursor } from '../domain/cursor'
 
 export function decodeCommentSyncCursor(cursor: ContractCursor, postId: string): CommentChangeCursor {

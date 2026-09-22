@@ -2,7 +2,8 @@ import { requireLogin, requireVerified } from '../../utils/guard'
 // pages/user — public user profile: avatar, handle, stats, recent posts
 import type { IUserPublic, IPost, LoadState } from '../../typings/cloudbase'
 import { getProfile } from '../../services/users'
-import { listPosts } from '../../services/posts'
+import { createPostList } from '../../composition/post-list'
+import type { PostListController } from '../../features/content/index'
 import { getOpenid } from '../../services/session'
 import { formatTime } from '../../utils/util'
 
@@ -25,10 +26,15 @@ Page({
   },
 
   _profileSeq: 0,
-  _postsSeq: 0,
+  _list: null as PostListController | null,
+  list(): PostListController {
+    if (!this._list) this._list = createPostList('author', state => this.setData({ posts: state.items,
+      postState: state.state, postCount: state.total, hasMore: state.hasMore, loadingMore: state.loadingMore }))
+    return this._list
+  },
 
-  onHide() { this._profileSeq += 1; this._postsSeq += 1 },
-  onUnload() { this._profileSeq += 1; this._postsSeq += 1 },
+  onHide() { this._profileSeq += 1; this.list().hide() },
+  onUnload() { this._profileSeq += 1; this._list?.dispose() },
 
   onLoad(options: Record<string, string | undefined>) {
     const windowInfo = wx.getWindowInfo()
@@ -47,6 +53,7 @@ Page({
   },
 
   onShow() {
+    this.list().show()
     if (!requireLogin()) return
     const openid = this.data.targetOpenid
     if (!openid) return
@@ -79,39 +86,9 @@ Page({
     }
   },
 
-  async loadPosts(reset?: boolean, openid?: string) {
-    const seq = ++this._postsSeq
-    const targetOpenid = openid || this.data.targetOpenid
-    if (reset) {
-      this.setData({ posts: [], postState: 'loading', postCount: null, loadingMore: false })
-    } else {
-      this.setData({ loadingMore: true })
-    }
-
-    const offset = reset ? 0 : this.data.posts.length
-
-    try {
-      const result = await listPosts({
-        authorOpenid: targetOpenid,
-        offset,
-        limit: 20,
-      })
-      const posts = reset ? result.items : [...this.data.posts, ...result.items]
-      if (seq !== this._postsSeq) return
-      this.setData({
-        posts,
-        postCount: result.total,
-        postState: posts.length === 0 ? 'empty' : 'loaded',
-        hasMore: result.hasMore ?? result.items.length >= 20,
-        loadingMore: false,
-      })
-    } catch (_) {
-      if (seq !== this._postsSeq) return
-      this.setData({
-        postState: this.data.posts.length === 0 ? 'error' : 'loaded',
-        loadingMore: false,
-      })
-    }
+  async loadPosts(reset = false, openid?: string) {
+    if (reset) await this.list().select(openid || this.data.targetOpenid)
+    else await this.list().more()
   },
 
   onSendMessage() {

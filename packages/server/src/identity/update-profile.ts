@@ -1,7 +1,8 @@
-import type { SelfProfile } from '@lucky/contracts'
+import type { SelfProfile } from '@lynku/contracts'
 import { projectSelfProfile } from './self-profile'
+import { ModerationFailure } from '../shared'
 export class ProfileUpdateFailure extends Error {
-  constructor(readonly code: 'INVALID_INPUT' | 'NOT_FOUND' | 'FORBIDDEN') { super(code) }
+  constructor(readonly code: 'INVALID_INPUT' | 'NOT_FOUND' | 'FORBIDDEN' | 'CONTENT_REJECTED') { super(code) }
 }
 interface ProfilePatch { nickname?: string; avatar_url?: string }
 export interface ProfileTransaction {
@@ -10,6 +11,7 @@ export interface ProfileTransaction {
   enqueue(id: string, event: { openid: string; profile_version: number; status: 'pending'; attempt_count: 0; next_attempt_at: number; created_at: string }): Promise<void>
 }
 export interface ProfileUpdateStore {
+  moderate(text: string): Promise<{ clean: boolean }>
   find(owner: string): Promise<unknown | null>
   run<T>(work: (transaction: ProfileTransaction) => Promise<T>): Promise<T>
   identifier(owner: string, version: number): string
@@ -42,6 +44,10 @@ export async function updateAccountProfile(store: ProfileUpdateStore, owner: str
   if (initial._openid !== owner) throw new ProfileUpdateFailure('FORBIDDEN')
   if (typeof initial._id !== 'string' || !initial._id) throw Error('Invalid account ID')
   const id = initial._id
+  if (fields.nickname !== undefined && fields.nickname !== initial.nickname) {
+    const verdict = await store.moderate(fields.nickname)
+    if (verdict?.clean !== true) throw new ModerationFailure(verdict?.clean === false ? 'CONTENT_REJECTED' : 'MODERATION_UNAVAILABLE')
+  }
   return store.run(async transaction => {
     const value = await transaction.read(id)
     if (value === null) throw new ProfileUpdateFailure('NOT_FOUND')

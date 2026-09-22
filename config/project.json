@@ -4,5 +4,26 @@
   "cloudEnvironment": "cloud1-d7gifgdpb8ad0ab8e",
   "baseLibrary": "3.17.3",
   "emailVerificationEnabled": true,
-  "debug": false
+  "debug": false,
+  "legal": {
+    "status": "draft",
+    "operatorName": null,
+    "supportEmail": "zihannuo@outlook.com",
+    "filingNumber": "浙CP备2026058998号-1X",
+    "filingNumberVerified": false,
+    "termsVersion": "1.0",
+    "privacyVersion": "1.0",
+    "rulesVersion": "1.0",
+    "thirdPartyVersion": "1.0",
+    "updatedAt": null,
+    "effectiveAt": null,
+    "wechatProviderName": null,
+    "wechatPrivacyUrl": null,
+    "cloudProviderName": null,
+    "cloudPrivacyUrl": null,
+    "cloudRegion": null,
+    "mailProviderName": null,
+    "mailPrivacyContact": "dpo@sinch.com",
+    "mailPrivacyUrl": "https://www.mailgun.com/legal/privacy-policy/"
+  }
 }

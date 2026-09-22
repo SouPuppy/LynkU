@@ -7,7 +7,7 @@
 ## 工程与配置
 
 - LynkU 保留原 Git 历史和 AppID `wxba2bcb0c71a5f33d`；接收 Lucky 的完整业务、测试、架构与治理文档。
-- 公开配置唯一入口为 `config/project.json`；`npm run configure` 同步客户端、微信工程和云部署目标。`npm run check` 拒绝配置漂移；配置中不接受秘密字段。根包改名为 lynku，内部 @lucky 包名暂留以保持稳定导入，不维护两份源码。
+- 公开配置唯一入口为 `config/project.json`；`npm run configure` 同步客户端、微信工程和云部署目标。`npm run check` 拒绝配置漂移；配置中不接受秘密字段。根包改名为 lynku，内部 @lynku 包名暂留以保持稳定导入，不维护两份源码。
 - 新环境 `cloud1-d7gifgdpb8ad0ab8e` 来自新 AppID 的微信开发者工具环境列表。旧环境 `cloud1-d4g94y77f0a618eb5` 不再是本工程部署目标。CloudBase CLI 当前腾讯云凭据只可访问旧环境，微信 CLI 使用新 AppID 自身授权；不能因 CLI 身份不同而误投旧环境。
 - 根 `npm run setup` 执行锁定安装、配置与完整检查；客户端展示名称使用同一配置。
 

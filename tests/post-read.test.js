@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { readPost } = require('@lucky/server')
+const { readPost } = require('@lynku/server')
 const post = { _id: 'post', _openid: 'alice', title: 'Title', content: 'Body', category_id: '', category: null,
   anonymous: true, status: 'published', revision: 1, view_count: 0, comment_count: 0,
   created_at: '2026-09-21T00:00:00.000Z', updated_at: '2026-09-21T00:00:00.000Z' }

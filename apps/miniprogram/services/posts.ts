@@ -1,11 +1,11 @@
 // services/posts.ts — Post data access
 // All reads and writes go through cloud functions so anonymous ownership stays private.
 
-import type { IPost, ICreatePostData, PaginatedResult } from '../typings/cloudbase'
+import type { IPost, ICreatePostData } from '../typings/cloudbase'
 import { callCloud, CloudCallError } from './cloud'
 import { getRevision } from './session'
 import { parseOwnedPostPage, type OwnedPostCursor, type OwnedPostPage } from '../generated/contracts/index'
-import { parsePostMutationReceipt, parsePostView, parsePostPage, type PostMutationReceipt } from '../generated/contracts/index'
+import { parsePostMutationReceipt, parsePostView, parsePublicPostPage, type PostMutationReceipt, type PostCursor, type PublicPostPage } from '../generated/contracts/index'
 
 const PAGE_SIZE = 20
 
@@ -13,15 +13,15 @@ const PAGE_SIZE = 20
 export async function listPosts(params: {
   categoryId?: string
   authorOpenid?: string
-  offset?: number
+  cursor?: PostCursor | null
   limit?: number
-}): Promise<PaginatedResult<IPost>> {
-  const { categoryId, authorOpenid, offset = 0, limit = PAGE_SIZE } = params
+}): Promise<PublicPostPage> {
+  const { categoryId, authorOpenid, cursor = null, limit = PAGE_SIZE } = params
   return readPostPage('posts', {
     action: 'list',
     category_id: categoryId,
     author_openid: authorOpenid,
-    offset,
+    cursor,
     limit,
   })
 }
@@ -66,13 +66,13 @@ export async function createPost(
 /** Search posts via cloud function */
 export async function searchPosts(
   query: string,
-  offset = 0,
+  cursor: PostCursor | null = null,
   limit = PAGE_SIZE,
-): Promise<PaginatedResult<IPost>> {
+): Promise<PublicPostPage> {
   return readPostPage('posts', {
     action: 'search',
     query,
-    offset,
+    cursor,
     limit,
   })
 }
@@ -105,11 +105,11 @@ export async function deletePost(postId: string): Promise<void> {
   await callCloud('posts', { action: 'delete', post_id: postId })
 }
 
-async function readPostPage(name: string, data: Record<string, unknown>): Promise<PaginatedResult<IPost>> {
+async function readPostPage(name: string, data: Record<string, unknown>): Promise<PublicPostPage> {
   const revision = getRevision()
   const result = await callCloud<unknown>(name, data)
   if (revision !== getRevision()) throw new Error('会话已变更')
-  try { return parsePostPage(result, data.action === 'listMine' ? 'owner' : 'public') } catch (_) {
+  try { return parsePublicPostPage(result) } catch (_) {
     throw new CloudCallError('帖子列表返回了无效数据', 'INVALID_RESPONSE', name, String(data.action))
   }
 }

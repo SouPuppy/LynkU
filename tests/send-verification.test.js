@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { sendSchoolVerification, confirmSchoolEmail } = require('@lucky/server')
+const { sendSchoolVerification, confirmSchoolEmail } = require('@lynku/server')
 function fixture() {
   const rows = new Map([['users/alice', { _id: 'alice', _openid: 'alice', nickname: 'Alice', avatar_url: '', email: '', verified: false, role: 'user' }]])
   const state = { rows, now: 100000, sends: 0, failWrite: false, failSend: false }

@@ -1,5 +1,7 @@
 <nav-bar title="{{chatTitle}}" showBack="{{true}}" />
 <view class="chat-page" style="height: calc(100vh - {{navHeight}}px);">
+  <view wx:if="{{blocked}}" class="chat-protection" bindtap="onUnblockContact">已屏蔽，点击解除</view>
+  <view wx:else class="chat-protection" bindtap="onBlockContact">屏蔽此用户</view>
   <view wx:if="{{pollingActive}}" class="sync-warning">连接不稳定，正在重试</view>
   <scroll-view class="chat-scroll" scroll-y scroll-into-view="{{scrollTo}}" enhanced show-scrollbar="{{false}}">
     <view wx:if="{{state === 'loading'}}" class="chat-skeleton">
@@ -38,7 +40,8 @@
     </block>
   </scroll-view>
 
-  <view class="chat-input-bar flex-row">
+  <view wx:if="{{blocked}}" class="chat-blocked-note">你已屏蔽此用户，不能发送新消息。</view>
+  <view wx:else class="chat-input-bar flex-row">
     <input
       class="chat-input flex-1"
       placeholder="输入消息..."

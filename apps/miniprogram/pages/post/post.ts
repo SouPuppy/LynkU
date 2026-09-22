@@ -1,15 +1,21 @@
 import * as session from '../../services/session'
+import { createViewScope } from '../../composition/view-scope'
+import type { ViewScope } from '../../features/session/view-scope'
+import config from '../../config'
 // pages/post — post detail + comments
 import type { IPost, ICommentWithReplies, LoadState } from '../../typings/cloudbase'
 import { getPost } from '../../services/posts'
-import { listCommentsByPost, createComment, deleteComment, buildCommentTree } from '../../services/comments'
+import { createComment, deleteComment } from '../../services/comments'
 import { isAnonymous } from '../../services/anonymous'
-import { watchComments, type WatcherHandle } from '../../services/watch'
+import { createCommentThread } from '../../composition/comment-thread'
+import type { CommentThreadController } from '../../features/content/index'
 import { createRequestId, formatTime } from '../../utils/util'
 import { requireLogin, requireVerified } from '../../utils/guard'
+import { submitReport } from '../../services/governance'
 
 Page({
   data: {
+    verificationEnabled: config.EMAIL_VERIFICATION_ENABLED,
     access: 'guest' as session.SessionState,
     post: null as IPost | null,
     comments: [] as ICommentWithReplies[],
@@ -29,79 +35,80 @@ Page({
     skRows3: [1, 2, 3],
   },
 
-  _watcher: null as WatcherHandle | null,
+  _thread: null as CommentThreadController | null,
+  thread(): CommentThreadController {
+    if (!this._thread) this._thread = createCommentThread(state => this.setData({ comments: state.comments,
+      commentState: state.state, commentHasMore: state.hasMore, commentLoadingMore: state.loadingMore }))
+    return this._thread
+  },
   _postSeq: 0,
-  _commentSeq: 0,
   _commentRequestId: '',
+  _scope: null as ViewScope | null,
+
+  scope(): ViewScope {
+    if (!this._scope) this._scope = createViewScope(visible => {
+      this._postSeq++
+      this.setData({ access: session.getState(), post: null, comments: [], state: 'idle',
+        submitting: false, inputValue: '', replyingTo: null })
+      this._commentRequestId = ''
+      if (visible && this.data.postId) { void this.loadPost() }
+    })
+    return this._scope
+  },
 
   onLoad(options: Record<string, string | undefined>) {
+    this.scope()
     const windowInfo = wx.getWindowInfo()
     this.setData({ navHeight: (windowInfo.statusBarHeight || 44) + 40 })
     if (options.id) {
       this.setData({ postId: options.id })
-      this.loadPost()
-      this.loadComments()
     }
   },
 
   onShow() {
-    this.setData({ access: session.getState() })
+    this.scope().show()
+    this.thread().show()
+    this.setData({ access: session.getState(), submitting: false })
     if (this.data.postId) {
-      this.startWatch()
+      void this.loadPost()
+      void this.loadComments()
     }
   },
 
   onHide() {
+    this.scope().hide()
+    this._postSeq++
     this.stopWatch()
   },
 
   onUnload() {
+    this._scope?.dispose()
+    this._thread?.dispose()
+    this._postSeq++
     this.stopWatch()
   },
 
   async loadPost() {
+    const token = this.scope().capture()
     const seq = ++this._postSeq
     this.setData({ state: 'loading' })
     try {
       const post = await getPost(this.data.postId)
-      if (seq !== this._postSeq) return
+      if (seq !== this._postSeq || !this.scope().current(token)) return
       this.setData({
         post,
         postDisplayTime: post ? formatTime(post.created_at) : '',
         state: post ? 'loaded' : 'empty',
       })
     } catch (_) {
-      if (seq !== this._postSeq) return
+      if (seq !== this._postSeq || !this.scope().current(token)) return
       this.setData({ state: 'error' })
     }
   },
 
-  async loadComments(reset = true, options: { clear?: boolean } = {}) {
-    const seq = ++this._commentSeq
-    if (reset && (options.clear || this.data.comments.length === 0)) {
-      this.setData({ commentState: 'loading', comments: [], commentHasMore: true })
-    } else if (reset) {
-      this.setData({ commentHasMore: true })
-    }
-    else this.setData({ commentLoadingMore: true })
-    try {
-      const flat = reset ? [] : this.flattenComments(this.data.comments)
-      const result = await listCommentsByPost(this.data.postId, flat.length)
-      const comments = buildCommentTree([...flat, ...result.items])
-      if (seq !== this._commentSeq) return
-      this.setData({
-        comments,
-        commentHasMore: !!result.hasMore,
-        commentLoadingMore: false,
-        commentState: comments.length === 0 ? 'empty' : 'loaded',
-      })
-    } catch (_) {
-      if (seq !== this._commentSeq) return
-      this.setData({
-        commentLoadingMore: false,
-        commentState: this.data.comments.length === 0 ? 'error' : 'loaded',
-      })
-    }
+  async loadComments(reset = true) {
+    if (reset) await this.thread().refresh(this.data.postId)
+    else await this.thread().more()
   },
 
   onRequestAccess() { requireVerified() },
@@ -123,19 +130,22 @@ Page({
     const content = this.data.inputValue.trim()
     if (!content || this.data.submitting) return
 
+    const token = this.scope().capture()
     this.setData({ submitting: true })
     try {
       if (!this._commentRequestId) this._commentRequestId = createRequestId()
-      await createComment({ postId: this.data.postId, content, anonymous: isAnonymous(), requestId: this._commentRequestId })
+      const result = await createComment({ postId: this.data.postId, content, anonymous: isAnonymous(), requestId: this._commentRequestId })
+      if (!this.scope().current(token)) return
       this._commentRequestId = ''
       this.setData({ inputValue: '', inputFocus: false })
       this.loadComments(true)
-      wx.showToast({ title: '评论成功', icon: 'success', duration: 1500 })
+      wx.showToast({ title: result.flagged ? '已提交，待审核' : '评论成功', icon: result.flagged ? 'none' : 'success', duration: 1500 })
     } catch (e: unknown) {
+      if (!this.scope().current(token)) return
       const msg = e instanceof Error ? e.message : '评论失败'
       wx.showToast({ title: msg, icon: 'error' })
     } finally {
-      this.setData({ submitting: false })
+      if (this.scope().current(token)) this.setData({ submitting: false })
     }
   },
 
@@ -174,10 +184,12 @@ Page({
     const parentId = this.data.replyingTo
     if (!content || !parentId || this.data.submitting) return
 
+    const token = this.scope().capture()
     this.setData({ submitting: true })
     try {
       if (!this._commentRequestId) this._commentRequestId = createRequestId()
-      await createComment({ postId: this.data.postId, content, parentId, anonymous: isAnonymous(), requestId: this._commentRequestId })
+      const result = await createComment({ postId: this.data.postId, content, parentId, anonymous: isAnonymous(), requestId: this._commentRequestId })
+      if (!this.scope().current(token)) return
       this._commentRequestId = ''
       this.setData({
         replyingTo: null,
@@ -187,12 +199,13 @@ Page({
         inputFocus: false,
       })
       this.loadComments(true)
-      wx.showToast({ title: '回复成功', icon: 'success', duration: 1500 })
+      wx.showToast({ title: result.flagged ? '已提交，待审核' : '回复成功', icon: result.flagged ? 'none' : 'success', duration: 1500 })
     } catch (e: unknown) {
+      if (!this.scope().current(token)) return
       const msg = e instanceof Error ? e.message : '回复失败'
       wx.showToast({ title: msg, icon: 'error' })
     } finally {
-      this.setData({ submitting: false })
+      if (this.scope().current(token)) this.setData({ submitting: false })
     }
   },
 
@@ -207,21 +220,52 @@ Page({
     // Only allow delete of own comments
     if (!comment.is_mine) return
 
+    const token = this.scope().capture()
     wx.showModal({
       title: '删除评论',
       content: '确定要删除这条评论吗？',
       success: async (res) => {
-        if (!res.confirm) return
+        if (!res.confirm || !this.scope().current(token)) return
         try {
           await deleteComment(commentId)
+          if (!this.scope().current(token)) return
           this.loadComments(true)
           wx.showToast({ title: '已删除', icon: 'success', duration: 1500 })
         } catch (e: unknown) {
+          if (!this.scope().current(token)) return
           const msg = e instanceof Error ? e.message : '删除失败'
           wx.showToast({ title: msg, icon: 'error' })
         }
       },
     })
+  },
+
+  onReportPost() {
+    const post = this.data.post
+    if (!post || !requireLogin()) return
+    this.showReportSheet({ type: 'post', id: post._id })
+  },
+
+  onReportComment(e: WechatMiniprogram.CustomEvent) {
+    const commentId = e.detail.commentId
+    if (typeof commentId !== 'string' || !requireLogin()) return
+    this.showReportSheet({ type: 'comment', id: commentId })
+  },
+
+  showReportSheet(target: { type: 'post' | 'comment'; id: string }) {
+    const reasons = [{ label: '骚扰或侮辱', code: 'HARASSMENT' }, { label: '违法或有害信息', code: 'ILLEGAL_CONTENT' },
+      { label: '侵犯隐私', code: 'PRIVACY' }, { label: '诈骗或虚假信息', code: 'FRAUD' }, { label: '其他', code: 'OTHER' }]
+    wx.showActionSheet({ itemList: reasons.map(item => item.label), success: async result => {
+      const reason = reasons[result.tapIndex]
+      if (!reason) return
+      const token = this.scope().capture()
+      try {
+        await submitReport(target, reason.code)
+        if (this.scope().current(token)) wx.showToast({ title: '举报已受理', icon: 'success' })
+      } catch (error) {
+        if (this.scope().current(token)) wx.showToast({ title: error instanceof Error ? error.message : '举报未受理', icon: 'none' })
+      }
+    } })
   },
 
   findComment(id: string): ICommentWithReplies | null {
@@ -234,44 +278,7 @@ Page({
     return null
   },
 
-  flattenComments(comments: ICommentWithReplies[]) {
-    return comments.flatMap(comment => {
-      const { replies, ...parent } = comment
-      return [parent, ...(replies || [])]
-    })
-  },
-
-  // ── Real-time watch ──
-
-  startWatch() {
-    if (this._watcher) return // already watching
-    try {
-      this._watcher = watchComments(
-        this.data.postId,
-        (_docs, changes) => {
-          this._commentSeq += 1
-          const flat = this.flattenComments(this.data.comments)
-          const byId = new Map(flat.map(comment => [comment._id, comment]))
-          for (const change of changes) {
-            if (change.type === 'remove') byId.delete(change.doc._id)
-            else byId.set(change.doc._id, change.doc)
-          }
-          const comments = buildCommentTree(Array.from(byId.values()))
-          this.setData({ comments, commentState: comments.length === 0 ? 'empty' : 'loaded' })
-        },
-        (err) => {
-          console.error('[post] watchComments error:', err.message)
-        },
-      )
-    } catch (_) { /* watch may not be available in all envs */ }
-  },
-
-  stopWatch() {
-    if (this._watcher) {
-      this._watcher.close()
-      this._watcher = null
-    }
-  },
+  stopWatch() { this._thread?.hide() },
 
   // ── Author tap → chat ──
 

@@ -25,14 +25,14 @@ test('client cannot directly read private collections', () => {
 })
 
 test('notification creation is not a public message action', () => {
-  const source = read('apps/cloudfunctions/messages/index.js')
+  const source = read('apps/cloudfunctions/messages/index.ts')
   assert.doesNotMatch(source, /case ['"]createNotification['"]/)
-  assert.match(read('apps/cloudfunctions/comments/index.js'), /createNotification\(/)
+  assert.match(read('apps/cloudfunctions/comments/index.ts'), /createNotification\(/)
 })
 
 test('comment notifications show comment text and use deterministic ids', () => {
-  const commentCloud = read('apps/cloudfunctions/comments/index.js')
-  assert.match(commentCloud, /stableDocumentId\(\s*['"]notification['"]/)
+  const commentCloud = read('apps/cloudfunctions/comments/index.ts')
+  assert.match(read('packages/server/src/notifications/comment-events.ts'), /identifier\(['"]notification['"]/)
   assert.doesNotMatch(commentCloud, /createCollection\(/)
   assert.doesNotMatch(commentCloud, /['"]target\.comment_id['"]/)
 
@@ -42,12 +42,12 @@ test('comment notifications show comment text and use deterministic ids', () => 
 })
 
 test('notification reads are side-effect free', () => {
-  const source = read('apps/cloudfunctions/messages/index.js')
+  const source = read('apps/cloudfunctions/messages/index.ts')
   const notificationReads = source.slice(source.indexOf('async function listNotifications'), source.indexOf('async function markNotificationsRead'))
   assert.doesNotMatch(source, /backfillCommentNotifications/)
   assert.doesNotMatch(notificationReads, /collection\(['"]posts['"]\)/)
   assert.doesNotMatch(notificationReads, /collection\(['"]comments['"]\)/)
-  assert.match(read('apps/cloudfunctions/comments/index.js'), /createNotification\(/)
+  assert.match(read('apps/cloudfunctions/comments/index.ts'), /createNotification\(/)
 })
 
 test('anonymous identity uses the shared anonymous avatar', () => {
@@ -71,7 +71,7 @@ test('anonymous chat uses server-resolved targets without exposing the real peer
 })
 
 test('email verification is server-owned and gates write actions', () => {
-  const usersCloud = read('apps/cloudfunctions/users/index.js')
+  const usersCloud = read('apps/cloudfunctions/users/index.ts')
   assert.match(usersCloud, /MAILGUN_API_KEY/)
   assert.match(usersCloud, /https\.request/)
   assert.match(usersCloud, /MAILGUN_TIMEOUT_MS/)
@@ -79,7 +79,7 @@ test('email verification is server-owned and gates write actions', () => {
   assert.match(usersCloud, /case ['"]sendEmailCode['"]/)
   assert.match(usersCloud, /case ['"]verifyEmailCode['"]/)
   assert.doesNotMatch(usersCloud, /createCollection/)
-  assert.match(require('@lucky/server').verificationMail('student@nottingham.edu.cn', '012345').text, /垃圾邮件/)
+  assert.match(require('@lynku/server').verificationMail('student@nottingham.edu.cn', '012345').text, /垃圾邮件/)
 
   const usersPackage = read('apps/cloudfunctions/users/package.json')
   assert.doesNotMatch(usersPackage, /mailgun\.js|form-data/)
@@ -91,14 +91,14 @@ test('email verification is server-owned and gates write actions', () => {
   assert.match(developmentGuide, /email_verifications/)
 
   for (const file of [
-    'apps/cloudfunctions/posts/index.js',
-    'apps/cloudfunctions/comments/index.js',
-    'apps/cloudfunctions/messages/index.js',
-    'apps/cloudfunctions/drafts/index.js',
+    'apps/cloudfunctions/posts/index.ts',
+    'apps/cloudfunctions/comments/index.ts',
+    'apps/cloudfunctions/messages/index.ts',
+    'apps/cloudfunctions/drafts/index.ts',
   ]) {
     assert.match(read(file), /authorizeAction\(db, openid/, file)
   }
-  const common = read('apps/cloudfunctions/common/index.js')
+  const common = read('apps/cloudfunctions/common/index.ts')
   assert.match(common, /messages:[\s\S]*listConversations: 'verified'/)
   assert.match(common, /drafts: Object\.freeze\(\{ save: 'verified'/)
 })
@@ -114,33 +114,11 @@ test('post creation accepts a caller-stable idempotency key', () => {
   assert.match(service, /request_id: requestId/)
 })
 
-test('comment retries do not duplicate notifications or comment counts', () => {
-  const comments = read('apps/cloudfunctions/comments/index.js')
-  const service = read('apps/miniprogram/services/comments.ts')
-  const page = read('apps/miniprogram/pages/post/post.ts')
-  assert.match(comments, /stableDocumentId\(['"]comment:create['"]/)
-  assert.match(comments, /request_fingerprint/)
-  assert.match(comments, /if \(!created\.duplicate\) await drainNotificationOutbox\(created\.outboxIds\)/)
-  assert.match(service, /request_id: data\.requestId/)
-  assert.match(page, /_commentRequestId/)
-})
-
-test('comment polling consumes a post-scoped change stream instead of reloading every page', () => {
-  const comments = read('apps/cloudfunctions/comments/index.js')
-  const watch = read('apps/miniprogram/services/watch.ts')
-  const service = read('apps/miniprogram/services/comments.ts')
-  assert.match(comments, /case 'syncChanges': return syncCommentChanges/)
-  assert.match(comments, /collection\('comment_changes'\)/)
-  assert.match(comments, /recordCommentChange\(transaction, post\._id, commentId, 'created'\)/)
-  assert.match(comments, /recordCommentChange\(transaction, current\.post_id, current\._id, 'deleted'\)/)
-  assert.match(service, /action: 'syncChanges'/)
-  assert.match(watch, /syncCommentChanges\(postId, pendingCursor, 50\)/)
-  assert.doesNotMatch(service, /getCommentsByPost/)
-  assert.doesNotMatch(watch, /getCommentsByPost/)
-})
+// Comment creation, change sequences and retry side effects are exercised by
+// comment-create-entry.test.js and guest-session.test.js, not source regexes.
 
 test('message idempotency keys bind to the original payload', () => {
-  const messages = read('apps/cloudfunctions/messages/index.js')
+  const messages = read('apps/cloudfunctions/messages/index.ts')
   const chat = read('apps/miniprogram/subpkg-chat/pages/chat/chat.ts')
   const send = read('packages/server/src/messaging/application/send-message.ts')
   assert.match(send, /message:payload/)
@@ -152,7 +130,7 @@ test('message idempotency keys bind to the original payload', () => {
 
 
 test('public profile DTO does not expose account verification state', () => {
-  const users = read('apps/cloudfunctions/users/index.js')
+  const users = read('apps/cloudfunctions/users/index.ts')
   const publicProfile = users.slice(users.indexOf('async function getPublicProfile'))
   assert.doesNotMatch(publicProfile, /verified: !!user\.verified/)
   assert.doesNotMatch(publicProfile, /role: user\.role/)
@@ -186,7 +164,7 @@ test('cloud utilities have one source and are bundled for independent deployment
   const manifest = JSON.parse(read('dist/cloudfunctions/manifest.json'))
   for (const name of ['users', 'posts', 'comments', 'messages', 'categories', 'drafts']) {
     assert.equal(fs.existsSync(path.join(root, 'apps/cloudfunctions', name, 'utils.js')), false, name)
-    assert.ok(manifest.artifacts.find(artifact => artifact.name === name).inputs.includes('apps/cloudfunctions/common/index.js'), name)
+    assert.ok(manifest.artifacts.find(artifact => artifact.name === name).inputs.includes('apps/cloudfunctions/common/index.ts'), name)
   }
 })
 

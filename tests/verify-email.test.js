@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { confirmSchoolEmail } = require('@lucky/server')
+const { confirmSchoolEmail } = require('@lynku/server')
 const email = 'student@nottingham.edu.cn'
 function fixture() {
   const rows = new Map()

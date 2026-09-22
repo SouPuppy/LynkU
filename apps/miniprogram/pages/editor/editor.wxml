@@ -61,10 +61,10 @@
       value="{{content}}"
       bindinput="onContentInput"
       disabled="{{submitting || publicationPending}}"
-      maxlength="10000"
+      maxlength="{{contentLimit}}"
     />
     <view class="content-footer flex-row">
-      <text class="counter text-xs {{contentLen > 9000 ? 'counter-warn' : 'text-secondary'}}">{{contentLen}}/10000</text>
+      <text class="counter text-xs {{contentLen >= contentLimit ? 'counter-warn' : 'text-secondary'}}">{{contentLen}}/{{contentLimit}}</text>
       <text wx:if="{{lastSavedAt}}" class="save-indicator text-xs text-secondary">{{lastSavedAt}}</text>
     </view>
   </view>

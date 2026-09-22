@@ -1,7 +1,8 @@
 <nav-bar title="邮箱认证" showBack="{{false}}" />
 <view wx:if="{{verificationEnabled}}" class="verify-page">
   <view class="verify-panel">
-    <text class="verify-title">认证 Nottingham 邮箱</text>
+    <text class="verify-title">{{changingEmail ? '更换学校邮箱' : '认证 Nottingham 邮箱'}}</text>
+    <text wx:if="{{changingEmail}}" class="verify-desc">新邮箱验证成功前，现有认证和权限保持有效。</text>
     <text class="verify-desc">仅支持 @nottingham.edu.cn 邮箱。验证码可能进入垃圾邮件，请同时检查垃圾邮件文件夹。</text>
 
     <view class="verify-field">

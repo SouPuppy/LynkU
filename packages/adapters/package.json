@@ -1,10 +1,10 @@
 {
-  "name": "@lucky/adapters",
-  "version": "0.1.0",
+  "name": "@lynku/adapters",
+  "version": "0.2.0",
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "dependencies": {
-    "@lucky/server": "0.1.0"
+    "@lynku/server": "0.2.0"
   }
 }

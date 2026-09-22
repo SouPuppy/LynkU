@@ -1,10 +1,10 @@
 {
-  "name": "@lucky/server",
-  "version": "0.1.0",
+  "name": "@lynku/server",
+  "version": "0.2.0",
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "dependencies": {
-    "@lucky/contracts": "0.1.0"
+    "@lynku/contracts": "0.2.0"
   }
 }

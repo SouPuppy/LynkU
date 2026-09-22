@@ -5,7 +5,7 @@
   "functions": [
     {
       "name": "users",
-      "timeout": 20,
+      "timeout": 30,
       "runtime": "Nodejs16.13",
       "handler": "index.main",
       "triggers": [
@@ -18,13 +18,13 @@
     },
     {
       "name": "posts",
-      "timeout": 3,
+      "timeout": 30,
       "runtime": "Nodejs16.13",
       "handler": "index.main"
     },
     {
       "name": "comments",
-      "timeout": 20,
+      "timeout": 30,
       "runtime": "Nodejs16.13",
       "handler": "index.main",
       "triggers": [
@@ -37,7 +37,7 @@
     },
     {
       "name": "messages",
-      "timeout": 3,
+      "timeout": 30,
       "runtime": "Nodejs16.13",
       "handler": "index.main"
     },
@@ -50,6 +50,18 @@
     {
       "name": "drafts",
       "timeout": 3,
+      "runtime": "Nodejs16.13",
+      "handler": "index.main"
+    },
+    {
+      "name": "governance",
+      "timeout": 30,
+      "runtime": "Nodejs16.13",
+      "handler": "index.main"
+    },
+    {
+      "name": "admin",
+      "timeout": 10,
       "runtime": "Nodejs16.13",
       "handler": "index.main"
     }

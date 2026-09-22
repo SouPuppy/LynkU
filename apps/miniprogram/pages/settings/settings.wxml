@@ -17,10 +17,6 @@
           <view class="setting-arrow"></view>
         </view>
       </view>
-      <view class="setting-row" bindtap="onAbout">
-        <text>关于 {{appName}}</text>
-        <view class="setting-arrow"></view>
-      </view>
     </view>
   </view>
 
@@ -30,6 +26,7 @@
         <text>清理本地会话</text>
         <view class="setting-arrow"></view>
       </view>
+      <view class="setting-row" bindtap="onReports"><text>我的举报与处理结果</text><view class="setting-arrow"></view></view>
     </view>
   </view>
 
@@ -47,3 +44,12 @@
 </view>
 
 <view wx:else class="access-state"><text class="access-title">登录后管理个人资料</text><button class="access-button" bindtap="onLogin">微信登录</button></view>
+
+<view class="section public-settings">
+  <view class="settings-list">
+    <view class="setting-row" bindtap="onAbout"><text>关于 {{appName}}与联系方式</text><view class="setting-arrow"></view></view>
+    <view class="setting-row" data-kind="terms" bindtap="onLegal"><text>用户协议</text><view class="setting-arrow"></view></view>
+    <view class="setting-row" data-kind="privacy" bindtap="onLegal"><text>隐私政策</text><view class="setting-arrow"></view></view>
+    <view class="setting-row" data-kind="rules" bindtap="onLegal"><text>社区规范</text><view class="setting-arrow"></view></view>
+  </view>
+</view>

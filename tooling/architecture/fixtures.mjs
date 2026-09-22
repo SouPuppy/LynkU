@@ -3,10 +3,10 @@
 export const validArchitecture = {
   'packages/contracts/src/index.ts': 'export interface View { title: string }',
   'packages/server/src/content/index.ts': "export { publish } from './publish'",
-  'packages/server/src/content/publish.ts': "import type { View } from '@lucky/contracts'; export function publish(value: View): string { return value.title }",
+  'packages/server/src/content/publish.ts': "import type { View } from '@lynku/contracts'; export function publish(value: View): string { return value.title }",
   'packages/server/src/workflows/index.ts': "export { publish } from '../content'",
   'packages/server/src/index.ts': "export * from './content'; export * from './workflows'",
-  'packages/adapters/src/index.ts': "import { publish } from '@lucky/server'; export const adapter = publish",
+  'packages/adapters/src/index.ts': "import { publish } from '@lynku/server'; export const adapter = publish",
   'apps/miniprogram/generated/contracts/index.ts': 'export interface View { title: string }',
   'apps/miniprogram/features/editor/index.ts': "import type { View } from '../../generated/contracts'; export function title(value: View): string { return value.title }",
   'apps/miniprogram/platform/storage.ts': 'export const storage = { save(value: string) { return value } }',
@@ -18,8 +18,8 @@ export const violations = [
   {
     name: 'runtime CommonJS cycles', rule: 'no-circular-dependencies',
     files: {
-      'apps/cloudfunctions/a/index.js': "module.exports = require('../b')",
-      'apps/cloudfunctions/b/index.js': "module.exports = require('../a')",
+      'apps/cloudfunctions/a/index.ts': "module.exports = require('../b')",
+      'apps/cloudfunctions/b/index.ts': "module.exports = require('../a')",
     },
   },
   {
@@ -32,13 +32,13 @@ export const violations = [
   {
     name: 'contracts importing server through a package alias', rule: 'contracts-are-platform-independent',
     files: {
-      'packages/contracts/src/invalid.ts': "import { publish } from '@lucky/server'; export const invalid = publish",
+      'packages/contracts/src/invalid.ts': "import { publish } from '@lynku/server'; export const invalid = publish",
     },
   },
   {
     name: 'server importing an adapter through a package alias', rule: 'server-does-not-import-platform',
     files: {
-      'packages/server/src/content/invalid.ts': "import { adapter } from '@lucky/adapters'; export const invalid = adapter",
+      'packages/server/src/content/invalid.ts': "import { adapter } from '@lynku/adapters'; export const invalid = adapter",
     },
   },
   {
@@ -120,7 +120,7 @@ export const violations = [
   {
     name: 'domains importing API DTOs', rule: 'domain-does-not-import-contracts',
     files: {
-      'packages/server/src/content/domain/invalid.ts': "import type { View } from '@lucky/contracts'; export type Invalid = View",
+      'packages/server/src/content/domain/invalid.ts': "import type { View } from '@lynku/contracts'; export type Invalid = View",
     },
   },
   {
@@ -133,7 +133,7 @@ export const violations = [
   {
     name: 'client type-only imports of server code', rule: 'client-does-not-import-server',
     files: {
-      'apps/miniprogram/pages/invalid.ts': "import type { publish } from '@lucky/server'; export type Invalid = typeof publish",
+      'apps/miniprogram/pages/invalid.ts': "import type { publish } from '@lynku/server'; export type Invalid = typeof publish",
     },
   },
   {

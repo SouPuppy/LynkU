@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { syncMessages, InvalidMessageSyncRequest } = require('@lucky/server')
+const { syncMessages, InvalidMessageSyncRequest } = require('@lynku/server')
 const conversation = { id: 'conversation', viewer: 'alice', peer: 'bob', anonymousThread: 'thread' }
 const cursor = { version: 2, conversation_id: 'conversation', sequence: 3 }
 const message = { _id: 'm4', msg_id: 'request4', from: 'bob', to: 'alice', content: 'hello', status: 'sent',

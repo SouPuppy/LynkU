@@ -1,4 +1,4 @@
-import { parsePostView, type PostView } from '@lucky/contracts'
+import { parsePostView, type PostView } from '@lynku/contracts'
 /** Database records never become API responses without explicit projection and validation. */
 export function projectPost(value: unknown, viewer: string): PostView {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid stored post')

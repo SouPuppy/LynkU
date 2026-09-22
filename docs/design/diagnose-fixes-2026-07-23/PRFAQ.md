@@ -2,7 +2,7 @@
 
 ## Problem
 
-The `/diagnose` pipeline identified 10 findings across the Lucky BBS codebase:
+The `/diagnose` pipeline identified 10 findings across the LynkU codebase:
 2 critical config issues, 6 warnings (dead code, inconsistency, duplication),
 and 2 notes. Left unfixed, these cause:
 

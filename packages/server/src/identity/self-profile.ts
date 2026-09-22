@@ -1,4 +1,4 @@
-import { parseSelfProfile, type SelfProfile } from '@lucky/contracts'
+import { parseSelfProfile, type SelfProfile } from '@lynku/contracts'
 
 /** Private account DTO: database IDs, outbox versions and future internal fields stay on the server. */
 export function projectSelfProfile(value: unknown, owner: string): SelfProfile {

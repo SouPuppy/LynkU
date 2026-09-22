@@ -5,8 +5,11 @@ import { isBuiltin } from 'node:module'
 import { createHash } from 'node:crypto'
 import assert from 'node:assert/strict'
 import { build } from 'esbuild'
+import { releaseInputs } from './release-inputs.mjs'
+import { generateLegalBundle } from './build-legal-policies.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+generateLegalBundle(root)
 const sourceRoot = path.join(root, 'apps/cloudfunctions')
 const outputRoot = path.join(root, 'dist/cloudfunctions')
 const config = JSON.parse(fs.readFileSync(path.join(root, 'cloudbaserc.json'), 'utf8'))
@@ -16,8 +19,8 @@ if (!names.length || new Set(names).size !== names.length || names.some(name => 
 }
 const runtimePackage = JSON.parse(fs.readFileSync(path.join(root, 'config/cloud-runtime/package.json'), 'utf8'))
 const runtimeLock = JSON.parse(fs.readFileSync(path.join(root, 'config/cloud-runtime/package-lock.json'), 'utf8'))
-assert.deepEqual(Object.keys(runtimePackage.dependencies), ['wx-server-sdk'], 'Only the CloudBase SDK is an external runtime package')
-assert.match(runtimePackage.dependencies['wx-server-sdk'], /^\d+\.\d+\.\d+$/, 'Runtime SDK version must be exact')
+assert.deepEqual(Object.keys(runtimePackage.dependencies).sort(), ['@cloudbase/node-sdk', 'wx-server-sdk'], 'Cloud function runtime dependencies must be the exact CloudBase SDK pair')
+for (const [name, version] of Object.entries(runtimePackage.dependencies)) assert.match(version, /^\d+\.\d+\.\d+$/, `${name} version must be exact`)
 assert.equal(runtimeLock.lockfileVersion, 3, 'Runtime dependency lock must use lockfileVersion 3')
 assert.equal(runtimeLock.name, runtimePackage.name, 'Runtime lock package name differs')
 assert.equal(runtimeLock.version, runtimePackage.version, 'Runtime lock package version differs')
@@ -25,6 +28,7 @@ assert.equal(runtimeLock.packages[''].name, runtimePackage.name, 'Runtime root p
 assert.equal(runtimeLock.packages[''].version, runtimePackage.version, 'Runtime root package version differs')
 assert.deepEqual(runtimeLock.packages[''].dependencies, runtimePackage.dependencies, 'Runtime lock dependencies differ')
 assert.equal(runtimeLock.packages['node_modules/wx-server-sdk'].version, runtimePackage.dependencies['wx-server-sdk'], 'Locked SDK version differs')
+assert.equal(runtimeLock.packages['node_modules/@cloudbase/node-sdk'].version, runtimePackage.dependencies['@cloudbase/node-sdk'], 'Locked CloudBase Node SDK version differs')
 function hasLockedDependency(location, dependency) {
   let directory = location
   while (true) {
@@ -72,16 +76,16 @@ try {
     assert.deepEqual(packageJson.dependencies, runtimePackage.dependencies, `${name}: source dependencies differ from the shared runtime lock`)
     const result = await build({
       absWorkingDir: root,
-      entryPoints: [path.join(source, 'index.js')],
+      entryPoints: [path.join(source, 'index.ts')],
       bundle: true,
       platform: 'node',
       format: 'cjs',
       target: [target],
-      external: ['wx-server-sdk'],
+      external: Object.keys(runtimePackage.dependencies),
       alias: {
-        '@lucky/contracts': path.join(root, 'packages/contracts/src/index.ts'),
-        '@lucky/server': path.join(root, 'packages/server/src/index.ts'),
-        '@lucky/adapters': path.join(root, 'packages/adapters/src/index.ts'),
+        '@lynku/contracts': path.join(root, 'packages/contracts/src/index.ts'),
+        '@lynku/server': path.join(root, 'packages/server/src/index.ts'),
+        '@lynku/adapters': path.join(root, 'packages/adapters/src/index.ts'),
       },
       outfile: 'index.js',
       write: false,
@@ -93,19 +97,16 @@ try {
     const imports = Object.values(result.metafile.outputs).flatMap(entry => entry.imports)
     for (const imported of imports) {
       if (!imported.external) throw new Error(`${name}: unbundled local dependency ${imported.path}`)
-      if (!isBuiltin(imported.path) && imported.path !== 'wx-server-sdk') {
+      if (!isBuiltin(imported.path) && !Object.hasOwn(runtimePackage.dependencies, imported.path)) {
         throw new Error(`${name}: unexpected runtime dependency ${imported.path}`)
       }
-    }
-    if (!/^\d+\.\d+\.\d+$/.test(packageJson.dependencies?.['wx-server-sdk'] || '')) {
-      throw new Error(`${name}: wx-server-sdk must have an exact version`)
     }
     fs.mkdirSync(output, { recursive: true })
     fs.writeFileSync(path.join(output, 'index.js'), code.contents)
     fs.copyFileSync(path.join(source, 'config.json'), path.join(output, 'config.json'))
     fs.writeFileSync(path.join(output, 'package.json'), `${JSON.stringify({
       name: packageJson.name, version: packageJson.version, private: true, main: 'index.js',
-      dependencies: { 'wx-server-sdk': packageJson.dependencies['wx-server-sdk'] },
+      dependencies: packageJson.dependencies,
       overrides: runtimePackage.overrides,
     }, null, 2)}\n`)
     const lock = structuredClone(runtimeLock)
@@ -119,7 +120,7 @@ try {
       inputs: Object.keys(result.metafile.inputs).sort(),
       external: [...new Set(imports.map(entry => entry.path))].sort() })
   }
-  fs.writeFileSync(path.join(staging, 'manifest.json'), `${JSON.stringify({ functions: names, source: 'cloudbaserc.json', bundler: 'esbuild', artifacts }, null, 2)}\n`)
+  fs.writeFileSync(path.join(staging, 'manifest.json'), `${JSON.stringify({ release: releaseInputs(root), functions: names, source: 'cloudbaserc.json', bundler: 'esbuild', artifacts }, null, 2)}\n`)
   removeOutput(outputRoot)
   fs.renameSync(staging, outputRoot)
   process.stdout.write(`Built ${names.length} independent cloud function bundles.\n`)

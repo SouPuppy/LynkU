@@ -1,6 +1,6 @@
 <view wx:if="{{access !== 'verified'}}" class="access-state">
   <text class="access-title">{{access === 'guest' ? '登录后查看消息' : '完成学校认证后可使用消息功能'}}</text>
-  <text class="access-description">学校邮箱认证暂不可用，你可以继续浏览校园内容。</text>
+  <text class="access-description">{{verificationGuidance}}</text>
   <button wx:if="{{access === 'guest'}}" class="access-button" bindtap="onLogin">微信登录</button>
   <button wx:else class="access-button" bindtap="onVerify">查看认证状态</button>
 </view>

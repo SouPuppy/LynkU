@@ -1,4 +1,4 @@
-import { parseMessageSyncRequest, parseMessageSyncPage, type MessageSyncPage } from '@lucky/contracts'
+import { parseMessageSyncRequest, parseMessageSyncPage, type MessageSyncPage } from '@lynku/contracts'
 import { projectMessage, type AuthorizedConversation } from './message-view'
 
 export interface MessageSyncStore {

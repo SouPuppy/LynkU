@@ -1,11 +1,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { validateLegalMetadata } from './legal-metadata.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 export function validateProjectConfig(value) {
-  const keys = ['name', 'appId', 'cloudEnvironment', 'baseLibrary', 'emailVerificationEnabled', 'debug']
+  const keys = ['name', 'appId', 'cloudEnvironment', 'baseLibrary', 'emailVerificationEnabled', 'debug', 'legal']
   if (!value || typeof value !== 'object' || Array.isArray(value)
     || Object.keys(value).some(key => !keys.includes(key))
     || keys.some(key => !Object.hasOwn(value, key))) throw new Error('Invalid public project configuration keys')
@@ -14,6 +15,7 @@ export function validateProjectConfig(value) {
   if (typeof value.cloudEnvironment !== 'string' || !/^[a-z][a-z0-9-]{3,63}$/.test(value.cloudEnvironment)) throw new Error('Invalid CloudBase environment')
   if (typeof value.baseLibrary !== 'string' || !/^\d+\.\d+\.\d+$/.test(value.baseLibrary)) throw new Error('Invalid base library version')
   if (typeof value.emailVerificationEnabled !== 'boolean' || typeof value.debug !== 'boolean') throw new Error('Feature flags must be booleans')
+  validateLegalMetadata(value.legal)
   return value
 }
 

@@ -40,7 +40,7 @@ async function verify() {
         async get() {
           queries.push({ name, condition, take, fields, order })
           if (name === 'users' && condition._openid === owner) {
-            assert.equal(take, 1)
+            assert.equal(take, 2)
             return { data: [{ _openid: owner, verified, role: 'user' }] }
           }
           if (name === 'conversation_entries') {
@@ -71,6 +71,7 @@ async function verify() {
     process: { env: {} }, setTimeout, clearTimeout,
     require(specifier) {
       if (specifier === 'wx-server-sdk') return sdk
+      if (specifier === '@cloudbase/node-sdk') return { init: () => ({ auth: () => ({ getAuthContext: async () => ({ uid: openid, loginType: 'PASSWORD' }) }) }) }
       if (isBuiltin(specifier)) return require(specifier)
       throw new Error(`Bundle depends on an unpackaged module: ${specifier}`)
     },

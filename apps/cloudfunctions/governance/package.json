@@ -1,0 +1,7 @@
+{
+  "name": "cf-governance",
+  "version": "0.2.0",
+  "description": "Community report intake and case governance",
+  "main": "index.js",
+  "dependencies": { "@cloudbase/node-sdk": "3.17.2", "wx-server-sdk": "4.0.2" }
+}

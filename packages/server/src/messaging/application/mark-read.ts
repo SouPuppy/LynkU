@@ -1,4 +1,4 @@
-import { parseReadMessageIds } from '@lucky/contracts'
+import { parseReadMessageIds } from '@lynku/contracts'
 import { projectMessage, type AuthorizedConversation } from './message-view'
 
 export interface ReadTransaction {

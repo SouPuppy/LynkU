@@ -1,4 +1,4 @@
-# Kotlin Backend Architecture for Lucky BBS -- Research Report
+# Kotlin Backend Architecture for LynkU -- Research Report
 
 ## Problem Domain
 

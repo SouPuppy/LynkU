@@ -5,7 +5,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { configureProject, validateProjectConfig } from '../tooling/configure-project.mjs'
 
-const config = { name: 'LynkU', appId: 'wxba2bcb0c71a5f33d', cloudEnvironment: 'cloud1-demo', baseLibrary: '3.17.3', emailVerificationEnabled: false, debug: false }
+const legal = JSON.parse(fs.readFileSync(new URL('../config/project.json', import.meta.url), 'utf8')).legal
+const config = { name: 'LynkU', appId: 'wxba2bcb0c71a5f33d', cloudEnvironment: 'cloud1-demo', baseLibrary: '3.17.3', emailVerificationEnabled: false, debug: false, legal }
 
 test('public configuration rejects secrets, malformed IDs and ambiguous feature flags', () => {
   for (const invalid of [null, [], { ...config, MAILGUN_API_KEY: 'not-a-real-key' }, { ...config, appId: 'old-app' }, { ...config, cloudEnvironment: '../other' }, { ...config, emailVerificationEnabled: 'false' }]) {

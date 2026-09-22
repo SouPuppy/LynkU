@@ -2,7 +2,7 @@
 
 ## Problem Domain
 
-The current Lucky BBS messages page is a flat conversation list: each entry is a
+The current LynkU messages page is a flat conversation list: each entry is a
 1:1 DM thread with another user. The user wants to add a second message type --
 interaction notifications (comments, likes, follows, system messages) -- that
 appears as a special "Stub" entry pinned at the top of the conversation list.
@@ -78,7 +78,7 @@ The core question: how to model this hybrid of "notification inbox" and
 
 ## Comparison
 
-| Dimension | Douyin | Meta (Patent) | Lucky BBS (current) |
+| Dimension | Douyin | Meta (Patent) | LynkU (current) |
 |-----------|--------|---------------|---------------------|
 | Structure | Two-tier (list → detail) | Single scroll with modules | Flat conversation list |
 | Notification placement | First-level entry → second-level feed | Inline module in scroll | N/A |
@@ -94,7 +94,7 @@ The core question: how to model this hybrid of "notification inbox" and
 The user's description ("Stub 用户相当于最上面的一个用户 点进去是每一条私信") maps
 directly to Douyin's two-tier model. The trade-off:
 
-**Douyin two-tier** (recommended for Lucky BBS):
+**Douyin two-tier** (recommended for LynkU):
 - Simpler to implement -- the Stub is just a synthetic conversation entry
 - The notification feed is a separate page, reusing chat-bubble components with
   a different data source

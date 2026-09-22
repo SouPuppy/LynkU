@@ -6,12 +6,6 @@ import type { IComment, ICommentWithReplies } from '../../typings/cloudbase'
 const ANONYMOUS_NAME = '匿名用户'
 const ANONYMOUS_AVATAR = '/assets/anonymous.png'
 
-interface Author {
-  _openid?: string
-  nickname: string
-  avatar_url: string
-}
-
 interface CommentForView extends IComment {
   display_time: string
 }
@@ -84,14 +78,19 @@ Component({
       if (commentId) this.triggerEvent('delete', { commentId })
     },
 
+    onReport(e: WechatMiniprogram.TouchEvent) {
+      const commentId = (e.currentTarget.dataset as { id?: string }).id
+      if (commentId) this.triggerEvent('report', { commentId })
+    },
+
     onAuthorTap(e: WechatMiniprogram.TouchEvent) {
       const dataset = e.currentTarget.dataset as {
-        author?: Author
+        authorId?: string
         anonymous?: boolean
         commentId?: string
         isMine?: boolean
       }
-      const author = dataset.author
+      const authorId = dataset.authorId
       const anonymous = dataset.anonymous
       if (anonymous) {
         if (!requireVerified()) return
@@ -101,8 +100,8 @@ Component({
         })
         return
       }
-      if (!author || !author._openid || !requireLogin()) return
-      wx.navigateTo({ url: `/pages/user/user?openid=${author._openid}` })
+      if (!authorId || !requireLogin()) return
+      wx.navigateTo({ url: `/pages/user/user?openid=${encodeURIComponent(authorId)}` })
     },
 
   },

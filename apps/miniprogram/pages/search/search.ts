@@ -1,6 +1,7 @@
 // pages/search — full-text search over posts
 import type { IPost, LoadState } from '../../typings/cloudbase'
-import { searchPosts } from '../../services/posts'
+import { createPostList } from '../../composition/post-list'
+import type { PostListController } from '../../features/content/index'
 
 Page({
   data: {
@@ -8,12 +9,17 @@ Page({
     results: [] as IPost[],
     state: 'idle' as LoadState,
     hasMore: true,
-    offset: 0,
     loadingMore: false,
     skRows4: [1, 2, 3, 4],
   },
 
-  _requestSeq: 0,
+  _list: null as PostListController | null,
+  list(): PostListController {
+    if (!this._list) this._list = createPostList('search', state => this.setData({ results: state.items,
+      state: state.state, hasMore: state.hasMore, loadingMore: state.loadingMore }))
+    return this._list
+  },
+  _query: '',
 
   onLoad(options: Record<string, string | undefined>) {
     if (options.keyword) {
@@ -24,42 +30,25 @@ Page({
 
   onSearch(e: WechatMiniprogram.CustomEvent) {
     const keyword = e.detail.keyword
-    const keywordChanged = keyword !== this.data.keyword
+    const keywordChanged = keyword !== this._query
     this.setData({ keyword })
     this.search(true, { clear: keywordChanged })
   },
 
-  async search(reset?: boolean, options: { clear?: boolean } = {}) {
-    if (!this.data.keyword.trim()) return
-    if (!reset && (!this.data.hasMore || this.data.loadingMore)) return
-    const seq = ++this._requestSeq
-    if (reset && options.clear) this.setData({ results: [], offset: 0 })
-    else if (reset && this.data.results.length === 0) this.setData({ results: [], offset: 0 })
-    else if (reset) this.setData({ offset: 0 })
-
-    if (reset && this.data.results.length === 0) this.setData({ state: 'loading' })
-    else this.setData({ loadingMore: true })
-
-    try {
-      const offset = reset ? 0 : this.data.offset
-      const result = await searchPosts(this.data.keyword, offset)
-      if (seq !== this._requestSeq) return
-      const results = reset ? result.items : [...this.data.results, ...result.items]
-      this.setData({
-        results,
-        offset: offset + result.items.length,
-        hasMore: result.hasMore ?? result.items.length >= 20,
-        loadingMore: false,
-        state: results.length === 0 ? 'empty' : 'loaded',
-      })
-    } catch (_) {
-      if (seq !== this._requestSeq) return
-      this.setData({ state: this.data.results.length === 0 ? 'error' : 'loaded', loadingMore: false })
-    }
+  async search(reset = false, _options: { clear?: boolean } = {}) {
+    if (reset) {
+      const query = this.data.keyword.trim()
+      if (!query) return
+      this._query = query
+      await this.list().select(query)
+    } else await this.list().more()
   },
 
-  onLoadMore() { this.search() },
-  onRefresh() { this.search(true) },
+  onLoadMore() { void this.search() },
+  onRefresh() { void this.list().refresh() },
+  onShow() { this.list().show() },
+  onHide() { this.list().hide() },
+  onUnload() { this._list?.dispose() },
 
   onItemTap(e: WechatMiniprogram.TouchEvent) {
     const id = (e.currentTarget.dataset as { id: string }).id

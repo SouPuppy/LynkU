@@ -2,11 +2,11 @@
 
 ## Problem
 
-The current Lucky BBS "私信" (Messages) tab is a flat conversation list. Users can
+The current LynkU "私信" (Messages) tab is a flat conversation list. Users can
 only see 1:1 DM threads. There is no way to know when someone comments on your
 post, replies to your comment, or interacts with your content. Every social app
 (Douyin, WeChat, Xiaohongshu) surfaces interaction notifications alongside DMs
-in the same tab -- Lucky BBS currently does not.
+in the same tab -- LynkU currently does not.
 
 Users who post content have to manually check each post for new comments. There
 is zero proactive notification. This makes the app feel dead even when people

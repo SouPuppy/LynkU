@@ -1,4 +1,4 @@
-import { parseSendMessageRequest, type SendMessageResponse } from '@lucky/contracts'
+import { parseSendMessageRequest, type SendMessageResponse } from '@lynku/contracts'
 import { projectMessage, type AuthorizedConversation } from './message-view'
 
 export interface SendTransaction {
@@ -12,6 +12,8 @@ export interface SendTransaction {
 
 export interface MessageSendStore {
   existing(id: string): Promise<unknown | null>
+  /** Must reject before any recipient lookup, rate write, or message transaction. */
+  moderate(content: string): Promise<{ clean: boolean }>
   authorizeRecipientAndRate(): Promise<void>
   run<T>(documentId: string, operation: (transaction: SendTransaction) => Promise<T>): Promise<T>
   timestamp(): unknown
@@ -50,6 +52,8 @@ export async function sendNewMessage(
   }
   const existing = await store.existing(id)
   if (existing !== null) return duplicate(existing)
+  const moderation = await store.moderate(request.content)
+  if (!moderation || moderation.clean !== true) throw new InvalidSendRequest('Message moderation unavailable')
   await store.authorizeRecipientAndRate()
   const result = await store.run(id, async transaction => {
     const found = await transaction.existing()

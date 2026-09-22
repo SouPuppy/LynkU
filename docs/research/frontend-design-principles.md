@@ -1,4 +1,4 @@
-# WeChat Mini-Program Frontend Design Principles — Lucky BBS
+# WeChat Mini-Program Frontend Design Principles — LynkU
 
 > Scope: Production-grade frontend design guidelines for a CloudBase-powered
 > WeChat mini-program BBS. Not actual design — principles to follow when
@@ -8,7 +8,7 @@
 
 ## Problem Domain
 
-Lucky BBS is a WeChat mini-program campus forum with real-time messaging,
+LynkU is a WeChat mini-program campus forum with real-time messaging,
 targeting ~10k UNNC students. The frontend uses WeChat Native (TypeScript +
 Skyline + Glass-Easel), backed by CloudBase (cloud functions + document DB +
 watch). After the backend migration to CloudBase, the frontend architecture
@@ -736,7 +736,7 @@ Rules that are explicitly NOT needed until there's evidence:
 
 ## When to deviate
 
-These principles are optimized for Lucky BBS at UNNC scale (~10k users, low
+These principles are optimized for LynkU at UNNC scale (~10k users, low
 concurrency, read-heavy). If any of these change, revisit:
 
 - **DAU > 5,000**: Add performance monitoring, watch connection quotas

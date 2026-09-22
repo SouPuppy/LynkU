@@ -72,7 +72,7 @@ test('rate limit persists a fixed-window count', async () => {
       collection: () => ({
         doc: key => ({
           get: async () => {
-            if (!records.has(key)) throw Object.assign(new Error('not found'), { errCode: -1 })
+            if (!records.has(key)) return { data: null }
             return { data: records.get(key) }
           },
           set: async ({ data }) => records.set(key, data),
@@ -98,6 +98,25 @@ test('rate limit storage failure blocks write amplification', async () => {
   const result = await checkRateLimit(database, 'user', 'posts:create', { limit: 1 })
   assert.equal(result.allowed, false)
   assert.equal(result.unavailable, true)
+})
+
+test('rate lookup errors and corrupt windows never reset or bypass the limit', async () => {
+  const now = Date.now()
+  const valid = { _openid: 'user', action: 'send', count: 2, window_start: now }
+  const responses = [undefined, {}, { data: [] }, { data: { ...valid, count: '2' } },
+    { data: { ...valid, count: -1 } }, { data: { ...valid, window_start: now + 3600000 } },
+    { data: { ...valid, _openid: 'other' } }, { data: { ...valid, action: 'other' } },
+    Object.assign(new Error('database failure'), { errCode: -1 })]
+  for (const response of responses) {
+    let writes = 0
+    const db = { runTransaction: work => work({ collection: () => ({ doc: () => ({
+      get: async () => { if (response instanceof Error) throw response; return response },
+      set: async () => { writes++ }, update: async () => { writes++ },
+    }) }) }) }
+    const result = await checkRateLimit(db, 'user', 'send', { limit: 2 })
+    assert.equal(result.allowed, false); assert.equal(result.unavailable, true)
+    assert.equal(writes, 0)
+  }
 })
 
 test('outbox claims respect active leases and use bounded exponential retry delays', async () => {

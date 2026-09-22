@@ -1,18 +1,33 @@
 const fs = require('node:fs')
 const path = require('node:path')
+const ts = require('typescript')
+const { require: requireTypeScript } = require('tsx/cjs/api')
 
 const root = path.resolve(__dirname, '..')
-const { ACTION_ACCESS } = require(path.join(root, 'apps', 'cloudfunctions', 'common'))
+const { ACTION_ACCESS } = requireTypeScript(path.join(root, 'apps', 'cloudfunctions', 'common', 'index.ts'), __filename)
 const errors = []
 
 for (const [functionName, actions] of Object.entries(ACTION_ACCESS)) {
-  const sourcePath = path.join(root, 'apps', 'cloudfunctions', functionName, 'index.js')
+  const sourcePath = path.join(root, 'apps', 'cloudfunctions', functionName, 'index.ts')
   if (!fs.existsSync(sourcePath)) {
     errors.push(`Action policy references missing cloud function: ${functionName}`)
     continue
   }
   const source = fs.readFileSync(sourcePath, 'utf8')
-  const exposed = new Set([...source.matchAll(/case\s+['"]([A-Za-z][A-Za-z0-9]*)['"]\s*:/g)].map(match => match[1]))
+  const exposed = new Set()
+  const syntax = ts.createSourceFile(sourcePath, source, ts.ScriptTarget.Latest, true)
+  function visit(node) {
+    if (ts.isSwitchStatement(node)) {
+      const expression = node.expression
+      const isAction = ts.isIdentifier(expression) && expression.text === 'action'
+        || ts.isPropertyAccessExpression(expression) && expression.name.text === 'action'
+      if (isAction) for (const clause of node.caseBlock.clauses) {
+        if (ts.isCaseClause(clause) && ts.isStringLiteral(clause.expression)) exposed.add(clause.expression.text)
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(syntax)
   for (const action of exposed) {
     if (!Object.hasOwn(actions, action)) errors.push(`${functionName}.${action} is exposed without an access policy.`)
   }

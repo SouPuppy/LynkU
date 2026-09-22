@@ -1,9 +1,10 @@
 {
-  "version": 1,
+  "version": 2,
   "collections": [
-    { "name": "users", "clientPermission": "admin-only", "documentId": "new accounts: stableDocumentId(account, OPENID); existing account IDs retained", "indexes": [{ "fields": ["_openid"], "unique": true }] },
-    { "name": "posts", "clientPermission": "admin-only", "indexes": [{ "fields": ["status", "created_at"] }, { "fields": ["status", "category_id", "created_at"] }, { "fields": ["status", "_openid", "anonymous", "created_at"] }, { "fields": ["_openid", "status", "created_at", "_id"] }] },
-    { "name": "comments", "clientPermission": "admin-only", "indexes": [{ "fields": ["post_id", "status", "created_at", "_id"] }] },
+    { "name": "admin_operation_receipts", "clientPermission": "admin-only", "documentId": "hash of action, trusted Web UID and request ID", "indexes": [{ "fields": ["actor", "createdAt"] }] },
+    { "name": "users", "clientPermission": "admin-only", "documentId": "new accounts: stableDocumentId(account, OPENID); existing account IDs retained", "indexes": [{ "fields": ["_openid"], "unique": true }, { "fields": ["created_at", "_id"] }, { "fields": ["verified", "created_at", "_id"] }] },
+    { "name": "posts", "clientPermission": "admin-only", "indexes": [{ "fields": ["status", "created_at", "_id"] }, { "fields": ["status", "category_id", "created_at", "_id"] }, { "fields": ["status", "_openid", "anonymous", "created_at", "_id"] }, { "fields": ["_openid", "status", "created_at", "_id"] }] },
+    { "name": "comments", "clientPermission": "admin-only", "indexes": [{ "fields": ["post_id", "status", "created_at", "_id"] }, { "fields": ["post_id", "created_at", "_id"] }] },
     { "name": "comment_counters", "clientPermission": "admin-only", "documentId": "post_id" },
     { "name": "comment_changes", "clientPermission": "admin-only", "indexes": [{ "fields": ["post_id", "sequence"], "unique": true }] },
     { "name": "messages", "clientPermission": "admin-only", "indexes": [{ "fields": ["from", "created_at"] }, { "fields": ["to", "created_at"] }, { "fields": ["to", "status"] }, { "fields": ["conversation_id", "from", "status", "_id"] }, { "fields": ["conversation_id", "sync_sequence"], "unique": true }] },
@@ -12,12 +13,18 @@
     { "name": "notifications", "clientPermission": "admin-only", "indexes": [{ "fields": ["to", "created_at", "_id"] }, { "fields": ["to", "read", "created_at", "_id"] }] },
     { "name": "notification_outbox", "clientPermission": "admin-only", "indexes": [{ "fields": ["status", "next_attempt_at"] }, { "fields": ["status", "lease_until"] }, { "fields": ["status", "created_at"] }] },
     { "name": "profile_outbox", "clientPermission": "admin-only", "indexes": [{ "fields": ["status", "next_attempt_at"] }, { "fields": ["status", "lease_until"] }, { "fields": ["status", "created_at"] }] },
-    { "name": "categories", "clientPermission": "public-read-admin-write", "indexes": [{ "fields": ["status", "sort_order"] }, { "fields": ["name"], "unique": true }] },
+    { "name": "categories", "clientPermission": "admin-only", "indexes": [{ "fields": ["status", "sort_order", "_id"] }, { "fields": ["sort_order", "_id"] }, { "fields": ["name"], "unique": true }] },
+    { "name": "audit_events", "clientPermission": "admin-only", "indexes": [{ "fields": ["action", "at"] }] },
     { "name": "drafts", "clientPermission": "admin-only", "indexes": [{ "fields": ["_openid", "updated_at", "_id"] }] },
     { "name": "draft_counters", "clientPermission": "admin-only", "documentId": "hashed owner identifier" },
     { "name": "email_verifications", "clientPermission": "admin-only", "documentId": "hashed owner; one active challenge per WeChat account" },
     { "name": "email_send_limits", "clientPermission": "admin-only", "documentId": "hashed owner; atomic cooldown and hourly quota" },
     { "name": "email_claims", "clientPermission": "admin-only", "documentId": "stableDocumentId(email:claim, normalized email)", "indexes": [{ "fields": ["owner_openid"] }] },
-    { "name": "rate_limits", "clientPermission": "admin-only", "documentId": "rate-limit key" }
+    { "name": "rate_limits", "clientPermission": "admin-only", "documentId": "rate-limit key" },
+    { "name": "account_lifecycle", "clientPermission": "admin-only", "documentId": "HMAC of trusted WeChat identity", "indexes": [{ "fields": ["currentAccountId"] }] },
+    { "name": "agreement_assents", "clientPermission": "admin-only", "documentId": "hashed account epoch, operation and document key", "indexes": [{ "fields": ["accountId", "documentKey", "acceptedAt"] }] },
+    { "name": "governance_cases", "clientPermission": "admin-only", "documentId": "deterministic reporter request key", "indexes": [{ "fields": ["reporterAccountId", "createdAt", "_id"] }, { "fields": ["status", "createdAt", "_id"] }, { "fields": ["targetType", "targetId", "createdAt"] }] },
+    { "name": "messaging_blocks", "clientPermission": "admin-only", "documentId": "stable opaque pair key", "indexes": [{ "fields": ["blockedBy", "updatedAt", "_id"] }] },
+    { "name": "admin_members", "clientPermission": "admin-only", "documentId": "operator-created opaque ID; never auto-created by browser login", "indexes": [{ "fields": ["web_uid"], "unique": true }, { "fields": ["account_id"], "unique": true }, { "fields": ["status", "role", "_id"] }] }
   ]
 }

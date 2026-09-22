@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { ensureAccount } = require('@lucky/server')
+const { ensureAccount } = require('@lynku/server')
 const existing = { _id: 'old-id', _openid: 'alice', nickname: 'Existing', avatar_url: '', role: 'admin', email: 'fixture@nottingham.edu.cn', verified: true }
 test('automatic account identification preserves old records and never creates after read failure', async () => {
   let writes = 0

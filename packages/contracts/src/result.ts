@@ -1,4 +1,7 @@
 export type ErrorCode =
+  | 'AGREEMENT_NOT_READY'
+  | 'AGREEMENT_CHANGED'
+  | 'ACCOUNT_CLOSED'
   | 'AUTH_FAILED'
   | 'AUTH_UNAVAILABLE'
   | 'CODE_EXPIRED'
@@ -21,6 +24,8 @@ export type ErrorCode =
   | 'MAX_DEPTH'
   | 'NOT_FOUND'
   | 'CONFLICT'
+  | 'CONTENT_REJECTED'
+  | 'MODERATION_UNAVAILABLE'
   | 'OPERATION_ERROR'
   | 'PARENT_MISMATCH'
   | 'POST_NOT_FOUND'

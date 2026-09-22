@@ -1,0 +1,54 @@
+import { parseAdminPostSummary, type AdminPostSummary } from '@lynku/contracts'
+export type AdminPostView = AdminPostSummary
+export interface AdminUserView { id: string; displayName: string; email: string; verified: boolean; role: string; createdAt: string }
+export interface AdminCaseView { id: string; targetType: 'post' | 'comment'; targetId: string; reason: string; status: string; createdAt: string }
+
+function row(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('Invalid administration record')
+  return value as Record<string, unknown>
+}
+function text(value: unknown, maximum: number, empty = false): string {
+  if (typeof value !== 'string' || (!empty && !value.trim()) || value.length > maximum) throw Error('Invalid administration text')
+  return value.trim()
+}
+function count(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) throw Error('Invalid administration count')
+  return value
+}
+function timestamp(value: unknown): string {
+  const result = typeof value === 'string' ? value : value instanceof Date ? value.toISOString() : ''
+  if (!result || new Date(result).toISOString() !== result) throw Error('Invalid administration timestamp')
+  return result
+}
+function maskEmail(value: unknown): string {
+  if (typeof value !== 'string' || !value) return ''
+  const [local, domain] = value.split('@')
+  if (!local || !domain) return ''
+  return `${local.slice(0, 1)}***@${domain}`
+}
+
+/** Management projections intentionally exclude OPENID, raw author snapshots and anonymous mappings. */
+export function projectAdminPost(value: unknown): AdminPostView {
+  const source = row(value)
+  if (typeof source.anonymous !== 'boolean') throw Error('Invalid administration anonymous state')
+  const anonymous = source.anonymous
+  const author = source.status === 'deleted' ? '不展示' : anonymous ? '匿名内容'
+    : source.author && typeof source.author === 'object' && !Array.isArray(source.author)
+      ? text((source.author as Record<string, unknown>).nickname, 100) : '作者资料不可用'
+  return parseAdminPostSummary({ id: text(source._id, 128), title: source.title, categoryId: text(source.category_id, 128, true), anonymous,
+    authorLabel: author, status: source.status, createdAt: timestamp(source.created_at), commentCount: count(source.comment_count), revision: count(source.revision) })
+}
+
+export function projectAdminUser(value: unknown): AdminUserView {
+  const source = row(value)
+  if (typeof source.verified !== 'boolean') throw Error('Invalid administration verification state')
+  return { id: text(source._id, 128), displayName: text(source.nickname, 100), email: maskEmail(source.email), verified: source.verified === true,
+    role: text(source.role, 32), createdAt: timestamp(source.created_at) }
+}
+
+export function projectAdminCase(value: unknown): AdminCaseView {
+  const source = row(value)
+  if (source.targetType !== 'post' && source.targetType !== 'comment') throw Error('Invalid administration case target')
+  return { id: text(source._id, 128), targetType: source.targetType, targetId: text(source.targetId, 128), reason: text(source.reasonCode, 100),
+    status: text(source.status, 32), createdAt: timestamp(source.createdAt) }
+}

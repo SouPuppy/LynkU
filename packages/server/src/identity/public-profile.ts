@@ -1,4 +1,4 @@
-import { parseProfileId, parsePublicProfile, type PublicProfile } from '@lucky/contracts'
+import { parseProfileId, parsePublicProfile, type PublicProfile } from '@lynku/contracts'
 export class PublicProfileFailure extends Error {
   readonly code = 'INVALID_INPUT'
 }

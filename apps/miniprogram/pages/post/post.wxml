@@ -15,6 +15,7 @@
   <view class="post-body">
     <text class="post-content">{{post.content}}</text>
   </view>
+  <view class="post-actions"><text class="text-xs text-secondary" bindtap="onReportPost">举报</text></view>
 
   <!-- Divider -->
   <view class="comment-divider">
@@ -55,7 +56,7 @@
         class="comment-wrapper"
         data-id="{{comment._id}}"
       >
-        <comment-item comment="{{comment}}" bind:reply="onReplyTap" bind:delete="onCommentLongPress" />
+        <comment-item comment="{{comment}}" bind:reply="onReplyTap" bind:delete="onCommentLongPress" bind:report="onReportComment" />
       </view>
     </block>
 
@@ -70,7 +71,7 @@
       <text class="reply-context-cancel" bindtap="onReplyCancel">取消</text>
     </view>
     <view wx:if="{{access !== 'verified'}}" class="comment-input-row" bindtap="onRequestAccess">
-      <text class="text-sm">{{access === 'guest' ? '登录并完成学校认证后可参与讨论' : '学校邮箱认证暂不可用，暂不能评论'}}</text>
+      <text class="text-sm">{{access === 'guest' ? '恢复微信身份后可申请学校认证' : (verificationEnabled ? '完成学校邮箱认证后可评论' : '学校邮箱认证暂不可用，暂不能评论')}}</text>
     </view>
     <view wx:else class="comment-input-row">
       <input
@@ -117,4 +118,9 @@
       </view>
     </view>
   </view>
+</view>
+<view wx:else class="access-state">
+  <text class="access-title">{{state === 'error' ? '帖子加载失败' : '帖子已不可用'}}</text>
+  <text class="access-description">{{state === 'error' ? '请检查网络后重试。' : '内容可能已删除或暂时无法查看。'}}</text>
+  <button class="access-button" bindtap="onRetry">重新加载</button>
 </view>

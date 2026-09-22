@@ -1,4 +1,4 @@
-import { parseOwnedPostRequest, parseOwnedPostPage, postPrecedes, type OwnedPostCursor, type OwnedPostPage } from '@lucky/contracts'
+import { parseOwnedPostRequest, parseOwnedPostPage, postPrecedes, type OwnedPostCursor, type OwnedPostPage } from '@lynku/contracts'
 import { projectPost } from './post-view'
 import { PostReadFailure } from './read-post'
 

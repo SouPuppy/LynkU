@@ -1,8 +1,13 @@
-import { parseCreatePostRequest, parsePostMutationReceipt, type PostMutationReceipt } from '@lucky/contracts'
+import { parseCreatePostRequest, parsePostMutationReceipt, type PostMutationReceipt } from '@lynku/contracts'
+import { categoryNameAllowed } from './categories'
+import { currentPostAuthor } from './post-author'
+import { assertAccountCapability } from '../shared'
+import { ModerationFailure } from '../shared'
 export class PostCreateFailure extends Error {
   constructor(readonly code: 'INVALID_INPUT' | 'INVALID_CATEGORY' | 'CONFLICT') { super(code) }
 }
 export interface PostCreateTransaction {
+  author(): Promise<unknown | null>
   post(id: string): Promise<unknown | null>
   category(id: string): Promise<unknown | null>
   putPost(id: string, data: Record<string, unknown>): Promise<void>
@@ -13,15 +18,14 @@ export interface PostCreateStore {
   run<T>(operation: (transaction: PostCreateTransaction) => Promise<T>): Promise<T>
   identifier(...parts: string[]): string
   allowCreate(): Promise<void>
-  moderate(text: string): { clean: boolean }
+  moderate(text: string): Promise<{ clean: boolean }>
   now(): string
 }
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid stored post record')
   return value as Record<string, unknown>
 }
-export async function createUserPost(store: PostCreateStore, owner: string,
-  author: { nickname: string; avatar_url: string; profile_version: number }, input: unknown): Promise<PostMutationReceipt> {
+export async function createUserPost(store: PostCreateStore, owner: string, input: unknown): Promise<PostMutationReceipt> {
   let request
   try { request = parseCreatePostRequest(input) } catch (_) { throw new PostCreateFailure('INVALID_INPUT') }
   const id = store.identifier('post:create', owner, request.request_id)
@@ -34,10 +38,15 @@ export async function createUserPost(store: PostCreateStore, owner: string,
   const prior = await store.existing(id)
   if (prior !== null) return receipt(prior)
   await store.allowCreate()
-  const status = store.moderate(`${request.title} ${request.content}`).clean ? 'published' : 'flagged'
+  const verdict = await store.moderate(`${request.title} ${request.content}`)
+  if (verdict?.clean !== true) throw new ModerationFailure(verdict?.clean === false ? 'CONTENT_REJECTED' : 'MODERATION_UNAVAILABLE')
+  const status = 'published'
   const timestamp = store.now()
   if (!Number.isFinite(new Date(timestamp).getTime())) throw new Error('Invalid creation clock')
   return store.run(async transaction => {
+    const account = await transaction.author()
+    assertAccountCapability(account, 'posts', store.now())
+    const author = currentPostAuthor(account, owner)
     const existing = await transaction.post(id)
     if (existing !== null) {
       return receipt(existing)
@@ -48,7 +57,7 @@ export async function createUserPost(store: PostCreateStore, owner: string,
       const value = await transaction.category(request.category_id)
       if (value === null) throw new PostCreateFailure('INVALID_CATEGORY')
       const row = record(value)
-      if (row._id !== request.category_id || row.status !== 'active') throw new PostCreateFailure('INVALID_CATEGORY')
+      if (row._id !== request.category_id || row.status !== 'active' || typeof row.name !== 'string' || !categoryNameAllowed(row.name)) throw new PostCreateFailure('INVALID_CATEGORY')
       if (typeof row.name !== 'string' || !row.name || row.name.length > 100
         || typeof row.post_count !== 'number' || !Number.isSafeInteger(row.post_count) || row.post_count < 0
         || row.post_count >= Number.MAX_SAFE_INTEGER) throw new Error('Invalid category record')
@@ -63,6 +72,6 @@ export async function createUserPost(store: PostCreateStore, owner: string,
       request_id: request.request_id, request_fingerprint: fingerprint }
     await transaction.putPost(id, post)
     if (category && status === 'published') await transaction.setCategoryCount(category._id, categoryCount + 1)
-    return parsePostMutationReceipt({ post, flagged: status === 'flagged', status: 'created' }, 'create')
+    return parsePostMutationReceipt({ post, flagged: false, status: 'created' }, 'create')
   })
 }

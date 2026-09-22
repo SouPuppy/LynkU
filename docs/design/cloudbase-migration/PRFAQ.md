@@ -2,7 +2,7 @@
 
 ## Problem
 
-Lucky BBS currently has a backend designed for FastAPI + PostgreSQL + WebSocket,
+LynkU currently has a backend designed for FastAPI + PostgreSQL + WebSocket,
 but the project has pivoted to WeChat Cloud Development (CloudBase). The
 existing design documents, tickets, and frontend code all assume:
 
@@ -149,7 +149,7 @@ our JWT implementation.
 **Q: What happens to the existing tickets (FEAT-001 to FEAT-009)?**
 They describe the old FastAPI architecture and are obsolete. They will be
 replaced with new tickets (FEAT-010 to FEAT-016) that reflect the CloudBase
-architecture. EPIC-001 (the original Lucky BBS epic) remains as the parent
+architecture. EPIC-001 (the original LynkU epic) remains as the parent
 epic, with scope updated.
 
 **Q: Does this change the license or open-source status?**

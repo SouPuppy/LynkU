@@ -2,7 +2,7 @@
 
 ## Problem
 
-Currently, the Lucky BBS messaging/notification system has three structural gaps:
+Currently, the LynkU messaging/notification system has three structural gaps:
 
 1. **No way to start a private chat.** A user browsing the forum sees other users' posts and comments, but can't initiate a conversation. The only way to chat is if someone messages you first. This breaks the core social loop: discover → connect → chat.
 

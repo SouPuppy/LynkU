@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { markMessagesRead, InvalidReadRequest } = require('@lucky/server')
+const { markMessagesRead, InvalidReadRequest } = require('@lynku/server')
 const conversation = { id: 'conversation', viewer: 'alice', peer: 'bob' }
 function fixture() {
   let state = { messages: [1, 2].map(sequence => ({ _id: `m${sequence}`, msg_id: `r${sequence}`, from: 'bob', to: 'alice',
@@ -65,7 +65,7 @@ test('read requests cannot mark sent messages or operate without explicit bounde
 })
 
 test('read receipt application returns only requested outgoing read IDs', async () => {
-  const { readReceipts, InvalidReceiptRequest } = require('@lucky/server')
+  const { readReceipts, InvalidReceiptRequest } = require('@lynku/server')
   const message = { _id: 'sent', msg_id: 'request', from: 'alice', to: 'bob', content: 'private', status: 'read',
     created_at: '2026-09-21T01:00:00.000Z', conversation_id: 'conversation', sync_sequence: 1 }
   const store = { list: async (id, sender, ids) => {

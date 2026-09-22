@@ -1,7 +1,8 @@
 import { parseNotificationRequest, parseNotificationPage, parseNotificationIds, parseNotificationCount,
-  type NotificationCursor, type NotificationPage } from '@lucky/contracts'
+  type NotificationCursor, type NotificationPage } from '@lynku/contracts'
+import { refreshNotificationContent, type NotificationContentPort } from './content-preview'
 
-export interface NotificationStore {
+export interface NotificationStore extends NotificationContentPort {
   list(owner: string, unreadOnly: boolean, cursor: NotificationCursor | undefined, take: number): Promise<unknown[]>
   markRead(owner: string, ids: string[]): Promise<unknown>
   unreadCount(owner: string): Promise<unknown>
@@ -30,7 +31,7 @@ export async function listUserNotifications(store: NotificationStore, owner: str
   })
   const hasMore = rows.length > request.limit
   const last = notifications[notifications.length - 1]
-  return parseNotificationPage({ notifications, hasMore,
+  return parseNotificationPage({ notifications: await refreshNotificationContent(store, notifications), hasMore,
     nextCursor: hasMore && last ? { version: 1, scope, id: last._id, createdAt: last.created_at } : null,
   })
 }
@@ -48,3 +49,6 @@ export async function countUserNotifications(store: NotificationStore, owner: st
 }
 export * from './outbox-lease'
 export * from './scheduled-drain'
+export * from './content-preview'
+export * from './comment-events'
+export * from './drain-outbox'

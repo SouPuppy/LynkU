@@ -5,11 +5,10 @@
     "esModuleInterop": true,
     "types": ["node", "miniprogram-api-typings"],
     "lib": ["ES2020"],
-    "baseUrl": "..",
     "paths": {
-      "@lucky/contracts": ["packages/contracts/src/index.ts"],
-      "@lucky/server": ["packages/server/src/index.ts"],
-      "@lucky/adapters": ["packages/adapters/src/index.ts"]
+      "@lynku/contracts": ["../packages/contracts/src/index.ts"],
+      "@lynku/server": ["../packages/server/src/index.ts"],
+      "@lynku/adapters": ["../packages/adapters/src/index.ts"]
     }
   },
   "include": ["*.test.ts", "../apps/miniprogram/typings/**/*.d.ts"]

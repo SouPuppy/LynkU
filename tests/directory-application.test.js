@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { listConversationDirectory, InvalidDirectoryRequest } = require('@lucky/server')
+const { listConversationDirectory, InvalidDirectoryRequest } = require('@lynku/server')
 const principal = { ownerId: 'alice', scope: 'a'.repeat(64) }
 const context = { source_type: 'post', source_id: 'post-id', initiator_openid: 'alice', target_openid: 'bob', thread_id: 'b'.repeat(64) }
 function row(overrides = {}) {

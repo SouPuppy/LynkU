@@ -1,4 +1,4 @@
-import type { MessageSyncCursor as ContractCursor } from '@lucky/contracts'
+import type { MessageSyncCursor as ContractCursor } from '@lynku/contracts'
 import {
   advanceMessageCursor,
   assertMessageCursorScope,

@@ -14,6 +14,22 @@ function anonymousTargetPayload(target?: IAnonymousChatTarget | null) {
   return target ? { type: target.type, id: target.id, thread_id: target.thread_id } : undefined
 }
 
+export async function setContactBlocked(peer: string | undefined, target: IAnonymousChatTarget | null | undefined, blocked: boolean): Promise<void> {
+  const result = await callCloud<unknown>('messages', { action: blocked ? 'blockContact' : 'unblockContact',
+    peer, anonymous_target: anonymousTargetPayload(target) })
+  if (!result || typeof result !== 'object' || !('blocked' in result) || result.blocked !== blocked) {
+    throw new CloudCallError('屏蔽状态未能确认，请稍后重试', 'INVALID_RESPONSE', 'messages', blocked ? 'blockContact' : 'unblockContact')
+  }
+}
+
+export async function getContactProtection(peer: string | undefined, target: IAnonymousChatTarget | null | undefined): Promise<boolean> {
+  const result = await callCloud<unknown>('messages', { action: 'getContactProtection', peer, anonymous_target: anonymousTargetPayload(target) })
+  if (!result || typeof result !== 'object' || !('blocked' in result) || typeof result.blocked !== 'boolean') {
+    throw new CloudCallError('屏蔽状态返回无效', 'INVALID_RESPONSE', 'messages', 'getContactProtection')
+  }
+  return result.blocked
+}
+
 /** Send a message (idempotent via msgId) */
 export async function sendMessage(data: {
   to?: string

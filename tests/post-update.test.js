@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
 const { createHash } = require('node:crypto')
-const { updateUserPost } = require('@lucky/server')
+const { updateUserPost } = require('@lynku/server')
 const author = { profile_version: 0, nickname: 'Alice', avatar_url: '' }
 const request = { post_id: 'post', expected_revision: 1, title: 'new', content: 'body', category_id: 'new', anonymous: true }
 function fixture() {
@@ -18,6 +18,7 @@ function fixture() {
       const result = tail.then(async () => {
         let nextPost = { ...post }, nextCategories = new Map([...categories].map(([id, row]) => [id, { ...row }])), wrote = false
         const result = await operation({
+          author: async () => ({ ...author, _openid: 'alice', verified: true }),
           post: async () => { assert.equal(wrote, false); return nextPost },
           category: async id => { assert.equal(wrote, false); return nextCategories.get(id) || null },
           updatePost: async (id, changes) => { wrote = true; nextPost = { ...nextPost, ...changes } },
@@ -32,22 +33,32 @@ function fixture() {
 }
 test('post update moves category counts atomically and retries without incrementing revision twice', async () => {
   const f = fixture(); f.flags.failSecond = true
-  await assert.rejects(updateUserPost(f.store, 'alice', author, request), /second counter failed/)
+  await assert.rejects(updateUserPost(f.store, 'alice', request), /second counter failed/)
   assert.equal(f.post().revision, 1); assert.deepEqual(f.counts(), [1, 0])
   f.flags.failSecond = false
-  const results = await Promise.all([updateUserPost(f.store, 'alice', author, request), updateUserPost(f.store, 'alice', author, request)])
+  const results = await Promise.all([updateUserPost(f.store, 'alice', request), updateUserPost(f.store, 'alice', request)])
   assert.deepEqual(results.map(result => result.post.revision), [2, 2])
   assert.equal(f.post().author.nickname, '匿名用户')
   assert.deepEqual(f.counts(), [0, 1])
   f.flags.denyRate = true
-  assert.equal((await updateUserPost(f.store, 'alice', author, request)).post.revision, 2)
-  await assert.rejects(updateUserPost(f.store, 'alice', author, { ...request, title: 'other payload' }), { code: 'CONFLICT' })
-  await assert.rejects(updateUserPost(f.store, 'bob', author, request), { code: 'FORBIDDEN' })
+  assert.equal((await updateUserPost(f.store, 'alice', request)).post.revision, 2)
+  await assert.rejects(updateUserPost(f.store, 'alice', { ...request, title: 'other payload' }), { code: 'CONFLICT' })
+  await assert.rejects(updateUserPost(f.store, 'bob', request), { code: 'FORBIDDEN' })
 })
 test('post update rejects missing versions and unavailable categories without changing content', async () => {
   const f = fixture()
-  await assert.rejects(updateUserPost(f.store, 'alice', author, { ...request, expected_revision: undefined }), { code: 'INVALID_INPUT' })
-  await assert.rejects(updateUserPost(f.store, 'alice', author, { ...request, category_id: 'missing' }), { code: 'INVALID_CATEGORY' })
+  await assert.rejects(updateUserPost(f.store, 'alice', { ...request, expected_revision: undefined }), { code: 'INVALID_INPUT' })
+  await assert.rejects(updateUserPost(f.store, 'alice', { ...request, category_id: 'missing' }), { code: 'INVALID_CATEGORY' })
   assert.equal(f.post().title, 'old')
   assert.deepEqual(f.counts(), [1, 0])
+})
+
+test('failed or malformed checking keeps the previously published post and all counts intact', async () => {
+  const f = fixture(), before = structuredClone(f.post())
+  for (const [verdict, code] of [[{ clean: false }, 'CONTENT_REJECTED'], [{ clean: 'true' }, 'MODERATION_UNAVAILABLE'], [null, 'MODERATION_UNAVAILABLE']]) {
+    f.store.moderate = async () => verdict
+    await assert.rejects(updateUserPost(f.store, 'alice', request), { code })
+    assert.deepEqual(f.post(), before)
+    assert.deepEqual(f.counts(), [1, 0])
+  }
 })

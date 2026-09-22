@@ -1,4 +1,6 @@
 .sync-warning { padding: 10rpx 24rpx; background: #fff4e5; color: #9a5b00; font-size: 22rpx; text-align: center; }
+.chat-protection { flex-shrink: 0; padding: 10rpx 24rpx; color: var(--color-text-secondary); background: var(--color-bg-white); font-size: 22rpx; text-align: right; }
+.chat-blocked-note { flex-shrink: 0; padding: 24rpx; background: #fff4e5; color: #9a5b00; text-align: center; font-size: 24rpx; }
 .chat-page {
   display: flex;
   flex-direction: column;

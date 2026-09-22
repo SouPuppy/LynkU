@@ -71,5 +71,5 @@ export function sourceRoots(root) {
 export function sourceAliases(root) {
   return Object.fromEntries(['contracts', 'server', 'adapters']
     .filter(name => existsSync(path.join(root, `packages/${name}/src/index.ts`)))
-    .map(name => [`@lucky/${name}$`, path.join(root, `packages/${name}/src/index.ts`)]))
+    .map(name => [`@lynku/${name}$`, path.join(root, `packages/${name}/src/index.ts`)]))
 }

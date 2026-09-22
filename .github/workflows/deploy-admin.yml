@@ -1,0 +1,37 @@
+name: Deploy admin
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-admin-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.21.0
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - name: Authenticate CloudBase CLI
+        env:
+          TCB_SECRET_ID: ${{ secrets.CLOUDBASE_SECRET_ID }}
+          TCB_SECRET_KEY: ${{ secrets.CLOUDBASE_SECRET_KEY }}
+        run: |
+          test -n "$TCB_SECRET_ID" || (echo "Missing CLOUDBASE_SECRET_ID production secret" && exit 1)
+          test -n "$TCB_SECRET_KEY" || (echo "Missing CLOUDBASE_SECRET_KEY production secret" && exit 1)
+          npm exec --no -- tcb login --apiKeyId "$TCB_SECRET_ID" --apiKey "$TCB_SECRET_KEY"
+      - run: npm run deploy:admin

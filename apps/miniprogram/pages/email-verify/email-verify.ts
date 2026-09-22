@@ -4,6 +4,7 @@ import { sendEmailCode, verifyEmailCode } from '../../services/users'
 import * as session from '../../services/session'
 
 interface EmailVerifyData {
+  changingEmail: boolean
   verificationEnabled: boolean
   email: string
   code: string
@@ -18,6 +19,7 @@ const SCHOOL_EMAIL = /^[a-z0-9._%+-]+@nottingham\.edu\.cn$/
 
 Page({
   data: {
+    changingEmail: false,
     verificationEnabled: config.EMAIL_VERIFICATION_ENABLED,
     email: '',
     code: '',
@@ -57,10 +59,7 @@ Page({
   onLoad() {
     if (!config.EMAIL_VERIFICATION_ENABLED) return
     const user = session.get()
-    if (user?.verified) {
-      wx.switchTab({ url: '/pages/index/index' })
-      return
-    }
+    this.setData({ changingEmail: user?.verified === true })
     if (user?.email_pending) this.setData({ email: user.email_pending })
   },
 

@@ -1,4 +1,4 @@
-import type { SelfProfile } from '@lucky/contracts'
+import type { SelfProfile } from '@lynku/contracts'
 import { projectSelfProfile } from './self-profile'
 type VerificationCode = 'INVALID_EMAIL' | 'INVALID_CODE' | 'NOT_FOUND' | 'CODE_NOT_FOUND' | 'CODE_EXPIRED' | 'TOO_MANY_ATTEMPTS' | 'EMAIL_IN_USE'
 export class EmailVerificationFailure extends Error {

@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
 const { createHash } = require('node:crypto')
-const { resolveConversationTarget, InvalidConversationTarget, ConversationTargetNotFound } = require('@lucky/server')
+const { resolveConversationTarget, InvalidConversationTarget, ConversationTargetNotFound } = require('@lynku/server')
 const hash = (...parts) => createHash('sha256').update(parts.join('\0')).digest('hex')
 const context = { source_type: 'post', source_id: 'post', initiator_openid: 'alice', target_openid: 'bob',
   thread_id: hash('anonymous_chat', 'post', 'post', 'alice', 'bob') }

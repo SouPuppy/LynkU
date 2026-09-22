@@ -1,3 +1,7 @@
 export * from './domain/cursor'
 export * from './application/sync-cursor'
 export * from './comment-view'
+export * from './write-comment'
+export * from './read-comments'
+export * from './admin-comments'
+export * from './governance-comment'

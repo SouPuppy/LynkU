@@ -1,3 +1,4 @@
+import { POST_CONTENT_LIMIT, POST_TITLE_LIMIT } from './content-limits'
 export interface PostFields { title: string; content: string; category_id: string; anonymous: boolean }
 export interface CreatePostRequest extends PostFields { request_id: string }
 export interface UpdatePostRequest extends PostFields { post_id: string; expected_revision: number }
@@ -13,7 +14,7 @@ function text(value: unknown, min: number, max: number): string {
 }
 function fields(input: Record<string, unknown>): PostFields {
   if (typeof input.anonymous !== 'boolean') throw new Error('Invalid post anonymity')
-  return { title: text(input.title, 1, 200), content: text(input.content, 1, 10000),
+  return { title: text(input.title, 1, POST_TITLE_LIMIT), content: text(input.content, 1, POST_CONTENT_LIMIT),
     category_id: text(input.category_id === undefined ? '' : input.category_id, 0, 128), anonymous: input.anonymous }
 }
 export function parseCreatePostRequest(value: unknown): CreatePostRequest {

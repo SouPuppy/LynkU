@@ -5,7 +5,7 @@
 
 ## Context
 
-Lucky BBS is a student forum for UNNC. Students need to discuss courses,
+LynkU is a student forum for UNNC. Students need to discuss courses,
 professors, campus life, and sometimes sensitive topics (mental health, academic
 difficulties). A persistent real-name identity discourages honest participation.
 But full anonymity without accountability invites spam and toxicity.

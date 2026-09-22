@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { verificationMail, parseMailAcceptance } = require('@lucky/server')
+const { verificationMail, parseMailAcceptance } = require('@lynku/server')
 test('verification mail uses the confirmed sender and restricts recipients to school email', () => {
   const mail = verificationMail('student@nottingham.edu.cn', '012345')
   assert.equal(mail.domain, 'mail.oikoss.cc')

@@ -2,6 +2,8 @@
 
 状态：目标规范。字段的最终 schema、集合及索引由实施阶段落地；本文件确定不能省略的语义。
 
+2026-09-21 上线保护的新协议、生命周期／同意／屏蔽／个案治理与数据清理，按 [治理技术设计](community-governance.md) 实施。用户明确不兼容旧协议，历史段落中 v1/OPENID 别名只描述旧实现，不构成继续保留要求。正常内容同步自动检查通过就提交，不建设人工预审候选库。保留表以 [协议文案](../product/community-policies.md) 为唯一目标来源，不能把“同步记录到期”误用于兼作聊天历史的 messages 正文。
+
 ## API 边界
 
 1. 按业务动作组织请求、响应和错误 schema。schema 是运行时校验和 TypeScript DTO 类型的同一来源，避免两份手工维护的字段定义。
@@ -107,6 +109,34 @@
 建立索引/权限 manifest，与 schema 版本一起检查。唯一约束不能用“先查再插”替代。云端不支持的事务/索引语法应在隔离环境验证并调整设计，mock 不能证明平台支持。
 
 ## 数据生命周期
+
+### 管理端用户列表
+
+`admin.listUsers` 每请求验证可信 Web 身份与 `users:read` 能力。请求为昵称字面子串 `query`（最多80字符）、认证状态 `verification`（all/verified/guest）、`limit`（1–50，默认25）与可空 `cursor`。服务端先筛选，再按 `created_at DESC, _id DESC` 查询 limit+1 条；游标绑定昵称和认证筛选，改变筛选必须从首页开始。只返回显式用户摘要与 nextCursor，邮箱脱敏，不返回 OPENID 或匿名关联。列表不构成历史快照：翻页期间改变昵称／认证状态的账号需刷新首页重新获取。
+
+上线前应用 users 的 `(created_at, _id)`、`(verified, created_at, _id)` 索引，并验证实际 SDK 的 Date 比较、同时间分页与昵称正则字面转义；不为此重建用户或修改认证。昵称子串查询可能扫描匹配项，需要在实际规模测量查询延迟；本地有界返回不代表云端性能已验收。
+
+### 管理端帖子列表
+
+`admin.listPosts` 每请求核对content:read。请求status为published/hidden/flagged/deleted，默认published；query仅搜索标题字面子串，最大80字符；limit为1–50，默认25。使用状态/搜索作用域游标及 `(created_at DESC,_id DESC)` 排他分页。服务端校验数据库排序与筛选结果，匿名字段非布尔则失败，不猜测实名。公开DTO排除真实作者ID及作者快照，匿名名称固定；deleted记录标题／作者固定为删除占位，不支持标题搜索。数据库仍需按保留策略执行实际删除，列表脱敏不能替代清理。复用posts的status/created_at/_id索引；真实SDK查询与搜索性能尚待平台验证。
+
+管理帖子详情通过 `admin.readPost {id}` 每请求核对 content:read 并读取当前记录，返回显式摘要、content和updatedAt；删除／缺失记录统一NOT_FOUND，记录ID不匹配拒绝。原始作者快照及匿名映射不进入响应。网页使用 `#content?post=<encoded-id>` 深链接与shadcn Sheet，正文作为React文本节点显示，不解析HTML。详情刷新重新请求并清除旧正文，关闭／切换／退出后的迟到响应不再渲染；未加入后台自动轮询，因此打开期间发生远端变更仍需刷新。
+
+### 举报案件结案
+
+`governance.listReports`使用可信账号与账号作用域游标，按字符串createdAt与_id倒序查询limit+1，默认25／最大50；跨账号游标拒绝，投影仅包含本人reportId、状态、版本、结论、理由、时间。客户端“我的举报”不持久缓存列表，隐藏／销毁／身份变化丢弃迟到响应。该入口提供主动查询，不等于结果通知已送达。
+
+remove_comment结论要求targetToken，来自readComment的当前正文／匿名状态／帖子与父评论关系摘要。服务端在事务内复读目标并比较摘要，再清空正文与作者快照、保留deleted占位、减帖子评论数并追加同序列删除事件；与案件／回执／审计同事务。现有评论无编辑接口，不人为猜测revision；后续任何可编辑字段必须纳入摘要。删除所属帖子后不提供该评论预览。此操作目前无自动恢复入口，申诉及合法保留证据仍待接通。
+
+新增hide_post结论：请求另含targetRevision，必须来自当前帖子预览；只允许post案件且目标仍published并匹配revision。治理通过content的hideReportedPost端口，在同一事务减少有效分类计数、标记hidden、增加帖子revision、记录案件来源并结案／审计。删除、已下架或已修改目标返回冲突，不覆盖作者后续动作。重复相同请求返回原回执，不重复减计数。当前不提供恢复／评论下架，这些流程需要另行实现与验证。
+
+`admin.readCase`与`admin.closeCase`要求governance:write；详情只提供当前案件必要说明，不提供举报人身份。closeCase目前仅接受no_violation与duplicate，必须提交expectedVersion、requestId及公开处理理由。同一事务复核管理成员／业务账号／生命周期，写closed及caseVersion+1、actor作用域回执和审计；相同请求返回原结果，换正文／旧版本冲突。这两种结论不修改目标内容。`governance.readReport`按可信账号核对reporterAccountId，跨账号与缺记录统一NOT_FOUND，只返回本人案件状态与处理结论。用户结果页面、通知、申诉及违规下架处置尚待接通，不能将这两个结案选项视作完整治理。
+
+### 管理端分类修改
+
+`admin.updateCategory` 使用完整可编辑分类预览、managementRevision、requestId和必填理由。content拥有分类字段写入；适配器将可信管理身份、业务账号及生命周期读入同一事务，再进行版本比较、字段更新、`admin_operation_receipts`回执和审计写入。post_count由服务器当前值保留，不接受表单覆盖。回执ID绑定可信Web UID和动作，同请求内容重试返回原结果；换内容或旧版本返回CONFLICT；已撤权不能重放回执。名称唯一性仍依赖categories.name的数据库唯一索引。
+
+该接口尚未部署。启用前在停旧分类管理写入的窗口备份并核对分类，显式初始化managementRevision=0，保留计数；已有revision不得重置。未初始化记录拒绝管理列表读取及修改，不在读路径猜测版本。本地旧categories.update云动作及权限已退出，新建／初始化分类写入managementRevision=0；仍需配套部署退出线上旧入口。网页分类列表已使用带版本DTO并接入编辑侧栏，提供变更预览、原因、回执及冲突状态；结果未确认时固定请求和输入重试，不自动换requestId。回执保留／清理策略、历史分类迁移与事务平台验证仍待完成。
 
 资源分为公开内容、本人私有数据、会话私有数据、敏感身份、临时认证、诊断与审计。每类记录用途、读取角色、保留配置、删除/脱敏传播及备份边界。
 

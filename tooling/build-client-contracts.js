@@ -1,5 +1,6 @@
 const fs = require('node:fs')
 const path = require('node:path')
+const { generateLegalBundle } = require('./build-legal-policies.mjs')
 
 // WeChat compiles TypeScript inside miniprogramRoot. Materialize the canonical
 // package there so device builds do not depend on workspace module resolution.
@@ -12,4 +13,7 @@ if (!path.resolve(destination).startsWith(`${path.join(root, 'apps', 'miniprogra
 fs.rmSync(destination, { recursive: true, force: true })
 fs.mkdirSync(destination, { recursive: true })
 fs.cpSync(source, destination, { recursive: true })
+const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version
+fs.writeFileSync(path.join(root, 'apps/miniprogram/generated/version.ts'), `// Generated from the root package version.\nexport const APP_VERSION = ${JSON.stringify(version)}\n`)
 process.stdout.write('Materialized shared TypeScript contracts for WeChat.\n')
+generateLegalBundle(root)

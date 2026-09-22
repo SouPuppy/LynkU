@@ -31,14 +31,14 @@ inspect(sourceFiles(contractsRoot), (file, source) => {
   if (/\b(?:wx|process|require)\b/.test(source)) {
     errors.push(`${path.relative(root, file)}: contracts cannot use platform globals`)
   }
-  if (/from\s+['"](?:@lucky\/server|.*cloudbase|.*miniprogram)/.test(source)) {
+  if (/from\s+['"](?:@lynku\/server|.*cloudbase|.*miniprogram)/.test(source)) {
     errors.push(`${path.relative(root, file)}: contracts cannot depend on implementation code`)
   }
 })
 
 inspect(sourceFiles(serverRoot), (file, source) => {
   const relative = path.relative(serverRoot, file).replace(/\\/g, '/')
-  if (relative.includes('/domain/') && /from\s+['"](?:@lucky\/contracts|.*(?:cloudbase|wx|adapter|platform))/.test(source)) {
+  if (relative.includes('/domain/') && /from\s+['"](?:@lynku\/contracts|.*(?:cloudbase|wx|adapter|platform))/.test(source)) {
     errors.push(`${path.relative(root, file)}: domain cannot depend on contracts or platform adapters`)
   }
   if (/from\s+['"][^'"]+\/src\//.test(source)) {

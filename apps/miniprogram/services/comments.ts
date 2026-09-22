@@ -1,22 +1,22 @@
 // services/comments.ts — Comment data access
 // All reads and writes go through cloud functions so anonymous ownership stays private.
 
-import type { IComment, ICommentChange, ICommentChangeCursor, ICommentWithReplies, PaginatedResult } from '../typings/cloudbase'
+import type { IComment, ICommentChange, ICommentChangeCursor, ICommentWithReplies } from '../typings/cloudbase'
 import { callCloud, CloudCallError } from './cloud'
-import { parseCommentPage, parseCommentView, parseCommentSyncPage } from '../generated/contracts/index'
+import { parseCommentHistoryPage, parseCommentView, parseCommentSyncPage, type CommentHistoryCursor, type CommentHistoryPage } from '../generated/contracts/index'
 
 export async function listCommentsByPost(
   postId: string,
-  offset = 0,
+  cursor: CommentHistoryCursor | null = null,
   limit = 50,
-): Promise<PaginatedResult<IComment>> {
+): Promise<CommentHistoryPage> {
   const result = await callCloud<unknown>('comments', {
     action: 'list',
     post_id: postId,
-    offset,
+    cursor,
     limit,
   })
-  try { return parseCommentPage(result, postId) } catch (_) {
+  try { return parseCommentHistoryPage(result, postId) } catch (_) {
     throw new CloudCallError('评论返回了无效数据', 'INVALID_RESPONSE', 'comments', 'list')
   }
 }
@@ -26,8 +26,8 @@ export async function createComment(data: {
   postId: string
   content: string
   parentId?: string
-  anonymous?: boolean
-  requestId?: string
+  anonymous: boolean
+  requestId: string
 }): Promise<{ comment: IComment; flagged: boolean; status?: 'created' | 'duplicate' }> {
   const response = await callCloud<unknown>('comments', {
     action: 'create',

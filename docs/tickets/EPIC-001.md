@@ -1,6 +1,6 @@
 ---
 id: EPIC-001
-title: "Lucky BBS — UNNC Student Forum + Private Messaging Platform"
+title: "LynkU — UNNC Student Forum + Private Messaging Platform"
 status: superseded
 type: epic
 priority: high

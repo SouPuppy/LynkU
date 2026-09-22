@@ -1,5 +1,5 @@
 {
-  "problem_domain": "Migrate Lucky BBS from FastAPI+PostgreSQL+WebSocket backend to WeChat CloudBase (serverless BaaS): cloud functions for business logic, document DB for storage, watch() for real-time messaging. Replace all mock data with live database. Deep refactor of frontend to remove REST/WebSocket client layer in favor of wx.cloud SDK.",
+  "problem_domain": "Migrate LynkU from FastAPI+PostgreSQL+WebSocket backend to WeChat CloudBase (serverless BaaS): cloud functions for business logic, document DB for storage, watch() for real-time messaging. Replace all mock data with live database. Deep refactor of frontend to remove REST/WebSocket client layer in favor of wx.cloud SDK.",
   "references": [
     {
       "name": "WeChat Cloud Development (CloudBase) — Deep Research",
@@ -16,7 +16,7 @@
       ]
     },
     {
-      "name": "Frontend Design Principles — Lucky BBS",
+      "name": "Frontend Design Principles — LynkU",
       "url": "docs/research/frontend-design-principles.md",
       "relevance": "14 production-grade frontend principles for CloudBase-powered mini-program. Covers layered data access, component split, watch lifecycle, setData discipline, error states, Skyline constraints.",
       "architecture_pattern": "Layered: Pages → Services (data access layer) → CloudBase SDK. Presentation/Container component split. Service layer as single data boundary.",
@@ -50,5 +50,5 @@
       "FastAPI+PostgreSQL (old)": {"Architecture": "Monolith server", "Data Access": "REST API + SQLAlchemy ORM", "Auth": "Manual wx.login + JWT", "Real-time": "WebSocket server", "Search": "PostgreSQL TSVECTOR full-text", "Ops Burden": "Server deployment, DB backups, scaling"}
     }
   },
-  "conclusion": "CloudBase is the correct choice for Lucky BBS at UNNC scale (~10k users). The key architectural shifts: (1) cloud functions replace FastAPI services with action-based routing, (2) document DB replaces PostgreSQL with denormalized reads, (3) watch() replaces WebSocket for real-time messaging, (4) context.OPENID replaces JWT auth flow, (5) service layer (services/) wraps all CloudBase SDK calls. Main risk: full-text search is significantly weaker (RegExp vs TSVECTOR). Acceptable for MVP; add search index collection or external search if needed. All existing frontend design principles (14 principles doc) apply directly."
+  "conclusion": "CloudBase is the correct choice for LynkU at UNNC scale (~10k users). The key architectural shifts: (1) cloud functions replace FastAPI services with action-based routing, (2) document DB replaces PostgreSQL with denormalized reads, (3) watch() replaces WebSocket for real-time messaging, (4) context.OPENID replaces JWT auth flow, (5) service layer (services/) wraps all CloudBase SDK calls. Main risk: full-text search is significantly weaker (RegExp vs TSVECTOR). Acceptable for MVP; add search index collection or external search if needed. All existing frontend design principles (14 principles doc) apply directly."
 }

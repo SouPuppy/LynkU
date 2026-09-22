@@ -2,7 +2,7 @@ import assert = require('node:assert/strict')
 import { createHash } from 'node:crypto'
 import { test } from 'node:test'
 import { sendNewMessage, markMessagesRead, listConversationDirectory, syncMessages,
-  readMessageHistory, readReceipts, listUserNotifications, resolveConversationTarget } from '@lucky/server'
+  readMessageHistory, readReceipts, listUserNotifications, resolveConversationTarget } from '@lynku/server'
 import { createCloudBaseMessagingAdapters, MessageRecipientUnavailable } from '../packages/adapters/src'
 import type { MessagingCollection, MessagingDatabase, MessagingDocument, MessagingQuery } from '../packages/adapters/src'
 
@@ -59,6 +59,7 @@ function fixture() {
   let response: unknown
   let rateCalls = 0
   let rateFailure = false
+  let blocked = false
   const records = (data: State, collection: string) => {
     let rows = data.get(collection)
     if (!rows) { rows = new Map(); data.set(collection, rows) }
@@ -152,10 +153,12 @@ function fixture() {
     },
   }
   const adapters = createCloudBaseMessagingAdapters(db, { identifier,
+    async moderate() { return { clean: true } },
+    async assertCanSend() { if (blocked) throw new Error('contact blocked') },
     async authorizeSendRate() { rateCalls++; if (rateFailure) throw new Error('rate rejected') },
   })
   const seed = (collection: string, id: string, row: Row) => records(state, collection).set(id, { ...row, _id: id })
-  seed('users', 'alice-user', { _openid: 'alice', nickname: 'Alice', avatar_url: '' })
+  seed('users', 'alice-user', { _openid: 'alice', verified: true, nickname: 'Alice', avatar_url: '' })
   seed('users', 'bob-user', { _openid: 'bob', nickname: 'Bob', avatar_url: '' })
   return { db, adapters, seed,
     row: (collection: string, id: string) => records(state, collection).get(id),
@@ -163,6 +166,7 @@ function fixture() {
     rates: () => rateCalls,
     failDirectory: (value: boolean) => { failDirectory = value },
     failRate: () => { rateFailure = true },
+    block: () => { blocked = true },
     corrupt: (value: unknown) => { corrupt = true; response = value },
   }
 }
@@ -187,6 +191,15 @@ test('CloudBase adapter sends atomically, preserves sequence and deduplicates co
   await sendNewMessage(store, conversation, null, { msg_id: 'second', content: 'next' })
   assert.equal(f.row('conversation_counters', conversation.id)?.last_sequence, 2)
   assert.equal(f.row('messages', identifier('alice', 'second'))?.sync_sequence, 2)
+})
+
+test('a blocked contact cannot create a message, sequence, directory entry, or unread count', async () => {
+  const f = fixture(); f.block()
+  await assert.rejects(sendNewMessage(f.adapters.createSendStore(conversation.id, 'alice', 'bob'), conversation, null,
+    { msg_id: 'blocked', content: 'hello' }), /contact blocked/)
+  assert.equal(f.rows('messages').length, 0)
+  assert.equal(f.rows('conversation_counters').length, 0)
+  assert.equal(f.rows('conversation_entries').length, 0)
 })
 
 test('CloudBase read transaction rolls back with its directory and repeat reads are idempotent', async () => {

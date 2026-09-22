@@ -3,7 +3,9 @@ import path from 'node:path'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import automator from 'miniprogram-automator'
+import { parsePublicPostPage } from '@lynku/contracts'
 import { configureProject } from './configure-project.mjs'
+import { releaseInputs } from './release-inputs.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const config = configureProject(root, true)
@@ -67,9 +69,16 @@ try {
     assert.ok(Array.isArray(data(await cloud('categories', { action: 'list' })).categories))
   })
   await check('posts public read and anonymous projection', async () => {
-    const page = data(await cloud('posts', { action: 'list', public_only: true, limit: 5, offset: 0 }))
-    assert.ok(Array.isArray(page.items))
+    const page = data(await cloud('posts', { action: 'list', public_only: true, limit: 5, cursor: null }))
+    parsePublicPostPage(page)
     for (const post of page.items) if (post.anonymous) assert.ok(!post._openid && !post.author?.openid && !post.author?._openid)
+  })
+  await check('posts public pagination matches the client contract', async () => {
+    const first = parsePublicPostPage(data(await cloud('posts', { action: 'list', public_only: true, limit: 1, cursor: null })))
+    if (first.hasMore) {
+      const next = parsePublicPostPage(data(await cloud('posts', { action: 'list', public_only: true, limit: 1, cursor: first.nextCursor })))
+      assert.ok(next.items.every(post => !first.items.some(previous => previous._id === post._id)))
+    }
   })
   if (identity && !identity.verified) await check('unverified account cannot read private conversations', async () => {
     const response = await cloud('messages', { action: 'listConversations' })
@@ -101,6 +110,7 @@ try {
   mini?.disconnect()
   fs.mkdirSync(path.join(root, 'dist/demo'), { recursive: true })
   fs.writeFileSync(path.join(root, 'dist/demo/smoke.json'), JSON.stringify({ timestamp: new Date().toISOString(), appId: config.appId,
-    environment: config.cloudEnvironment, passed: results.length > 0 && results.every(item => item.passed), checks: results }, null, 2) + '\n')
+    environment: config.cloudEnvironment, sourceDigest: releaseInputs(root).sourceDigest,
+    passed: results.length > 0 && results.every(item => item.passed), checks: results }, null, 2) + '\n')
   if (!results.length || results.some(item => !item.passed)) process.exitCode = 1
 }

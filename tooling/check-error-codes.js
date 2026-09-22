@@ -8,7 +8,7 @@ const errors = []
 
 for (const directory of fs.readdirSync(path.join(root, 'apps', 'cloudfunctions'), { withFileTypes: true })) {
   if (!directory.isDirectory()) continue
-  const file = path.join(root, 'apps', 'cloudfunctions', directory.name, 'index.js')
+  const file = path.join(root, 'apps', 'cloudfunctions', directory.name, 'index.ts')
   if (!fs.existsSync(file)) continue
   const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/)
   lines.forEach((line, index) => {

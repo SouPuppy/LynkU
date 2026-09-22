@@ -19,6 +19,7 @@ project.private.config.json
 node_modules/
 dist/
 apps/miniprogram/generated/
+apps/cloudfunctions/common/generated/
 
 # Env
 .env*

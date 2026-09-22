@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { projectComment } = require('@lucky/server')
-const { parseCommentView, parseCommentSyncPage, parseCommentPage } = require('@lucky/contracts')
+const { projectComment } = require('@lynku/server')
+const { parseCommentView, parseCommentSyncPage, parseCommentPage } = require('@lynku/contracts')
 const row = { _id: 'comment', _openid: 'secret-owner', post_id: 'post', parent_id: null, depth: 0,
   content: 'hello', anonymous: true, status: 'published', created_at: new Date('2026-09-21T00:00:00Z'),
   author: { nickname: 'Private name', avatar_url: '/private', email: 'secret-mail' },

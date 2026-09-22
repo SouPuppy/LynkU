@@ -1,13 +1,14 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
 const { createHash } = require('node:crypto')
-const { sendNewMessage, MessageIdConflict } = require('@lucky/server')
+const { sendNewMessage, MessageIdConflict } = require('@lynku/server')
 const conversation = { id: 'conversation', viewer: 'alice', peer: 'bob' }
 function fixture() {
   let state = { messages: new Map(), counter: null, directories: new Map() }
   let queue = Promise.resolve(), failure = false, rateCalls = 0
   const store = {
     existing: async id => state.messages.get(id) || null,
+    moderate: async () => ({ clean: true }),
     authorizeRecipientAndRate: async () => { rateCalls++ },
     identifier: (...parts) => createHash('sha256').update(parts.join('\0')).digest('hex'),
     timestamp: () => new Date('2026-09-21T01:00:00.000Z'),
@@ -72,6 +73,15 @@ test('send read faults and damaged sequence state never create or overwrite reco
   f.state().counter = null
   await assert.rejects(sendNewMessage(f.store, conversation, null, { msg_id: 'two', content: 'hello' }), /Incomplete conversation/)
   assert.equal(f.state().messages.size, 1)
+})
+
+test('message safety rejection happens before rate limiting or transaction writes', async () => {
+  const f = fixture()
+  f.store.moderate = async () => { const error = new Error('unsafe'); error.code = 'CONTENT_REJECTED'; throw error }
+  await assert.rejects(sendNewMessage(f.store, conversation, null, { msg_id: 'unsafe', content: 'unsafe' }), { code: 'CONTENT_REJECTED' })
+  assert.equal(f.rates(), 0)
+  assert.equal(f.state().messages.size, 0)
+  assert.equal(f.state().counter, null)
 })
 
 test('send can confirm an ambiguous committed write by retrying the same request ID', async () => {

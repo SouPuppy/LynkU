@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { projectPost } = require('@lucky/server')
-const { parsePostView, parsePostPage } = require('@lucky/contracts')
+const { projectPost } = require('@lynku/server')
+const { parsePostView, parsePostPage } = require('@lynku/contracts')
 const row = { _id: 'post', _openid: 'secret-owner', title: 'Title', content: 'Body', category_id: 'category',
   category: { _id: 'category', name: 'Campus', secret: 'hidden' }, anonymous: true, status: 'published',
   author: { _openid: 'secret-owner', nickname: 'Real name', avatar_url: '/real', email: 'secret-email' },

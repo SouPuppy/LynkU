@@ -10,5 +10,6 @@
     <text wx:if="{{error}}" class="login-error text-sm">{{error}}</text>
     <text class="login-hint text-xs">自动使用微信身份，未认证时为游客；学校邮箱认证后可参与讨论</text>
     <text wx:if="{{!verificationEnabled}}" class="login-hint text-xs">学校邮箱认证暂不可用，浏览不受影响</text>
+    <navigator url="/pages/legal/legal?kind=privacy" class="login-hint text-xs">隐私政策、用户协议与社区规范</navigator>
   </view>
 </view>

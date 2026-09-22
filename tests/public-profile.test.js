@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { readPublicProfile } = require('@lucky/server')
-const { parsePublicProfileResponse } = require('@lucky/contracts')
+const { readPublicProfile } = require('@lynku/server')
+const { parsePublicProfileResponse } = require('@lynku/contracts')
 const user = { _openid: 'alice', nickname: 'Alice', avatar_url: '', created_at: new Date('2026-01-01T00:00:00.000Z'),
   email: 'fixture@nottingham.edu.cn', verified: true, role: 'admin', _id: 'private-id' }
 test('public profile maps explicit fields and rejects wrong identity or invalid request before querying', async () => {

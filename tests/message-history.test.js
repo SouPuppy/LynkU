@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { readMessageHistory, InvalidHistoryRequest } = require('@lucky/server')
+const { readMessageHistory, InvalidHistoryRequest } = require('@lynku/server')
 const conversation = { id: 'conversation', viewer: 'alice', peer: 'bob' }
 const message = sequence => ({ _id: `m${sequence}`, msg_id: `request${sequence}`, from: 'bob', to: 'alice', content: 'hello',
   status: 'read', created_at: new Date('2026-09-21T01:00:00.000Z'), conversation_id: conversation.id, sync_sequence: sequence,

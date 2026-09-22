@@ -1,3 +1,4 @@
+import { POST_CONTENT_LIMIT } from './content-limits'
 export interface PostView {
   _id: string
   _openid?: string
@@ -38,7 +39,7 @@ export function parsePostView(value: unknown): PostView {
     || typeof input.is_mine !== 'boolean') throw new Error('Invalid post state')
   const actor = input.anonymous ? { nickname: '匿名用户', avatar_url: '/assets/anonymous.png' } : object(input.author)
   const result: PostView = { _id: text(input._id, 128), is_mine: input.is_mine, title: text(input.title, 200),
-    content: text(input.content, 10000), category_id: text(input.category_id, 128, true), category: null,
+    content: text(input.content, POST_CONTENT_LIMIT), category_id: text(input.category_id, 128, true), category: null,
     status: input.status, anonymous: input.anonymous,
     author: { nickname: text(actor.nickname, 100), avatar_url: text(actor.avatar_url, 2048, true) },
     view_count: count(input.view_count), comment_count: count(input.comment_count), revision: count(input.revision, 1),

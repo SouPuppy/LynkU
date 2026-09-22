@@ -54,7 +54,7 @@ created_by: agent-claude
 
 ## Description
 
-Migrate the entire Lucky BBS frontend from the old mock/REST+JWT architecture to
+Migrate the entire LynkU frontend from the old mock/REST+JWT architecture to
 WeChat Cloud Development (CloudBase). The old pattern used `wx.request` with JWT
 tokens to a self-hosted backend that never materialized. CloudBase provides the
 database, cloud functions, and auth natively inside the WeChat runtime.

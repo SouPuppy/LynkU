@@ -1,5 +1,5 @@
 import { projectMessage, type AuthorizedConversation } from './message-view'
-import { parseMessageHistoryRequest, parseMessageHistoryPage, type MessageHistoryPage } from '@lucky/contracts'
+import { parseMessageHistoryRequest, parseMessageHistoryPage, type MessageHistoryPage } from '@lynku/contracts'
 
 export interface MessageHistoryStore {
   list(conversationId: string, before: number | undefined, take: number): Promise<unknown[]>

@@ -1,6 +1,6 @@
 // subpkg-chat/pages/chat — 1:1 chat room with polling-based real-time
 import type { IMessage, LoadState, IAnonymousChatTarget, IMessageSyncCursor } from '../../../typings/cloudbase'
-import { getConversation, sendMessage } from '../../../services/messages'
+import { getConversation, sendMessage, setContactBlocked } from '../../../services/messages'
 import { acknowledgeMessages } from '../../../services/read-queue'
 import { getOpenid, getState, onChange } from '../../../services/session'
 import { pollMessages, type MessagePoller } from '../../../services/watch'
@@ -19,6 +19,7 @@ Page({
     state: 'idle' as LoadState,
     sending: false,
     pollingActive: false,
+    blocked: false,
     navHeight: 0,
     scrollTo: '',
     historyCursor: null as IMessageSyncCursor | null,
@@ -253,6 +254,35 @@ Page({
       wx.showToast({ title: msg, icon: 'none' })
     } finally {
       if (seq === this._requestSeq && getOpenid() === myOpenid && getState() === 'verified') this.setData({ sending: false })
+    }
+  },
+
+  onBlockContact() {
+    if (!requireVerified() || this.data.blocked || !this.hasChatTarget()) return
+    wx.showModal({ title: '屏蔽用户', content: '屏蔽后双方均不能继续通过该用户的普通或匿名会话发送新消息。',
+      confirmText: '屏蔽', confirmColor: '#c33', success: async result => {
+        if (!result.confirm) return
+        const owner = getOpenid(), seq = this._requestSeq
+        try {
+          await setContactBlocked(this.data.peerOpenid || undefined, this.data.anonymousTarget, true)
+          if (seq === this._requestSeq && owner === getOpenid()) {
+            this.setData({ blocked: true, inputText: '' })
+            wx.showToast({ title: '已屏蔽', icon: 'success' })
+          }
+        } catch (error) {
+          if (seq === this._requestSeq && owner === getOpenid()) wx.showToast({ title: error instanceof Error ? error.message : '屏蔽未完成', icon: 'none' })
+        }
+      } })
+  },
+
+  async onUnblockContact() {
+    if (!requireVerified() || !this.data.blocked || !this.hasChatTarget()) return
+    const owner = getOpenid(), seq = this._requestSeq
+    try {
+      await setContactBlocked(this.data.peerOpenid || undefined, this.data.anonymousTarget, false)
+      if (seq === this._requestSeq && owner === getOpenid()) this.setData({ blocked: false })
+    } catch (error) {
+      if (seq === this._requestSeq && owner === getOpenid()) wx.showToast({ title: error instanceof Error ? error.message : '解除屏蔽未完成', icon: 'none' })
     }
   },
 

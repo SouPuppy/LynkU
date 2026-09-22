@@ -1,4 +1,4 @@
-import { parseConversationTarget } from '@lucky/contracts'
+import { parseConversationTarget } from '@lynku/contracts'
 
 export interface AnonymousConversationContext {
   source_type: 'post' | 'comment'

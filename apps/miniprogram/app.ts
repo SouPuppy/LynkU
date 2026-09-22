@@ -1,4 +1,4 @@
-// app.ts — Lucky BBS
+// app.ts — LynkU
 // CloudBase-powered. Identity via context.OPENID, no JWT, no mock.
 // Cache management delegated to session.ts.
 // Per design: docs/design/user-system-consolidation/

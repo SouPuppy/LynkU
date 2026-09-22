@@ -1,0 +1,8 @@
+import { MembersPanel } from './members'
+import type { AdminSession } from '../lib/admin-client'
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
+import { Badge } from '../components/ui/badge'
+const PERMISSIONS: Record<string, string> = { 'audit:read': '查看操作记录', 'categories:write': '管理分类', 'content:read': '查看内容', 'governance:write': '处理社区案件', 'operations:read': '查看运行状态', 'settings:write': '管理设置权限', 'users:read': '查看用户与认证' }
+export function SettingsPanel({ session }: { session: AdminSession }) {
+  return <section aria-label="设置与权限" className="grid gap-4 lg:grid-cols-2"><Card className="shadow-none"><CardHeader><CardTitle>当前管理身份</CardTitle></CardHeader><CardContent className="space-y-4"><p className="text-sm">角色：{session.role === 'owner' ? '所有者' : session.role === 'community' ? '社区管理员' : '只读管理员'}</p><p className="text-xs text-muted-foreground">权限版本：{session.memberVersion}</p><div className="flex flex-wrap gap-2">{session.capabilities.map(capability => <Badge key={capability} variant="secondary">{PERMISSIONS[capability] || capability}</Badge>)}</div><p className="text-xs text-muted-foreground">此处显示登录时权限，每次请求由服务端重新核验。</p></CardContent></Card><Card className="shadow-none"><CardHeader><CardTitle>发布配置</CardTitle></CardHeader><CardContent className="space-y-3 text-sm"><p>应用：LynkU</p><p className="break-all">当前网页连接环境：{__LYNKU_CLOUDBASE_ENV__}</p><p className="text-xs leading-6 text-muted-foreground">由项目统一配置生成。环境、学校邮件服务和法律文本通过发布流程更新；此页面只读。</p></CardContent></Card>{session.capabilities.includes('settings:write') && <MembersPanel />}</section>
+}

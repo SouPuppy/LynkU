@@ -1,4 +1,4 @@
-import { parseReadPostRequest, type PostView } from '@lucky/contracts'
+import { parseReadPostRequest, type PostView } from '@lynku/contracts'
 import { projectPost } from './post-view'
 export class PostReadFailure extends Error {
   constructor(readonly code: 'INVALID_INPUT' | 'NOT_FOUND' | 'FORBIDDEN') { super(code) }

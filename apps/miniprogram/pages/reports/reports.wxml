@@ -1,0 +1,19 @@
+<nav-bar title="我的举报" showBack="{{true}}" />
+<view class="reports-page">
+  <view wx:if="{{!loggedIn}}" class="empty"><text>取得微信身份后可查看本人的举报记录。</text><button bindtap="onLogin">继续登录</button></view>
+  <block wx:else>
+    <view class="toolbar"><text>仅显示你提交的举报</text><button size="mini" disabled="{{loading}}" bindtap="refresh">刷新</button></view>
+    <view wx:for="{{items}}" wx:key="reportId" class="report-card">
+      <view class="report-heading"><text>{{item.statusLabel}}</text><text class="date">{{item.dateLabel}}</text></view>
+      <text wx:if="{{item.outcomeLabel}}" class="outcome">{{item.outcomeLabel}}</text>
+      <text wx:if="{{item.resolution}}" class="resolution">{{item.resolution}}</text>
+      <text wx:else class="resolution secondary">处理结果会在这里更新。</text>
+      <text class="report-id">回执编号：{{item.reportId}}</text>
+      <button wx:if="{{item.status === 'closed' && !item.appealed}}" size="mini" disabled="{{appealBusy}}" data-id="{{item.reportId}}" bindtap="onAppeal">对结果提出申诉</button>
+    </view>
+    <view wx:if="{{error}}" class="empty"><text>{{error}}</text><button size="mini" bindtap="onRetry">重试</button></view>
+    <view wx:if="{{loading}}" class="empty">正在读取…</view>
+    <view wx:if="{{loaded && !items.length && !loading && !error}}" class="empty">暂无举报记录。</view>
+    <button wx:if="{{cursor && !error}}" class="more" disabled="{{loading}}" bindtap="onMore">查看更多</button>
+  </block>
+</view>

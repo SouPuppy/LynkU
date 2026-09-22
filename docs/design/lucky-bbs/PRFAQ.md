@@ -1,4 +1,4 @@
-# Lucky BBS — PR/FAQ
+# LynkU — PR/FAQ
 
 ## Problem
 

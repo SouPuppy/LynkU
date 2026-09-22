@@ -7,9 +7,8 @@
     "rootDir": "src",
     "outDir": "dist",
     "lib": ["ES2020"],
-    "baseUrl": "../..",
     "paths": {
-      "@lucky/contracts": ["packages/contracts/dist/index.d.ts"]
+      "@lynku/contracts": ["../contracts/dist/index.d.ts"]
     }
   },
   "include": ["src/**/*.ts"]

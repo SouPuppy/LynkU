@@ -18,6 +18,16 @@
 
 核验完成后才可准备隔离环境冒烟和发布产物。正式发布仍遵循下文顺序，并且由使用 `dist/cloudfunctions` 的部署流程执行；本节的任一命令都不应触发部署。
 
+## 管理网页的 CI/CD
+
+管理员云端结构准备使用 `npm run provision:admin-cloud` 先查看差异，再使用 `npm run provision:admin-cloud -- --apply` 应用。工具按唯一schema保留现有数据和索引、补缺失集合/索引，并逐集合读回ADMINONLY；遇到不兼容的唯一索引报告冲突，不自动删除。备份与检查点在 `dist/admin-cloud-schema/<环境ID>/`，必须确认applied.json的completed为true且conflicts为空。已有分类先运行 `npm run migrate:admin-categories`，核实备份和保护对象后加 `-- --apply` 补齐管理版本。云函数部署使用构建后的dist/cloudfunctions，与静态网页分别发布；不能仅上传网页就认为新接口已生效。
+
+管理网页是静态托管的 `/admin` 子路径。`Verify` 工作流在每次推送和合并请求运行完整 `npm run check`，其中包含网页严格类型检查和生产构建。`Deploy admin` 仅在 `main` 推送或人工触发后运行；其再次完成完整检查，才运行 `npm run deploy:admin`。
+
+部署工作流使用 GitHub 的 `production` Environment，必须在该 Environment 中配置 `CLOUDBASE_SECRET_ID` 和 `CLOUDBASE_SECRET_KEY` 两个密钥。它们是可部署到已配置 CloudBase 环境的腾讯云 API 凭据，不能写入 `config/project.json`、仓库、网页包或 Actions 日志。工作流从公开的 `config/project.json` 读取唯一目标环境，使用项目锁定的 CloudBase CLI，以安全备份和本地远端文件清单核对上传 `/admin`；不会删除托管根目录或其他路径。
+
+首次启用前，在 GitHub 保护 `production` Environment，限制可部署分支为 `main`，并由实际环境管理员保存上述密钥。之后任何 `main` 提交只有在验证和 Environment 审批通过后才会发布。密钥缺失或无目标环境权限应使部署明确失败，不能回退到别的环境或模拟成功。
+
 ## 构建产物与发布单元
 
 每次发布记录版本、源代码状态、依赖锁摘要、构建命令、环境、各函数产物摘要、schema/迁移版本和受支持客户端协议。脏工作区构建可用于本地验证，正式发布应能定位完整源码快照。
@@ -66,5 +76,9 @@
 | 部分部署失败 | 查看产物版本矩阵，完成兼容回退或前向恢复，再运行冒烟 |
 
 ## 上线剩余政策
+
+用户已要求完整设计上线保护，具体实施使用 [goal 入口](../plans/community-safety-goal.md)。默认无人工预审、正常内容自动检查通过即发布；仅微信／CloudBase及现有邮件服务依赖，不增加审核商或AI。旧协议直接切换，无双写／fallback；迁移保留已有账号认证。用户已备案，编号只做真实展示核对。
+
+校园社区的主体/类目/匿名准入、协议隐私、内容治理、用户权利、属地办理和最小首发顺序见[上线准备手册](launch-preparation.md)，代码及官方规则证据见[上线准备审查](../audits/launch-readiness-2026-09-21.md)。按实际首发能力关闭门槛；完成状态统一记录在status，不以本手册框架存在当作演练完成。
 
 邮箱认证恢复、真实内容审核能力、用户隐私/保留政策、服务支持范围与运营责任需在开放前有明确结论；代码重构不自动证明这些条件已满足。无需为缺少这些结论暂停本地迁移，但不得把它们标记为已验收。

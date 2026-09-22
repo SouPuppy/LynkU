@@ -3,7 +3,7 @@ import {
   parseConversationDirectoryPage,
   type ConversationDirectoryCursor,
   type ConversationDirectoryPage,
-} from '@lucky/contracts'
+} from '@lynku/contracts'
 
 export interface ConversationDirectoryStore {
   list(ownerId: string, cursor: ConversationDirectoryCursor | undefined, take: number): Promise<unknown[]>

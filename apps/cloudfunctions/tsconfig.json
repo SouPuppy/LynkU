@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "types": ["node"],
+    "lib": ["ES2022"],
+    "paths": {
+      "@lynku/contracts": ["../../packages/contracts/src/index.ts"],
+      "@lynku/server": ["../../packages/server/src/index.ts"],
+      "@lynku/adapters": ["../../packages/adapters/src/index.ts"]
+    }
+  },
+  "include": ["**/*.ts"]
+}

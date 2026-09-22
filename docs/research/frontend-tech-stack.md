@@ -2,7 +2,7 @@
 
 ## Problem Domain
 
-Select the frontend tech stack for Lucky BBS prototype. Constraints: (1) WeChat
+Select the frontend tech stack for LynkU prototype. Constraints: (1) WeChat
 mini-program only — no H5/App needed, (2) prototype phase — all data mocked, no
 real backend, (3) fast iteration over ceremony, (4) scaffold already exists as
 WeChat native (TypeScript + Skyline + Glass-Easel).

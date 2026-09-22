@@ -1,6 +1,6 @@
 # WeChat Cloud Development (CloudBase) — Deep Research Report
 
-> Target: Migrate Lucky BBS from FastAPI + PostgreSQL to WeChat Cloud Development (CloudBase).
+> Target: Migrate LynkU from FastAPI + PostgreSQL to WeChat Cloud Development (CloudBase).
 > Date: 2026-07-21
 > Related: [[lucky-bbs]], [[frontend-tech-stack]]
 

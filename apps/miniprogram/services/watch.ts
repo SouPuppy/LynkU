@@ -1,8 +1,7 @@
 import * as session from './session'
 // services/watch.ts - Privacy-safe polling through cloud functions
-import type { IPost, IComment, IMessage, IAnonymousChatTarget, IMessageSyncCursor, ICommentChangeCursor } from '../typings/cloudbase'
+import type { IPost, IMessage, IAnonymousChatTarget, IMessageSyncCursor } from '../typings/cloudbase'
 import { listPosts } from './posts'
-import { syncCommentChanges } from './comments'
 import { syncConversation, getReadReceipts } from './messages'
 import { READ_BATCH_SIZE } from '../generated/contracts/index'
 
@@ -81,45 +80,6 @@ export function watchPosts(
     onChange,
     onError,
   )
-}
-
-export function watchComments(
-  postId: string,
-  onChange: ChangeCallback<IComment>,
-  onError: ErrorCallback,
-): WatcherHandle {
-  let cursor: ICommentChangeCursor = { version: 1, post_id: postId, sequence: 0 }
-  let stopped = false
-  let running = false
-  const poll = async () => {
-    if (stopped || running) return
-    running = true
-    try {
-      const changed = new Map<string, { type: string; doc: IComment }>()
-      let pendingCursor = cursor
-      let hasMore = true
-      let pages = 0
-      while (hasMore && pages < 5) {
-        const result = await syncCommentChanges(postId, pendingCursor, 50)
-        if (stopped) return
-        for (const change of result.changes) {
-          if (change.comment) changed.set(change.comment_id, { type: change.type === 'deleted' ? 'remove' : 'add', doc: change.comment })
-        }
-        hasMore = result.hasMore && result.nextCursor.sequence > pendingCursor.sequence
-        pendingCursor = result.nextCursor
-        pages += 1
-      }
-      if (changed.size > 0) onChange([], Array.from(changed.values()))
-      cursor = pendingCursor
-    } catch (error) {
-      if (!stopped) onError(error instanceof Error ? error : new Error('poll error'))
-    } finally {
-      running = false
-    }
-  }
-  void poll()
-  const timer = setInterval(poll, CONTENT_POLL_INTERVAL)
-  return { close: () => { stopped = true; clearInterval(timer) } }
 }
 
 export interface MessagePoller {

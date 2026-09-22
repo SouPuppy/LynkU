@@ -7,13 +7,14 @@ import type { NotificationCursor } from '../../services/notifications'
 import { refreshMessageBadge } from '../../services/badge'
 import { openLogin } from '../../utils/guard'
 import * as session from '../../services/session'
-import { openVerification } from '../../services/verification'
+import { openVerification, verificationGuidance } from '../../services/verification'
 import { formatTime } from '../../utils/util'
 
 type TabKey = 'chat' | 'notif'
 
 Page({
   data: {
+    verificationGuidance: verificationGuidance(),
     access: 'guest' as session.SessionState,
     activeTab: 'chat' as TabKey,
 

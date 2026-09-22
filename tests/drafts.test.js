@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
 const { createHash } = require('node:crypto')
-const { saveUserDraft, deleteUserDraft, listUserDrafts } = require('@lucky/server')
+const { saveUserDraft, deleteUserDraft, listUserDrafts } = require('@lynku/server')
 const request = { request_id: 'request-123', title: 'one', content: '', category_id: '', anonymous: false }
 function fixture() {
   let drafts = new Map(), counters = new Map(), tail = Promise.resolve()

@@ -1,4 +1,4 @@
-import type { SaveDraftRequest } from '../../generated/contracts/index'
+import { POST_CONTENT_LIMIT, type SaveDraftRequest } from '../../generated/contracts/index'
 import { initialEditorState, type EditorObserver, type EditorRoute, type EditorState } from './model'
 import type { EditorPorts } from './ports'
 import { parseEditorRecovery, type EditorRecovery, type PendingPublication } from './recovery'
@@ -208,6 +208,11 @@ export class EditorController {
   async save(): Promise<void> {
     if (!this.current() || !this.state.dirty || this.submitting || this.submitted || this.publication) return
     this.stopSave()
+    if (this.state.content.length > POST_CONTENT_LIMIT) {
+      this.patch({ lastSavedAt: `正文最多 ${POST_CONTENT_LIMIT} 字，请精简后保存` })
+      this.persistRecovery()
+      return
+    }
     if (this.savePromise) {
       await this.savePromise
       if (this.state.dirty && !this.submitting) await this.save()
@@ -258,6 +263,7 @@ export class EditorController {
     const { title, content, categoryId, mode } = this.state
     if (!title.trim()) { this.notice('请输入标题'); return }
     if (!content.trim()) { this.notice('请输入内容'); return }
+    if (content.trim().length > POST_CONTENT_LIMIT) { this.notice(`正文最多 ${POST_CONTENT_LIMIT} 字`); return }
     this.stopSave()
     this.submitting = true
     this.patch({ submitting: true })

@@ -1,8 +1,13 @@
-import { parseUpdatePostRequest, parsePostMutationReceipt, type PostMutationReceipt } from '@lucky/contracts'
+import { parseUpdatePostRequest, parsePostMutationReceipt, type PostMutationReceipt } from '@lynku/contracts'
+import { categoryNameAllowed } from './categories'
+import { currentPostAuthor } from './post-author'
+import { assertAccountCapability } from '../shared'
+import { ModerationFailure } from '../shared'
 export class PostUpdateFailure extends Error {
   constructor(readonly code: 'INVALID_INPUT' | 'INVALID_CATEGORY' | 'NOT_FOUND' | 'FORBIDDEN' | 'CONFLICT') { super(code) }
 }
 export interface PostUpdateTransaction {
+  author(): Promise<unknown | null>
   post(id: string): Promise<unknown | null>
   category(id: string): Promise<unknown | null>
   updatePost(id: string, changes: Record<string, unknown>): Promise<void>
@@ -13,14 +18,14 @@ export interface PostUpdateStore {
   run<T>(operation: (transaction: PostUpdateTransaction) => Promise<T>): Promise<T>
   identifier(...parts: string[]): string
   allowUpdate(): Promise<void>
-  moderate(text: string): { clean: boolean }
+  moderate(text: string): Promise<{ clean: boolean }>
   now(): string
 }
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid content record')
   return value as Record<string, unknown>
 }
-export async function updateUserPost(store: PostUpdateStore, owner: string, author: { nickname: string; avatar_url: string; profile_version: number }, input: unknown): Promise<PostMutationReceipt> {
+export async function updateUserPost(store: PostUpdateStore, owner: string, input: unknown): Promise<PostMutationReceipt> {
   let request
   try { request = parseUpdatePostRequest(input) } catch (_) { throw new PostUpdateFailure('INVALID_INPUT') }
   const fingerprint = store.identifier('post:update', owner, request.post_id, String(request.expected_revision),
@@ -40,10 +45,15 @@ export async function updateUserPost(store: PostUpdateStore, owner: string, auth
   const prior = inspect(await store.existing(request.post_id))
   if (prior.duplicate) return parsePostMutationReceipt({ post: prior.row, flagged: prior.row.status === 'flagged' }, 'update', request.post_id)
   await store.allowUpdate()
-  const status = store.moderate(`${request.title} ${request.content}`).clean ? 'published' : 'flagged'
+  const verdict = await store.moderate(`${request.title} ${request.content}`)
+  if (verdict?.clean !== true) throw new ModerationFailure(verdict?.clean === false ? 'CONTENT_REJECTED' : 'MODERATION_UNAVAILABLE')
+  const status = 'published'
   const updatedAt = store.now()
   if (!Number.isFinite(new Date(updatedAt).getTime())) throw new Error('Invalid update clock')
   return store.run(async transaction => {
+    const account = await transaction.author()
+    assertAccountCapability(account, 'posts', store.now())
+    const author = currentPostAuthor(account, owner)
     const { row, duplicate } = inspect(await transaction.post(request.post_id))
     if (duplicate) return parsePostMutationReceipt({ post: row, flagged: row.status === 'flagged' }, 'update', request.post_id)
     const deltas = new Map<string, number>()
@@ -56,7 +66,7 @@ export async function updateUserPost(store: PostUpdateStore, owner: string, auth
       const value = await transaction.category(id)
       if (value === null) throw new PostUpdateFailure('INVALID_CATEGORY')
       const item = object(value)
-      if (item._id !== id || (id === request.category_id && item.status !== 'active')) throw new PostUpdateFailure('INVALID_CATEGORY')
+      if (item._id !== id || (id === request.category_id && (item.status !== 'active' || typeof item.name !== 'string' || !categoryNameAllowed(item.name)))) throw new PostUpdateFailure('INVALID_CATEGORY')
       if (typeof item.name !== 'string' || !item.name || typeof item.post_count !== 'number'
         || !Number.isSafeInteger(item.post_count) || item.post_count < 0) throw new Error('Invalid category record')
       const delta = deltas.get(id) || 0
@@ -71,6 +81,6 @@ export async function updateUserPost(store: PostUpdateStore, owner: string, auth
         avatar_url: request.anonymous ? '/assets/anonymous.png' : author.avatar_url, profile_version: author.profile_version }, updated_at: updatedAt }
     await transaction.updatePost(request.post_id, changes)
     for (const change of counts) await transaction.setCategoryCount(change.id, change.count)
-    return parsePostMutationReceipt({ post: { _id: request.post_id, ...changes }, flagged: status === 'flagged' }, 'update', request.post_id)
+    return parsePostMutationReceipt({ post: { _id: request.post_id, ...changes }, flagged: false }, 'update', request.post_id)
   })
 }

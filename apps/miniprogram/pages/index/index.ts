@@ -1,12 +1,12 @@
 import { requireVerified } from '../../utils/guard'
 // pages/index — Forum feed: category tabs + post list
 import type { IPost, ICategory, LoadState } from '../../typings/cloudbase'
-import { listPosts } from '../../services/posts'
+import { createPostList } from '../../composition/post-list'
+import type { PostListController } from '../../features/content/index'
 import { listCategories } from '../../services/categories'
 import { refreshMessageBadge } from '../../services/badge'
 
 
-const PAGE_SIZE = 20
 
 Page({
   data: {
@@ -23,7 +23,14 @@ Page({
   },
 
   _needsRefresh: false,
-  _requestSeq: 0,
+  _list: null as PostListController | null,
+  list(): PostListController {
+    if (!this._list) this._list = createPostList('feed', state => this.setData({ posts: state.items,
+      state: state.state, hasMore: state.hasMore, loadingMore: state.loadingMore, errorMsg: state.error }))
+    return this._list
+  },
+  onHide() { this.list().hide() },
+  onUnload() { this._list?.dispose() },
 
   onLoad() {
     const info = wx.getWindowInfo()
@@ -37,6 +44,7 @@ Page({
   },
 
   onShow() {
+    this.list().show()
     refreshMessageBadge().catch(() => {})
     const pendingCategory = wx.getStorageSync('pending_feed_category') as string
     if (pendingCategory) {
@@ -58,53 +66,13 @@ Page({
     }
   },
 
-  async loadPosts(reset?: boolean, options: { clear?: boolean } = {}) {
-    // Cancel stale in-flight requests
-    const seq = ++this._requestSeq
-
-    if (reset && options.clear) {
-      this.setData({ posts: [], hasMore: true, offset: 0 })
-    } else if (reset) {
-      this.setData({ hasMore: true, offset: 0 })
-    }
-
-    if (reset && this.data.posts.length === 0) {
-      this.setData({ state: 'loading', errorMsg: '' })
-    } else {
-      this.setData({ loadingMore: true })
-    }
-
-    const currentOffset = reset ? 0 : this.data.posts.length
-
-    try {
-      const result = await listPosts({
-        categoryId: this.data.activeCategoryId || undefined,
-        offset: currentOffset,
-        limit: PAGE_SIZE,
-      })
-
-      // Stale request — ignore
-      if (seq !== this._requestSeq) return
-
-      const posts = reset ? result.items : [...this.data.posts, ...result.items]
-      const hasMore = result.hasMore ?? (result.items.length >= PAGE_SIZE && result.items.length > 0)
-
-      this.setData({
-        posts,
-        hasMore,
-        loadingMore: false,
-        state: posts.length === 0 ? 'empty' : 'loaded',
-      })
-    } catch (e: unknown) {
-      if (seq !== this._requestSeq) return
-      const msg = e instanceof Error ? e.message : '加载失败'
-      console.error('[index] loadPosts failed:', msg)
-      this.setData({ state: 'error', errorMsg: msg, loadingMore: false })
-    }
+  async loadPosts(reset = false, _options: { clear?: boolean } = {}) {
+    if (reset) await this.list().select(this.data.activeCategoryId)
+    else await this.list().more()
   },
 
   onSearch(e: WechatMiniprogram.CustomEvent) {
-    wx.navigateTo({ url: `/pages/search/search?keyword=${e.detail.keyword}` })
+    wx.navigateTo({ url: `/pages/search/search?keyword=${encodeURIComponent(e.detail.keyword)}` })
   },
 
   onCategoryChange(e: WechatMiniprogram.CustomEvent) {

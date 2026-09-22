@@ -1,6 +1,7 @@
 import { openLogin } from '../../utils/guard'
 import { openVerification } from '../../services/verification'
 import config from '../../config'
+import { legalDocumentKind } from '../../generated/contracts'
 // pages/settings — account settings
 import type { IUserPublic } from '../../typings/cloudbase'
 import * as session from '../../services/session'
@@ -71,12 +72,13 @@ Page({
   },
 
   onAbout() {
-    wx.showModal({
-      title: config.APP_NAME,
-      content: 'UNNC Student Community\n版本 0.1.0',
-      showCancel: false,
-      confirmText: '知道了',
-    })
+    wx.navigateTo({ url: '/pages/legal/legal?kind=about' })
+  },
+  onReports() { wx.navigateTo({ url: '/pages/reports/reports' }) },
+
+  onLegal(event: WechatMiniprogram.TouchEvent) {
+    const kind = legalDocumentKind(event.currentTarget.dataset.kind)
+    if (kind) wx.navigateTo({ url: `/pages/legal/legal?kind=${kind}` })
   },
 
   handleLogout() {

@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { isScheduledDrain } = require('@lucky/server')
+const { isScheduledDrain } = require('@lynku/server')
 test('scheduled consumers require the trusted runtime source, no client identity and exact trigger', () => {
   const event = { Type: 'Timer', TriggerName: 'profile-outbox' }
   assert.equal(isScheduledDrain('timer', undefined, event, 'profile-outbox'), true)

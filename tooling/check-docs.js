@@ -18,6 +18,8 @@ const documentedFiles = [
   'docs/governance/engineering-standards.md',
   'docs/governance/quality-gates.md',
   'docs/runbooks/release-and-operations.md',
+  'docs/runbooks/launch-preparation.md',
+  'docs/audits/launch-readiness-2026-09-21.md',
   'docs/plans/refactor/plan.md',
   'docs/plans/refactor/status.md',
   'docs/plans/refactor/goal-prompt.md',

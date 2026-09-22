@@ -1,12 +1,13 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const { updateAccountProfile } = require('@lucky/server')
+const { updateAccountProfile } = require('@lynku/server')
 const original = { _id: 'old-account', _openid: 'alice', nickname: 'Alice', avatar_url: '', role: 'admin',
   email: 'fixture@nottingham.edu.cn', verified: true, profile_version: 0 }
 function fixture() {
   const state = { user: { ...original }, events: new Map(), failEnqueue: false }
   let tail = Promise.resolve()
   const store = {
+    moderate: async () => ({ clean: true }),
     find: async () => state.user,
     identifier: (owner, version) => `${owner}-${version}`,
     now: () => '2026-09-21T00:00:00.000Z',

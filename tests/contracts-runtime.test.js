@@ -6,7 +6,7 @@ const { spawnSync } = require('node:child_process')
 const root = path.resolve(__dirname, '..')
 
 test('shared directory request contract rejects invalid limits and cursor shapes', () => {
-  const { parseConversationDirectoryRequest: parse } = require('@lucky/contracts')
+  const { parseConversationDirectoryRequest: parse } = require('@lynku/contracts')
   assert.deepEqual(parse({}), { limit: 20 })
   for (const limit of [null, '20', 0, -1, 51, 1.5, NaN, Infinity]) {
     assert.throws(() => parse({ limit }))

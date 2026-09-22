@@ -7,9 +7,9 @@
     "rootDir": "src",
     "outDir": "dist",
     "lib": ["ES2020"],
-    "baseUrl": "../..",
+    "types": ["node"],
     "paths": {
-      "@lucky/server": ["packages/server/dist/index.d.ts"]
+      "@lynku/server": ["../server/dist/index.d.ts"]
     }
   },
   "include": ["src/**/*.ts"]

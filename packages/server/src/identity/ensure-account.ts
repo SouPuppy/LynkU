@@ -1,4 +1,4 @@
-import type { SelfProfile } from '@lucky/contracts'
+import type { SelfProfile } from '@lynku/contracts'
 import { projectSelfProfile } from './self-profile'
 export interface NewAccount {
   _id: string
