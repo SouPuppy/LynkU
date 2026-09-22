@@ -50,8 +50,14 @@ test('public articles describe current services without private identity, placeh
   assert.deepEqual(Object.keys(bundle.documents), ['terms', 'privacy', 'rules', 'about'])
   const text = JSON.stringify(bundle)
   assert.match(text, /quin@asro.cc/)
-  assert.match(text, /Mailgun/)
-  assert.match(text, /美国区域接口/)
+  assert.doesNotMatch(text, /Mailgun|CloudBase|云函数|数据库|区域接口/i)
+  assert.match(text, /在美国处理邮件信息/)
+  for (const kind of ['about', 'terms', 'rules']) {
+    const article = JSON.stringify(bundle.documents[kind])
+    assert.match(article, /以校内信息展示与交流为主/)
+    assert.match(article, /禁止任何商业行为/)
+    assert.match(article, /广告推广、商品或服务交易、付费引流/)
+  }
   assert.match(text, /注销账号/)
   assert.match(text, /不需要等待人工批准/)
   assert.doesNotMatch(text, /zihannuo|outlook|尚待|待核实|草案|个人信息与同意|保护模式|内部保留规则|最小关闭|MAIL_PROVIDER|\{\{|\uFFFD/)

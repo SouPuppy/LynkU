@@ -75,7 +75,8 @@ export function compileLegalBundle(config, source) {
     documents[kind] = { ...body, title: sections[0].heading, hash: createHash('sha256').update(JSON.stringify(body)).digest('hex') }
   }
   const sections = [{ id: 'about', heading: config.name, paragraphs: [
-    '面向 UNNC 的校园交流社区，分享校园日常，交流想法与经验。',
+    '面向 UNNC，以校内信息展示与交流为主，分享校园资讯、活动与日常。',
+    '禁止任何商业行为，包括广告推广、商品或服务交易、付费引流。',
     'LynkU 独立运营，非宁波诺丁汉大学官方服务。',
   ] }]
   const about = { kind: 'about', title: `关于 ${config.name}`, version: legal.thirdPartyVersion,

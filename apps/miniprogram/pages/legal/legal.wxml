@@ -5,7 +5,7 @@
     <block wx:if="{{document.kind === 'about'}}">
       <view class="about-brand">
         <text class="about-name">{{appName}}</text>
-        <text class="about-tagline">连接校园，分享日常</text>
+        <text class="about-tagline">校内信息，校园交流</text>
         <text class="about-version">版本 {{appVersion}}</text>
       </view>
       <view class="about-intro">
