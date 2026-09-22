@@ -7,3 +7,4 @@ export * from './member-change'
 
 export * from './audit'
 export * from './case-list'
+export * from './operations'

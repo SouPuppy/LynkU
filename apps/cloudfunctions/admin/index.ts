@@ -1,4 +1,5 @@
 import * as cloud from 'wx-server-sdk'
+import { readOperationTasks, readOperationTask, AdminOperationFailure } from '@lynku/server'
 import { readAdminCases, AdminCaseInputFailure } from '@lynku/server'
 import { readAdminAudit, readAdminAuditEvent, AdminAuditInputFailure, AdminAuditNotFound } from '@lynku/server'
 import { applyAccountRestriction } from './account-restrictions'
@@ -23,11 +24,12 @@ import { fail, ok, stableDocumentId } from '../common'
 cloud.init()
 const db = connectDatabase(cloud.database(CLOUD_DATABASE_OPTIONS))
 
-type Action = 'readAudit' | 'readUserProtection' | 'updateUserProtection' | 'listMembers' | 'updateMember' | 'session' | 'overview' | 'listCategories' | 'updateCategory' | 'listPosts' | 'readPost' | 'listComments' | 'readComment' | 'listUsers' | 'listCases' | 'readCase' | 'closeCase' | 'listOperations' | 'listAudit'
+type Action = 'listOperationTasks' | 'readOperationTask' | 'readAudit' | 'readUserProtection' | 'updateUserProtection' | 'listMembers' | 'updateMember' | 'session' | 'overview' | 'listCategories' | 'updateCategory' | 'listPosts' | 'readPost' | 'listComments' | 'readComment' | 'listUsers' | 'listCases' | 'readCase' | 'closeCase' | 'listOperations' | 'listAudit'
 
 function actionOf(value: unknown): Action | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const action = (value as Row).action
+  if (action === 'listOperationTasks' || action === 'readOperationTask') return action
   if (action === 'readAudit') return action
   if (action === 'readUserProtection' || action === 'updateUserProtection') return action
   if (action === 'listMembers' || action === 'updateMember') return action
@@ -192,6 +194,24 @@ export async function main(event: unknown, context?: unknown) {
             .field({ _id: true, targetType: true, targetId: true, reasonCode: true, status: true, createdAt: true, updatedAt: true, 'appeal.submittedAt': true }).get()).data
         } }, event))
       }
+      case 'listOperationTasks': {
+        if (!hasAdminCapability(principal, 'operations:read')) return fail('当前账号没有查看运行状态的权限', 'FORBIDDEN')
+        return ok(await readOperationTasks({ list: async (query, take) => {
+          const conditions: object[] = []
+          if (query.status !== 'all') conditions.push({ status: query.status })
+          if (query.cursor) conditions.push(db.command.or([
+            { created_at: db.command.lt(new Date(query.cursor.createdAt)) },
+            { created_at: new Date(query.cursor.createdAt), _id: db.command.lt(query.cursor.id) },
+          ]))
+          return (await db.collection(query.kind === 'notifications' ? 'notification_outbox' : 'profile_outbox')
+            .where(conditions.length ? db.command.and(conditions) : {}).orderBy('created_at', 'desc').orderBy('_id', 'desc').limit(take)
+            .field({ _id: true, status: true, created_at: true, attempt_count: true, next_attempt_at: true, lease_until: true, last_attempt_at: true, delivered_at: true, last_error: true }).get()).data
+        } }, event))
+      }
+      case 'readOperationTask': {
+        if (!hasAdminCapability(principal, 'operations:read')) return fail('当前账号没有查看运行状态的权限', 'FORBIDDEN')
+        return ok(await readOperationTask({ read: async (kind, id) => (await db.collection(kind === 'notifications' ? 'notification_outbox' : 'profile_outbox').doc(id).get()).data }, event))
+      }
       case 'listOperations': {
         if (!hasAdminCapability(principal, 'operations:read')) return fail('当前账号没有查看运行状态的权限', 'FORBIDDEN')
         const [notifications, profiles] = await Promise.all([
@@ -221,6 +241,7 @@ export async function main(event: unknown, context?: unknown) {
       }
     }
   } catch (error) {
+    if (error instanceof AdminOperationFailure) return fail('任务参数无效或记录不存在', error.code)
     if (error instanceof AdminCaseInputFailure) return fail('案件筛选或翻页参数无效', 'INVALID_INPUT')
     if (error instanceof AdminAuditInputFailure) return fail('操作记录筛选或翻页参数无效', 'INVALID_INPUT')
     if (error instanceof AdminAuditNotFound) return fail('操作记录不存在', 'NOT_FOUND')

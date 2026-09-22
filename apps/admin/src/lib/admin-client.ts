@@ -1,4 +1,5 @@
 import cloudbase from '@cloudbase/js-sdk'
+import { parseOperationQuery, parseOperationPage, parseOperationTask, type OperationQuery, type OperationKind } from '@lynku/contracts'
 import { parseAdminCaseQuery, parseAdminCasePage, type AdminCaseQuery } from '@lynku/contracts'
 import { parseAccountRestrictions, parseRestrictionChange, type RestrictionChange } from '@lynku/contracts'
 import { parseAdminMembers, parseAdminMember, parseAdminMemberChange, type AdminMemberChange } from '@lynku/contracts'
@@ -190,6 +191,12 @@ export async function loadOperations() {
   if (typeof pendingNotifications !== 'number' || !Number.isSafeInteger(pendingNotifications) || pendingNotifications < 0
     || typeof pendingProfiles !== 'number' || !Number.isSafeInteger(pendingProfiles) || pendingProfiles < 0) throw Error('运行指标异常')
   return { pendingNotifications, pendingProfiles }
+}
+export const listOperationTasks = (input: OperationQuery) => read<unknown>('listOperationTasks', parseOperationQuery(input)).then(parseOperationPage)
+export async function readOperationTask(kind: OperationKind, id: string) {
+  const result = parseOperationTask(await read<unknown>('readOperationTask', { kind, id }))
+  if (result.kind !== kind || result.id !== id) throw Error('任务详情不匹配')
+  return result
 }
 export const listAudit = (input: AdminAuditQuery) => read<unknown>('listAudit', parseAdminAuditQuery(input)).then(parseAdminAuditPage)
 export async function readAudit(id: string) {

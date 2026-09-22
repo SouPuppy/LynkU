@@ -34,4 +34,5 @@ export * from './admin-members'
 export * from './account-restrictions'
 export * from './admin-audit'
 export * from './admin-case-list'
+export * from './admin-operations'
 
