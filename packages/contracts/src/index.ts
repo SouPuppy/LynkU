@@ -32,4 +32,5 @@ export * from './admin-cases'
 export * from './report-results'
 export * from './admin-members'
 export * from './account-restrictions'
+export * from './admin-audit'
 

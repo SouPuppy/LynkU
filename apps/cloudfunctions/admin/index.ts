@@ -175,7 +175,7 @@ export async function main(event: unknown, context?: unknown) {
       }
       case 'listCases': {
         if (!hasAdminCapability(principal, 'governance:write')) return fail('当前账号没有查看治理案件的权限', 'FORBIDDEN')
-        const rows = await db.collection('governance_cases').orderBy('createdAt', 'desc').orderBy('_id', 'desc').limit(50).get()
+        const rows = await db.collection('governance_cases').orderBy('updatedAt', 'desc').orderBy('_id', 'desc').limit(50).get()
         return ok({ cases: rows.data.map(projectAdminCase) })
       }
       case 'listOperations': {

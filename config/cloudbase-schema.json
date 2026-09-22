@@ -23,7 +23,7 @@
     { "name": "rate_limits", "clientPermission": "admin-only", "documentId": "rate-limit key" },
     { "name": "account_lifecycle", "clientPermission": "admin-only", "documentId": "HMAC of trusted WeChat identity", "indexes": [{ "fields": ["currentAccountId"] }] },
     { "name": "agreement_assents", "clientPermission": "admin-only", "documentId": "hashed account epoch, operation and document key", "indexes": [{ "fields": ["accountId", "documentKey", "acceptedAt"] }] },
-    { "name": "governance_cases", "clientPermission": "admin-only", "documentId": "deterministic reporter request key", "indexes": [{ "fields": ["reporterAccountId", "createdAt", "_id"] }, { "fields": ["status", "createdAt", "_id"] }, { "fields": ["targetType", "targetId", "createdAt"] }] },
+    { "name": "governance_cases", "clientPermission": "admin-only", "documentId": "deterministic reporter request key", "indexes": [{ "fields": ["updatedAt", "_id"] }, { "fields": ["reporterAccountId", "createdAt", "_id"] }, { "fields": ["status", "createdAt", "_id"] }, { "fields": ["targetType", "targetId", "createdAt"] }] },
     { "name": "messaging_blocks", "clientPermission": "admin-only", "documentId": "stable opaque pair key", "indexes": [{ "fields": ["blockedBy", "updatedAt", "_id"] }] },
     { "name": "admin_members", "clientPermission": "admin-only", "documentId": "operator-created opaque ID; never auto-created by browser login", "indexes": [{ "fields": ["web_uid"], "unique": true }, { "fields": ["account_id"], "unique": true }, { "fields": ["status", "role", "_id"] }] }
   ]
