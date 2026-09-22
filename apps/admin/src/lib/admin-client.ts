@@ -1,6 +1,7 @@
 import { parseLegalManifest } from '@lynku/contracts'
 import cloudbase from '@cloudbase/js-sdk'
 import { parseCategoryCreation, type CategoryCreation } from '@lynku/contracts'
+import { parseRestoreGovernedPostReceipt, parseRestoreGovernedPostRequest, type RestoreGovernedPostRequest } from '@lynku/contracts'
 import { parseOperationRetry, parseOperationRetryReceipt, type OperationRetry } from '@lynku/contracts'
 import { parseOperationQuery, parseOperationPage, parseOperationTask, type OperationQuery, type OperationKind } from '@lynku/contracts'
 import { parseAdminCaseQuery, parseAdminCasePage, type AdminCaseQuery } from '@lynku/contracts'
@@ -140,6 +141,22 @@ export async function closeCase(input: CloseCaseRequest) {
     if (value.id !== request.id || value.version !== request.expectedVersion + 1 || value.outcome !== request.outcome || value.resolution !== request.reason) throw Error('Case receipt mismatch')
     return value
   } catch { throw new AdminRequestError('回执无法确认，请重试原请求。', 'UNCONFIRMED', true) }
+}
+export async function restorePost(input: RestoreGovernedPostRequest) {
+  const request = parseRestoreGovernedPostRequest(input)
+  let response: CloudResult<unknown>
+  try { response = await invoke<unknown>({ ...request, action: 'restorePost' }) }
+  catch { throw new AdminRequestError('恢复结果未确认，请使用原请求确认。', 'UNCONFIRMED', true) }
+  const result = response.result
+  if (response.code || !result || result.code || result.error) {
+    const code = result?.code || response.code || 'UNCONFIRMED'
+    throw new AdminRequestError(result?.error || response.message || '恢复未完成', code, !['CONFLICT', 'INVALID_INPUT', 'INVALID_CATEGORY', 'FORBIDDEN', 'NOT_FOUND', 'AUTH_FAILED', 'CONTENT_REJECTED', 'MODERATION_UNAVAILABLE'].includes(code))
+  }
+  try {
+    const receipt = parseRestoreGovernedPostReceipt(result.data)
+    if (receipt.requestId !== request.requestId || receipt.post.id !== request.postId || receipt.post.revision !== request.expectedRevision + 1) throw Error('Wrong restoration receipt')
+    return receipt
+  } catch { throw new AdminRequestError('恢复回执未确认，请使用原请求确认。', 'UNCONFIRMED', true) }
 }
 export async function updateCategory(input: CategoryChange) {
   const request = parseCategoryChange(input)

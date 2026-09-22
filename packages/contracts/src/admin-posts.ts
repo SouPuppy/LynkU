@@ -3,7 +3,7 @@ export interface AdminPostSummary { id: string; title: string; categoryId: strin
 export interface AdminPostCursor { scope: string; id: string; createdAt: string }
 export interface AdminPostQuery { query: string; status: AdminPostStatus; limit: number; cursor: AdminPostCursor | null }
 export interface AdminPostPage { items: AdminPostSummary[]; nextCursor: AdminPostCursor | null }
-export interface AdminPostDetail extends AdminPostSummary { content: string; updatedAt: string }
+export interface AdminPostDetail extends AdminPostSummary { content: string; updatedAt: string; governanceCaseId: string | null }
 export function parseAdminPostId(value: unknown): string {
   const id = text(object(value).id, 128)
   if (!id || id.trim() !== id || /[\x00-\x1f]/.test(id)) throw Error('Invalid post ID')
@@ -12,7 +12,8 @@ export function parseAdminPostId(value: unknown): string {
 export function parseAdminPostDetail(value: unknown): AdminPostDetail {
   const summary = parseAdminPostSummary(value), row = object(value)
   if (summary.status === 'deleted') throw Error('Deleted body is unavailable')
-  return { ...summary, content: text(row.content, POST_CONTENT_LIMIT), updatedAt: timestamp(row.updatedAt) }
+  const governanceCaseId = row.governanceCaseId === null ? null : text(row.governanceCaseId, 128)
+  return { ...summary, content: text(row.content, POST_CONTENT_LIMIT), updatedAt: timestamp(row.updatedAt), governanceCaseId }
 }
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('Invalid admin post payload')

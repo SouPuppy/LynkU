@@ -35,4 +35,5 @@ export * from './account-restrictions'
 export * from './admin-audit'
 export * from './admin-case-list'
 export * from './admin-operations'
+export * from './admin-post-restore'
 

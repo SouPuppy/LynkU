@@ -1,6 +1,7 @@
 export * from './create-post'
 export * from './update-post'
 export * from './post-status'
+export * from './restore-governed-post'
 export * from './post-view'
 export * from './read-post'
 export * from './owned-posts'

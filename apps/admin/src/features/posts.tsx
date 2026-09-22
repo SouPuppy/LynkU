@@ -10,7 +10,7 @@ import { Skeleton } from '../components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from '../components/ui/table'
 const LABELS: Record<AdminPostStatus, string> = { published: '已发布', hidden: '已下架', flagged: '历史受限', deleted: '已删除' }
-export function PostsPanel() {
+export function PostsPanel({ canRestore = false }: { canRestore?: boolean }) {
   const readSelected = () => new URLSearchParams(location.hash.split('?')[1] || '').get('post')
   const [selected, setSelected] = useState(readSelected)
   useEffect(() => {
@@ -31,7 +31,7 @@ export function PostsPanel() {
   }, [request])
   function search(event: FormEvent) { event.preventDefault(); setHistory([]); setRequest(value => ({ ...value, query: text.trim(), cursor: null })) }
   return <section aria-label="帖子管理">
-    {selected && <PostDetail key={selected} id={selected} onClose={() => { location.hash = 'content' }} />}
+    {selected && <PostDetail key={selected} id={selected} canRestore={canRestore} onClose={() => { location.hash = 'content' }} />}
     <Tabs value={request.status} onValueChange={status => {
       if (status !== 'published' && status !== 'hidden' && status !== 'flagged' && status !== 'deleted') return
       setHistory([]); setText(''); setRequest({ status, query: '', cursor: null, limit: 25 })

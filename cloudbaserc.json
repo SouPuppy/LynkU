@@ -61,7 +61,7 @@
     },
     {
       "name": "admin",
-      "timeout": 10,
+      "timeout": 30,
       "runtime": "Nodejs16.13",
       "handler": "index.main"
     }

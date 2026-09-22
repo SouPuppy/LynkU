@@ -12,7 +12,8 @@ export async function readAdminPost(store: { read(id: string): Promise<unknown |
   const row = value as Record<string, unknown>
   if (row._id !== id) throw Error('Post identity mismatch')
   if (row.status === 'deleted') throw new AdminPostUnavailable('Post unavailable')
-  return parseAdminPostDetail({ ...projectAdminPost(row), content: row.content, updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at })
+  return parseAdminPostDetail({ ...projectAdminPost(row), content: row.content, updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
+    governanceCaseId: row.status === 'hidden' && typeof row.governance_case_id === 'string' && row.governance_case_id ? row.governance_case_id : null })
 }
 export async function readAdminPosts(store: { list(query: AdminPostQuery, take: number): Promise<unknown[]> }, input: unknown) {
   let query: AdminPostQuery

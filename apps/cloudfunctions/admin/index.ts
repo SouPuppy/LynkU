@@ -20,6 +20,7 @@ import { readCaseDetail, CaseManagementFailure } from '@lynku/server'
 import { PostGovernanceFailure } from '@lynku/server'
 import { readGovernanceComment, CommentGovernanceFailure } from '@lynku/server'
 import { applyCaseDecision } from './case-decision'
+import { applyPostRestoration, postRestorationFailure } from './post-restore'
 import { readAdminOverview, readAdminUsers, AdminUserInputFailure } from '@lynku/server'
 import { authorizeAdmin, AdminAuthorizationFailure, hasAdminCapability, listAdminCategories, type AdminAuthorizationStore } from '@lynku/server'
 import { connectDatabase, CLOUD_DATABASE_OPTIONS, text, type Row } from '../common/database'
@@ -28,11 +29,12 @@ import { fail, ok, stableDocumentId } from '../common'
 cloud.init()
 const db = connectDatabase(cloud.database(CLOUD_DATABASE_OPTIONS))
 
-type Action = 'readLegalManifest' | 'createCategory' | 'retryOperation' | 'listOperationTasks' | 'readOperationTask' | 'readAudit' | 'readUserProtection' | 'updateUserProtection' | 'listMembers' | 'updateMember' | 'session' | 'overview' | 'listCategories' | 'updateCategory' | 'listPosts' | 'readPost' | 'listComments' | 'readComment' | 'listUsers' | 'listCases' | 'readCase' | 'closeCase' | 'listOperations' | 'listAudit'
+type Action = 'restorePost' | 'readLegalManifest' | 'createCategory' | 'retryOperation' | 'listOperationTasks' | 'readOperationTask' | 'readAudit' | 'readUserProtection' | 'updateUserProtection' | 'listMembers' | 'updateMember' | 'session' | 'overview' | 'listCategories' | 'updateCategory' | 'listPosts' | 'readPost' | 'listComments' | 'readComment' | 'listUsers' | 'listCases' | 'readCase' | 'closeCase' | 'listOperations' | 'listAudit'
 
 function actionOf(value: unknown): Action | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const action = (value as Row).action
+  if (action === 'restorePost') return action
   if (action === 'readLegalManifest') return action
   if (action === 'createCategory') return action
   if (action === 'retryOperation') return action
@@ -97,6 +99,7 @@ export async function main(event: unknown, context?: unknown) {
   try {
     const principal = await authorizeAdmin(authorizationStore, webUid)
     switch (action) {
+      case 'restorePost': return ok(await applyPostRestoration(db, webUid, event))
       case 'readLegalManifest': return ok(legalManifest)
       case 'createCategory': return ok(await applyCategoryCreation(db, webUid, event))
       case 'retryOperation': return ok(await applyOperationRetry(db, webUid, event))
@@ -251,6 +254,8 @@ export async function main(event: unknown, context?: unknown) {
       }
     }
   } catch (error) {
+    const restoration = postRestorationFailure(error)
+    if (restoration) return fail(restoration.message, restoration.code)
     if (error instanceof OutboxRetryFailure) return fail('任务已变化、已完成或来源不再有效，请刷新核对', error.code)
     if (error instanceof AdminOperationFailure) return fail('任务参数无效或记录不存在', error.code)
     if (error instanceof AdminCaseInputFailure) return fail('案件筛选或翻页参数无效', 'INVALID_INPUT')
