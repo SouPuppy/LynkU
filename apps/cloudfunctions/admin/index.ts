@@ -1,4 +1,5 @@
 import * as cloud from 'wx-server-sdk'
+import { readAdminAudit, readAdminAuditEvent, AdminAuditInputFailure, AdminAuditNotFound } from '@lynku/server'
 import { applyAccountRestriction } from './account-restrictions'
 import { AccountRestrictionFailure, projectAdminUser } from '@lynku/server'
 import { parseAccountRestrictions } from '@lynku/contracts'
@@ -21,11 +22,12 @@ import { fail, ok, stableDocumentId } from '../common'
 cloud.init()
 const db = connectDatabase(cloud.database(CLOUD_DATABASE_OPTIONS))
 
-type Action = 'readUserProtection' | 'updateUserProtection' | 'listMembers' | 'updateMember' | 'session' | 'overview' | 'listCategories' | 'updateCategory' | 'listPosts' | 'readPost' | 'listComments' | 'readComment' | 'listUsers' | 'listCases' | 'readCase' | 'closeCase' | 'listOperations' | 'listAudit'
+type Action = 'readAudit' | 'readUserProtection' | 'updateUserProtection' | 'listMembers' | 'updateMember' | 'session' | 'overview' | 'listCategories' | 'updateCategory' | 'listPosts' | 'readPost' | 'listComments' | 'readComment' | 'listUsers' | 'listCases' | 'readCase' | 'closeCase' | 'listOperations' | 'listAudit'
 
 function actionOf(value: unknown): Action | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const action = (value as Row).action
+  if (action === 'readAudit') return action
   if (action === 'readUserProtection' || action === 'updateUserProtection') return action
   if (action === 'listMembers' || action === 'updateMember') return action
   return action === 'session' || action === 'overview' || action === 'listCategories' || action === 'updateCategory' || action === 'listPosts' || action === 'readPost' || action === 'listComments'
@@ -187,11 +189,28 @@ export async function main(event: unknown, context?: unknown) {
       }
       case 'listAudit': {
         if (!hasAdminCapability(principal, 'audit:read')) return fail('当前账号没有查看操作记录的权限', 'FORBIDDEN')
-        const rows = await db.collection('audit_events').orderBy('at', 'desc').orderBy('_id', 'desc').limit(50).get()
-        return ok({ events: rows.data.map(row => ({ id: text(row._id), action: text(row.action), at: row.at instanceof Date ? row.at.toISOString() : text(row.at), target: text(row.target ?? row.caseId) })) })
+        return ok(await readAdminAudit({ list: async (query, take) => {
+          const conditions: object[] = []
+          if (query.operation) conditions.push({ action: query.operation })
+          if (query.actor) conditions.push({ actor: query.actor })
+          if (query.target) conditions.push(db.command.or([{ target: query.target }, { caseId: query.target }]))
+          if (query.cursor) conditions.push(db.command.or([
+            { at: db.command.lt(new Date(query.cursor.at)) },
+            { at: new Date(query.cursor.at), _id: db.command.lt(query.cursor.id) },
+          ]))
+          return (await db.collection('audit_events').where(conditions.length ? db.command.and(conditions) : {})
+            .orderBy('at', 'desc').orderBy('_id', 'desc').limit(take)
+            .field({ _id: true, action: true, at: true, target: true, caseId: true, actor: true, reason: true, result: true, outcome: true, requestId: true, revision: true }).get()).data
+        } }, event))
+      }
+      case 'readAudit': {
+        if (!hasAdminCapability(principal, 'audit:read')) return fail('当前账号没有查看操作记录的权限', 'FORBIDDEN')
+        return ok(await readAdminAuditEvent({ read: async id => (await db.collection('audit_events').doc(id).get()).data }, (event as Row).id))
       }
     }
   } catch (error) {
+    if (error instanceof AdminAuditInputFailure) return fail('操作记录筛选或翻页参数无效', 'INVALID_INPUT')
+    if (error instanceof AdminAuditNotFound) return fail('操作记录不存在', 'NOT_FOUND')
     if (error instanceof AccountRestrictionFailure) return fail(error.message, error.code)
     if (error instanceof AdminMemberChangeFailure) return fail(error.message, error.code)
     if (error instanceof CommentGovernanceFailure) return fail('评论已变化或不存在，请刷新案件', error.code)

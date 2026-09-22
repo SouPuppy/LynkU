@@ -208,11 +208,10 @@ export async function loadOperations() {
     || typeof pendingProfiles !== 'number' || !Number.isSafeInteger(pendingProfiles) || pendingProfiles < 0) throw Error('运行指标异常')
   return { pendingNotifications, pendingProfiles }
 }
-export async function listAudit() {
-  const result = responseObject(await read<unknown>('listAudit'))
-  if (!Array.isArray(result.events) || result.events.length > 50) throw Error('操作记录列表异常')
-  return result.events.map(value => {
-    const row = responseObject(value)
-    return { id: responseText(row.id), action: responseText(row.action), at: responseDate(row.at), target: responseText(row.target) }
-  })
+export const listAudit = (input: AdminAuditQuery) => read<unknown>('listAudit', parseAdminAuditQuery(input)).then(parseAdminAuditPage)
+export async function readAudit(id: string) {
+  const event = parseAdminAuditEvent(await read<unknown>('readAudit', { id }))
+  if (event.id !== id) throw Error('操作记录详情不匹配')
+  return event
 }
+import { parseAdminAuditQuery, parseAdminAuditPage, parseAdminAuditEvent, type AdminAuditQuery } from '@lynku/contracts'
