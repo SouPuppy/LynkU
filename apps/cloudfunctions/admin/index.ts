@@ -1,4 +1,6 @@
 import * as cloud from 'wx-server-sdk'
+import { applyOperationRetry } from './operation-retry'
+import { OutboxRetryFailure } from '@lynku/server'
 import { readOperationTasks, readOperationTask, AdminOperationFailure } from '@lynku/server'
 import { readAdminCases, AdminCaseInputFailure } from '@lynku/server'
 import { readAdminAudit, readAdminAuditEvent, AdminAuditInputFailure, AdminAuditNotFound } from '@lynku/server'
@@ -24,11 +26,12 @@ import { fail, ok, stableDocumentId } from '../common'
 cloud.init()
 const db = connectDatabase(cloud.database(CLOUD_DATABASE_OPTIONS))
 
-type Action = 'listOperationTasks' | 'readOperationTask' | 'readAudit' | 'readUserProtection' | 'updateUserProtection' | 'listMembers' | 'updateMember' | 'session' | 'overview' | 'listCategories' | 'updateCategory' | 'listPosts' | 'readPost' | 'listComments' | 'readComment' | 'listUsers' | 'listCases' | 'readCase' | 'closeCase' | 'listOperations' | 'listAudit'
+type Action = 'retryOperation' | 'listOperationTasks' | 'readOperationTask' | 'readAudit' | 'readUserProtection' | 'updateUserProtection' | 'listMembers' | 'updateMember' | 'session' | 'overview' | 'listCategories' | 'updateCategory' | 'listPosts' | 'readPost' | 'listComments' | 'readComment' | 'listUsers' | 'listCases' | 'readCase' | 'closeCase' | 'listOperations' | 'listAudit'
 
 function actionOf(value: unknown): Action | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const action = (value as Row).action
+  if (action === 'retryOperation') return action
   if (action === 'listOperationTasks' || action === 'readOperationTask') return action
   if (action === 'readAudit') return action
   if (action === 'readUserProtection' || action === 'updateUserProtection') return action
@@ -90,6 +93,7 @@ export async function main(event: unknown, context?: unknown) {
   try {
     const principal = await authorizeAdmin(authorizationStore, webUid)
     switch (action) {
+      case 'retryOperation': return ok(await applyOperationRetry(db, webUid, event))
       case 'readUserProtection': {
         if (!hasAdminCapability(principal, 'users:read')) return fail('当前账号没有用户查看权限', 'FORBIDDEN')
         const id = (event as Row).accountId
@@ -205,7 +209,7 @@ export async function main(event: unknown, context?: unknown) {
           ]))
           return (await db.collection(query.kind === 'notifications' ? 'notification_outbox' : 'profile_outbox')
             .where(conditions.length ? db.command.and(conditions) : {}).orderBy('created_at', 'desc').orderBy('_id', 'desc').limit(take)
-            .field({ _id: true, status: true, created_at: true, attempt_count: true, next_attempt_at: true, lease_until: true, last_attempt_at: true, delivered_at: true, last_error: true }).get()).data
+            .field({ _id: true, status: true, created_at: true, attempt_count: true, retry_revision: true, next_attempt_at: true, lease_until: true, last_attempt_at: true, delivered_at: true, last_error: true }).get()).data
         } }, event))
       }
       case 'readOperationTask': {
@@ -241,6 +245,7 @@ export async function main(event: unknown, context?: unknown) {
       }
     }
   } catch (error) {
+    if (error instanceof OutboxRetryFailure) return fail('任务已变化、已完成或来源不再有效，请刷新核对', error.code)
     if (error instanceof AdminOperationFailure) return fail('任务参数无效或记录不存在', error.code)
     if (error instanceof AdminCaseInputFailure) return fail('案件筛选或翻页参数无效', 'INVALID_INPUT')
     if (error instanceof AdminAuditInputFailure) return fail('操作记录筛选或翻页参数无效', 'INVALID_INPUT')

@@ -1,4 +1,4 @@
-export type AdminCapability = 'audit:read' | 'categories:write' | 'content:read' | 'governance:write' | 'operations:read' | 'settings:write' | 'users:read'
+export type AdminCapability = 'audit:read' | 'categories:write' | 'content:read' | 'governance:write' | 'operations:retry' | 'operations:read' | 'settings:write' | 'users:read'
 export type AdminRole = 'owner' | 'community' | 'viewer'
 
 export interface AdminMember {
@@ -27,7 +27,7 @@ export class AdminAuthorizationFailure extends Error {
 }
 
 const CAPABILITIES: Readonly<Record<AdminRole, readonly AdminCapability[]>> = {
-  owner: ['audit:read', 'categories:write', 'content:read', 'governance:write', 'operations:read', 'settings:write', 'users:read'],
+  owner: ['audit:read', 'categories:write', 'content:read', 'governance:write', 'operations:read', 'operations:retry', 'settings:write', 'users:read'],
   community: ['audit:read', 'categories:write', 'content:read', 'governance:write', 'operations:read', 'users:read'],
   viewer: ['audit:read', 'content:read', 'operations:read', 'users:read'],
 }

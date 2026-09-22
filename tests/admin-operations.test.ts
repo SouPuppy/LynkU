@@ -8,7 +8,7 @@ const task = { _id: 'task', status: 'pending', attempt_count: 2, next_attempt_at
 test('operation projections exclude payloads and redact unrecognized error contents', async () => {
   const value = projectOperationTask({ ...task, last_error: 'private-provider-token' }, 'notifications')
   assert.equal(value.lastError, 'UNCLASSIFIED_ERROR'); assert.equal(JSON.stringify(value).includes('private'), false)
-  assert.deepEqual(Object.keys(value).sort(), ['id', 'kind', 'status', 'createdAt', 'attempts', 'nextAttemptAt', 'leaseUntil', 'lastAttemptAt', 'deliveredAt', 'lastError'].sort())
+  assert.deepEqual(Object.keys(value).sort(), ['id', 'kind', 'status', 'createdAt', 'attempts', 'retryRevision', 'nextAttemptAt', 'leaseUntil', 'lastAttemptAt', 'deliveredAt', 'lastError'].sort())
   const delivered = projectOperationTask({ ...task, status: 'delivered', delivered_at: new Date(now), lease_until: null }, 'profiles')
   assert.equal(delivered.nextAttemptAt, null); assert.equal(delivered.lastError, 'DELIVERY_FAILED')
   await assert.rejects(readOperationTask({ read: async () => null }, { kind: 'notifications', id: 'absent' }), { code: 'NOT_FOUND' })

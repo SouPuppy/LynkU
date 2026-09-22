@@ -1,4 +1,5 @@
 import cloudbase from '@cloudbase/js-sdk'
+import { parseOperationRetry, parseOperationRetryReceipt, type OperationRetry } from '@lynku/contracts'
 import { parseOperationQuery, parseOperationPage, parseOperationTask, type OperationQuery, type OperationKind } from '@lynku/contracts'
 import { parseAdminCaseQuery, parseAdminCasePage, type AdminCaseQuery } from '@lynku/contracts'
 import { parseAccountRestrictions, parseRestrictionChange, type RestrictionChange } from '@lynku/contracts'
@@ -193,6 +194,22 @@ export async function loadOperations() {
   return { pendingNotifications, pendingProfiles }
 }
 export const listOperationTasks = (input: OperationQuery) => read<unknown>('listOperationTasks', parseOperationQuery(input)).then(parseOperationPage)
+export async function retryOperation(input: OperationRetry) {
+  const request = parseOperationRetry(input)
+  let response: CloudResult<unknown>
+  try { response = await invoke<unknown>({ ...request, action: 'retryOperation' }) }
+  catch { throw new AdminRequestError('结果未确认，请使用原请求确认。', 'UNCONFIRMED', true) }
+  const result = response.result
+  if (response.code || !result || result.code || result.error) {
+    const code = result?.code || response.code || 'UNCONFIRMED'
+    throw new AdminRequestError(result?.error || response.message || '重试安排未完成', code, !['INVALID_INPUT', 'NOT_FOUND', 'CONFLICT', 'FORBIDDEN', 'AUTH_FAILED'].includes(code))
+  }
+  try {
+    const receipt = parseOperationRetryReceipt(result.data)
+    if (receipt.id !== request.id || receipt.kind !== request.kind || receipt.requestId !== request.requestId || receipt.retryRevision !== request.expectedRetryRevision + 1) throw Error('Retry receipt mismatch')
+    return receipt
+  } catch { throw new AdminRequestError('回执未确认，请使用原请求确认。', 'UNCONFIRMED', true) }
+}
 export async function readOperationTask(kind: OperationKind, id: string) {
   const result = parseOperationTask(await read<unknown>('readOperationTask', { kind, id }))
   if (result.kind !== kind || result.id !== id) throw Error('任务详情不匹配')

@@ -6,6 +6,7 @@ export function projectOperationTask(value: unknown, kind: OperationKind): Opera
   const source = value as Record<string, unknown>
   const date = (value: unknown) => value instanceof Date ? value.toISOString() : value
   return parseOperationTask({ id: source._id, kind, status: source.status, createdAt: date(source.created_at), attempts: source.attempt_count,
+    retryRevision: source.retry_revision ?? 0,
     nextAttemptAt: source.status === 'pending' ? source.next_attempt_at : null, leaseUntil: source.status === 'processing' ? source.lease_until : null,
     lastAttemptAt: source.last_attempt_at ?? null, deliveredAt: source.delivered_at == null ? null : date(source.delivered_at),
     lastError: source.last_error == null ? null : source.last_error === 'DELIVERY_FAILED' ? 'DELIVERY_FAILED' : 'UNCLASSIFIED_ERROR' })
