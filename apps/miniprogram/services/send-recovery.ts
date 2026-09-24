@@ -1,4 +1,4 @@
-import { SendOperations, type SendOperation } from '../features/messaging/send-operations'
+import { SendOperations, parseStoredSendOperations, type SendOperation } from '../features/messaging/send-operations'
 import type { IMessage, IAnonymousChatTarget } from '../typings/cloudbase'
 import * as session from './session'
 import { sendMessage, getSendResult } from './messages'
@@ -29,41 +29,55 @@ export function listPendingConversations(): PendingConversation[] {
 
 export function createSendRecovery(conversation: string, peer: string | undefined, target: IAnonymousChatTarget | null,
   visible: () => boolean, changed: (operations: SendOperation[]) => void, confirmed: (message: IMessage) => void,
-  displayName = '聊天'): SendOperations<IMessage> {
+  displayName = '聊天', storageFailed: () => void = () => {}): SendOperations<IMessage> {
   const owner = session.getOpenid(), revision = session.getRevision()
   const key = `message_send_v1:${encodeURIComponent(owner || '')}:${conversation}`
   const stored: unknown = wx.getStorageSync(key)
-  let restored: SendOperation[] = []
-  if (stored !== undefined && stored !== null && stored !== '') {
-    if (!Array.isArray(stored) || stored.length > 20) throw Error('待发送记录无法读取')
-    restored = stored.map((value: unknown) => {
-      if (!value || typeof value !== 'object') throw Error('待发送记录无法读取')
-      const item = value as Record<string, unknown>
-      if (typeof item.id !== 'string' || !item.id || item.id.length > 128 || typeof item.text !== 'string'
-        || !item.text.trim() || item.text.length > 5000 || !['sending', 'uncertain', 'failed'].includes(String(item.state))) throw Error('待发送记录无法读取')
-      return { id: item.id, text: item.text, state: 'uncertain', error: '发送结果未确认，点击检查' }
-    })
+  const existing = listPendingConversations().find(item => item.id === conversation)
+  const restoredAt = existing && Number.isSafeInteger(existing.at) && existing.at >= 0
+    && Number.isFinite(new Date(existing.at).getTime()) ? existing.at : Date.now()
+  const restored = parseStoredSendOperations(stored, restoredAt)
+  const ownsSession = () => session.getRevision() === revision && session.getOpenid() === owner && session.getState() === 'verified'
+  const save = (operations: SendOperation[]): void => {
+    if (!ownsSession()) throw Error('会话已变更，请重新进入聊天')
+    const entries = listPendingConversations()
+    const previous = entries.find(item => item.id === conversation)
+    const others = entries.filter(item => item.id !== conversation)
+    const directoryKey = indexKey(owner || '')
+    if (operations.length) {
+      if (others.length >= 50) throw Error('请先处理待确认会话')
+      const last = operations[operations.length - 1]!
+      const entry: PendingConversation = { id: conversation, name: displayName, peer: peer || '', target,
+        preview: last.text.slice(0, 100), at: previous?.at ?? last.submittedAt }
+      // Index first: if it fails, a new submission has not been persisted or transmitted.
+      // An interrupted record write can leave only a harmless empty index entry (filtered on read), never an undiscoverable send.
+      wx.setStorageSync(directoryKey, [...others, entry])
+      try { wx.setStorageSync(key, operations) } catch (error) {
+        try {
+          if (entries.length) wx.setStorageSync(directoryKey, entries)
+          else wx.removeStorageSync(directoryKey)
+        } catch (_) { storageFailed() }
+        throw error
+      }
+    } else {
+      // The durable operation is authoritative. Stale directory entries are filtered and can be cleaned on the next save.
+      wx.removeStorageSync(key)
+      try {
+        if (others.length) wx.setStorageSync(directoryKey, others)
+        else wx.removeStorageSync(directoryKey)
+      } catch (_) { storageFailed() }
+    }
   }
-  return new SendOperations({
+  const controller = new SendOperations<IMessage>({
     now: Date.now,
-    valid: () => visible() && session.getRevision() === revision && session.getOpenid() === owner && session.getState() === 'verified',
+    valid: () => visible() && ownsSession(),
     send: async (msgId, content) => (await sendMessage({ to: peer, target, msgId, content })).message,
     lookup: (msgId, content) => getSendResult({ to: peer, target, msgId, content }),
-    save: operations => {
-      if (session.getRevision() !== revision) return
-      const entries = listPendingConversations()
-      const previous = entries.find(item => item.id === conversation)
-      const others = entries.filter(item => item.id !== conversation)
-      if (operations.length) {
-        if (others.length >= 50) throw Error('请先处理待确认会话')
-        wx.setStorageSync(key, operations)
-        wx.setStorageSync(indexKey(owner || ''), [...others, { id: conversation, name: displayName, peer: peer || '', target,
-          preview: operations[operations.length - 1]!.text.slice(0, 100), at: previous?.at || Date.now() }])
-      } else {
-        wx.removeStorageSync(key)
-        if (others.length) wx.setStorageSync(indexKey(owner || ''), others)
-        else wx.removeStorageSync(indexKey(owner || ''))
-      }
-    }, changed, confirmed,
+    save, changed, confirmed, storageFailed,
   }, restored)
+  // Upgrade v1 records in place so timestamps and known rejection intent survive another restart.
+  if (restored.length && visible() && ownsSession()) {
+    try { save(controller.snapshot()) } catch (_) { storageFailed() }
+  }
+  return controller
 }

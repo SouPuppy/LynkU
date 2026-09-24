@@ -1,10 +1,13 @@
 <!-- chat-bubble: left/right chat bubble -->
-<view wx:if="{{message}}" class="bubble-row {{mine ? 'bubble-mine' : 'bubble-other'}}">
-  <view class="bubble {{mine ? 'bubble-right' : 'bubble-left'}}">
+<view wx:if="{{message}}" class="bubble-row {{message.mine ? 'bubble-mine' : 'bubble-other'}}">
+  <view class="bubble {{message.mine ? 'bubble-right' : 'bubble-left'}}">
     <text class="bubble-text" selectable>{{message.content}}</text>
   </view>
-  <view class="bubble-meta text-xs text-secondary">
-    <text>{{displayTime}}</text>
-    <text wx:if="{{mine}}">{{displayStatus}}</text>
+  <view class="bubble-meta bubble-meta-{{message.tone}}">
+    <text>{{message.time}}</text>
+    <text wx:if="{{message.status}}">{{message.status}}</text>
+    <button wx:if="{{message.action === 'retry'}}" size="mini" class="bubble-action" hover-class="bubble-action-pressed" bindtap="onRetry">重试</button>
+    <button wx:elif="{{message.action === 'edit'}}" size="mini" class="bubble-action" hover-class="bubble-action-pressed" bindtap="onEdit">修改</button>
+    <button wx:elif="{{message.action === 'discard'}}" size="mini" class="bubble-action" hover-class="bubble-action-pressed" bindtap="onDiscard">移除</button>
   </view>
 </view>

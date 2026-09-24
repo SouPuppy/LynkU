@@ -95,13 +95,33 @@ export function pollMessages(
   receipts?: { pending: () => string[]; apply: (readIds: string[]) => void; healthy?: (cursor: IMessageSyncCursor) => void },
 ): MessagePoller {
   const owner = session.getOpenid()
+  const revision = session.getRevision()
   let cursor = initialCursor
   let stopped = false
   let running = false
   let receiptOffset = 0
+  const isCurrent = () => !stopped && session.getState() === 'verified'
+    && session.getOpenid() === owner && session.getRevision() === revision
+
+  const refreshReceipts = async () => {
+    if (!receipts || !isCurrent()) return
+    const pending = [...new Set(receipts.pending())]
+    if (pending.length === 0) return
+    receiptOffset %= pending.length
+    const ids = [...pending.slice(receiptOffset), ...pending.slice(0, receiptOffset)].slice(0, READ_BATCH_SIZE)
+    try {
+      const readIds = await getReadReceipts(peerOpenid, ids, target)
+      if (!isCurrent()) return
+      receipts.apply(readIds)
+      receiptOffset = (receiptOffset + ids.length) % pending.length
+    } catch (_) {
+      // Keep this bounded batch pending for the next poll. A delayed read receipt
+      // does not make a successfully synchronized conversation disconnected.
+    }
+  }
 
   const poll = async () => {
-    if (stopped || running || session.getState() !== 'verified' || session.getOpenid() !== owner) return
+    if (!isCurrent() || running) return
     running = true
     try {
       const changedById = new Map<string, IMessage>()
@@ -110,7 +130,7 @@ export function pollMessages(
       let pages = 0
       while (hasMore && pages < 5) {
         const result = await syncConversation(peerOpenid, pendingCursor, 50, target)
-        if (stopped || session.getState() !== 'verified' || session.getOpenid() !== owner) return
+        if (!isCurrent()) return
         for (const message of result.messages) changedById.set(message._id, message)
         const nextCursor = result.nextCursor
         hasMore = result.hasMore
@@ -118,21 +138,12 @@ export function pollMessages(
         pages += 1
       }
       if (changedById.size > 0) onChanges(Array.from(changedById.values()))
+      if (!isCurrent()) return
       cursor = pendingCursor
-      if (receipts) {
-        const pending = [...new Set(receipts.pending())]
-        if (pending.length > 0) {
-          receiptOffset %= pending.length
-          const ids = [...pending.slice(receiptOffset), ...pending.slice(0, receiptOffset)].slice(0, READ_BATCH_SIZE)
-          const readIds = await getReadReceipts(peerOpenid, ids, target)
-          if (stopped || session.getState() !== 'verified' || session.getOpenid() !== owner) return
-          receipts.apply(readIds)
-          receiptOffset = (receiptOffset + ids.length) % pending.length
-        }
-      }
       receipts?.healthy?.(cursor)
+      await refreshReceipts()
     } catch (error) {
-      if (!stopped && session.getState() === 'verified' && session.getOpenid() === owner) {
+      if (isCurrent()) {
         onError(error instanceof Error ? error : new Error('poll error'))
       }
     } finally {
@@ -148,7 +159,7 @@ export function pollMessages(
     unsubscribe()
   }
   const unsubscribe = session.onChange(() => {
-    if (session.getState() !== 'verified' || session.getOpenid() !== owner) stop()
+    if (!isCurrent()) stop()
   })
   return { stop }
 }

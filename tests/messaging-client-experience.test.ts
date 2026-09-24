@@ -145,6 +145,8 @@ test('chat uses server directional identity, reads only visible messages, and re
   assert.equal(page.data.newMessages, 1)
   assert.deepEqual(readIds, ['m1'])
   failSync = true; await [...r.timers.values()][0]!()
+  assert.equal(page.data.pollingActive, false)
+  await [...r.timers.values()][0]!()
   assert.equal(page.data.pollingActive, true)
   failSync = false; await [...r.timers.values()][0]!()
   assert.equal(page.data.pollingActive, false)

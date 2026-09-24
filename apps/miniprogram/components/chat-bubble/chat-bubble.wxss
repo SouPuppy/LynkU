@@ -7,6 +7,13 @@
 .bubble-right { background: var(--color-primary); }
 .bubble-right .bubble-text { color: #fff; }
 .bubble-left { background: var(--color-bg-white); }
+.bubble-left .bubble-text { color: var(--color-text); }
 .bubble-text { font-size: var(--font-md); line-height: 1.5; word-break: break-all; }
 
-.bubble-meta { display: flex; gap: 8rpx; }
+.bubble-meta { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8rpx; max-width: 90%; min-height: 36rpx; font-size: var(--font-xs); line-height: 36rpx; color: var(--color-text-secondary); }
+.bubble-other .bubble-meta { justify-content: flex-start; }
+.bubble-meta-pending { color: var(--color-text-secondary); }
+.bubble-meta-error { color: #a43b32; }
+.bubble-action { display: inline-block; width: auto; min-width: 0; flex-shrink: 0; margin: -6rpx 0; padding: 6rpx 12rpx; font-size: var(--font-xs); font-weight: normal; line-height: 36rpx; border-radius: var(--radius-sm); color: var(--color-primary); background: transparent; }
+.bubble-action::after { border: none; }
+.bubble-action-pressed { background: rgba(30, 77, 140, 0.08); }

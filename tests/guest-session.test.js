@@ -1548,6 +1548,7 @@ test('anonymous history returns a stable public target without consulting delete
   r.load('apps/miniprogram/services/session.ts').set({ ...profile, verified: true })
   r.load('apps/miniprogram/subpkg-chat/pages/chat/chat.ts')
   r.env.page.data.anonymousTarget = { anonymous: true, type: 'post', id: 'post' }
+  r.env.page._visible = true
   r.env.page.startPolling = () => {}
   r.wx.cloud.callFunction = async () => ({ result: response })
   await r.env.page.loadMessages()
