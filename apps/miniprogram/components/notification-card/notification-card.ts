@@ -53,11 +53,13 @@ Component({
     onTap() {
       const n = toNotification((this.properties as { notification?: WechatMiniprogram.IAnyObject | null }).notification || null)
       if (!n) return
+      if (n.target?.post_title === '内容已不可用') { wx.showToast({ title: '这条内容已不可用', icon: 'none' }); return }
+      const commentQuery = n.target?.comment_id ? `&comment=${encodeURIComponent(n.target.comment_id)}` : ''
       // Deeplink based on notification type
       if (n.type === 'comment' && n.target && n.target.post_id) {
-        wx.navigateTo({ url: `/pages/post/post?id=${n.target.post_id}` })
+        wx.navigateTo({ url: `/pages/post/post?id=${encodeURIComponent(n.target.post_id)}${commentQuery}` })
       } else if (n.type === 'reply' && n.target && n.target.post_id) {
-        wx.navigateTo({ url: `/pages/post/post?id=${n.target.post_id}` })
+        wx.navigateTo({ url: `/pages/post/post?id=${encodeURIComponent(n.target.post_id)}${commentQuery}` })
       } else if (n.type === 'like' && n.target && n.target.post_id) {
         wx.navigateTo({ url: `/pages/post/post?id=${n.target.post_id}` })
       } else if (n.type === 'follow') {

@@ -22,5 +22,6 @@ export interface EditorPorts {
   recovery: { read(owner: string): unknown; write(owner: string, value: EditorRecovery): void; remove(owner: string): void }
   anonymous: { get(): boolean; set(value: boolean): void }
   requestId(): string
+  confirmIdentityDisclosure(): Promise<boolean>
   schedule(delayMs: number, action: () => void): () => void
 }

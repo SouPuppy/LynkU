@@ -1,2 +1,5 @@
 <!-- avatar -->
-<image class="avatar avatar-{{size}}" src="{{displaySrc}}" mode="aspectFill" binderror="onError" />
+<view class="avatar avatar-{{size}}" aria-role="img" aria-label="{{anonymous ? '匿名头像' : '用户头像'}}">
+  <image wx:for="{{frames}}" wx:key="generation" class="avatar-image" src="{{item.src}}" data-generation="{{item.generation}}" mode="aspectFill" binderror="onError" />
+  <view wx:if="{{!frames.length}}" class="avatar-placeholder"><view class="placeholder-head"></view><view class="placeholder-body"></view></view>
+</view>

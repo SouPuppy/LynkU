@@ -1,3 +1,4 @@
+import { ANONYMOUS_AVATAR } from '@lynku/contracts'
 import { parseUpdatePostRequest, parsePostMutationReceipt, type PostMutationReceipt } from '@lynku/contracts'
 import { categoryNameAllowed } from './categories'
 import { currentPostAuthor } from './post-author'
@@ -78,7 +79,7 @@ export async function updateUserPost(store: PostUpdateStore, owner: string, inpu
     const changes = { title: request.title, content: request.content, category_id: request.category_id, category,
       anonymous: request.anonymous, status, revision: request.expected_revision + 1, last_update_fingerprint: fingerprint,
       author: { _openid: owner, nickname: request.anonymous ? '匿名用户' : author.nickname,
-        avatar_url: request.anonymous ? '/assets/anonymous.png' : author.avatar_url, profile_version: author.profile_version }, updated_at: updatedAt }
+        avatar_url: request.anonymous ? ANONYMOUS_AVATAR : author.avatar_url, profile_version: author.profile_version }, updated_at: updatedAt }
     await transaction.updatePost(request.post_id, changes)
     for (const change of counts) await transaction.setCategoryCount(change.id, change.count)
     return parsePostMutationReceipt({ post: { _id: request.post_id, ...changes }, flagged: false }, 'update', request.post_id)

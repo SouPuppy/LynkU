@@ -1,5 +1,5 @@
 import type { TargetStore, ConversationDirectoryStore, MessageHistoryStore, MessageSyncStore,
-  ReadReceiptStore, MessageSendStore, ReadTransactionStore, NotificationStore } from '@lynku/server'
+  ReadReceiptStore, MessageSendStore, ReadTransactionStore, NotificationStore, AnonymousConversationContext } from '@lynku/server'
 import { assertAccountCapability, AccountRestrictionFailure } from '@lynku/server'
 import { documentData, queryData, queryCount, updatedCount, type MessagingDatabase } from './messaging-database'
 
@@ -50,6 +50,11 @@ export function createCloudBaseMessagingAdapters(db: MessagingDatabase, dependen
   }
 
   const historyStore: MessageHistoryStore = {
+    async firstUnread(conversation, viewer) {
+      const rows = queryData(await db.collection('messages').where({ conversation_id: conversation, to: viewer, status: command.neq('read') })
+        .orderBy('sync_sequence', 'asc').limit(1).get())
+      return rows[0] ?? null
+    },
     async list(conversation, before, take) {
       const condition: Record<string, unknown> = { conversation_id: conversation }
       if (before !== undefined) condition.sync_sequence = command.lt(before)
@@ -74,7 +79,7 @@ export function createCloudBaseMessagingAdapters(db: MessagingDatabase, dependen
     },
   }
 
-  function createSendStore(conversation: string, owner: string, peer: string): MessageSendStore {
+  function createSendStore(conversation: string, owner: string, peer: string, context?: AnonymousConversationContext | null): MessageSendStore {
     return {
       async existing(id) { return documentData(await db.collection('messages').doc(id).get()) },
       moderate: dependencies.moderate,
@@ -98,6 +103,16 @@ export function createCloudBaseMessagingAdapters(db: MessagingDatabase, dependen
           const account = documentData(await transaction.collection('users').doc(accountId).get()) as Record<string, unknown> | null
           if (!account || account._openid !== owner || account.verified !== true) throw new AccountRestrictionFailure('FORBIDDEN', '发送账号资格已变化')
           assertAccountCapability(account, 'messages', new Date().toISOString())
+          if (context && !documentData(await transaction.collection('conversation_counters').doc(conversation).get()) && context.source_type !== 'user') {
+            const source = documentData(await transaction.collection(context.source_type === 'post' ? 'posts' : 'comments').doc(context.source_id).get()) as Record<string, unknown> | null
+            if (!source || source.status !== 'published' || source._openid !== context.target_openid
+              || (source.anonymous === true ? 'anonymous' : 'real') !== context.target_visibility) throw new AccountRestrictionFailure('FORBIDDEN', '来源内容已变化，请重新进入对话')
+            if (context.source_type === 'comment') {
+              if (typeof source.post_id !== 'string') throw new Error('Invalid comment source')
+              const post = documentData(await transaction.collection('posts').doc(source.post_id).get()) as Record<string, unknown> | null
+              if (post?.status !== 'published') throw new AccountRestrictionFailure('FORBIDDEN', '来源内容已不可用')
+            }
+          }
           const blockId = dependencies.identifier('messaging:block', ...[owner, peer].sort())
           const block = documentData(await transaction.collection('messaging_blocks').doc(blockId).get()) as Record<string, unknown> | null
           if (block && (!Array.isArray(block.blockedBy) || block.blockedBy.length > 0)) {

@@ -1,3 +1,4 @@
+import { ANONYMOUS_AVATAR } from '@lynku/contracts'
 type Row = Record<string, unknown>
 export interface NotificationContentSources { posts: unknown[]; comments: unknown[] }
 export interface NotificationContentPort {
@@ -34,7 +35,7 @@ export async function refreshNotificationContent<T extends Row>(port: Notificati
     const target = row(item.target)
     const post = posts.get(String(target.post_id)), comment = comments.get(String(target.comment_id))
     const visible = post?.status === 'published' && comment?.status === 'published' && comment.post_id === post._id
-    if (!visible) return { ...item, anonymous: true, actor: { nickname: '匿名用户', avatar_url: '/assets/anonymous.png' },
+    if (!visible) return { ...item, anonymous: true, actor: { nickname: '匿名用户', avatar_url: ANONYMOUS_AVATAR },
       target: { post_id: target.post_id, comment_id: target.comment_id, post_title: '内容已不可用', comment_preview: '' } }
     if (typeof post.title !== 'string' || typeof comment.content !== 'string' || typeof comment.anonymous !== 'boolean') {
       throw new Error('Invalid visible notification content')

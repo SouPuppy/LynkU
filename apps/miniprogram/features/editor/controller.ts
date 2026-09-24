@@ -16,6 +16,8 @@ export class EditorController {
   private readonly owner: string
   private postId: string
   private postRevision = 0
+  private originalAnonymous = false
+  private disclosureRevision = -1
   private draftRevision = 0
   private editRevision = 0
   private pendingCreate: SaveDraftRequest | null = null
@@ -89,7 +91,6 @@ export class EditorController {
       return
     }
     if (this.state.dirty) this.scheduleSave()
-    if (this.state.mode === 'create' && !this.publication) this.patch({ anonymousMode: this.ports.anonymous.get() })
   }
 
   hide(): void {
@@ -119,7 +120,6 @@ export class EditorController {
 
   setAnonymous(value: boolean): void {
     if (!this.current() || this.submitting || this.publication || this.submitted) return
-    this.ports.anonymous.set(value)
     this.patch({ anonymousMode: value, dirty: true })
     this.editRevision += 1
     this.scheduleSave()
@@ -138,6 +138,7 @@ export class EditorController {
     try {
       if (this.route.mode === 'edit') {
         const post = await this.ports.content.post(this.postId)
+        if (post && this.current(token)) this.originalAnonymous = post.anonymous
         if (!this.current(token) || revision !== this.editRevision) return
         if (!post) { this.postId = ''; this.patch({ mode: 'create' }); this.notice('帖子不存在'); return }
         this.postRevision = post.revision
@@ -281,6 +282,12 @@ export class EditorController {
       }
       const input = { title: title.trim(), content: content.trim(), category_id: categoryId }
       if (mode === 'edit' && this.postId) {
+        if (this.originalAnonymous && !this.state.anonymousMode && this.disclosureRevision !== this.editRevision) {
+          const accepted = await this.ports.confirmIdentityDisclosure()
+          if (!this.current(token)) return
+          if (!accepted) { this.patch({ anonymousMode: true }); return }
+          this.disclosureRevision = this.editRevision
+        }
         await this.ports.content.update(this.postId, input, this.state.anonymousMode, this.postRevision)
         if (!this.current(token)) return
         this.notice('修改已保存', true)

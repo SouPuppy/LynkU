@@ -32,20 +32,41 @@ export function commentNotificationEvents(commentValue: unknown, postValue: unkn
 export interface NotificationWriteStore {
   identifier(...parts: string[]): string
   now(): unknown
-  run<T>(work: (tx: { read(id: string): Promise<unknown | null>; put(id: string, data: Row): Promise<void> }) => Promise<T>): Promise<T>
+  run<T>(work: (tx: {
+    read(id: string): Promise<unknown | null>
+    put(id: string, data: Row): Promise<void>
+    remove(id: string): Promise<void>
+    source(postId: string, commentId: string): Promise<{ post: unknown; comment: unknown; parent: unknown | null } | null>
+  }) => Promise<T>): Promise<T>
 }
 export async function deliverCommentNotification(store: NotificationWriteStore, input: unknown): Promise<void> {
   const notification = row(input), target = row(notification.target), actor = row(notification.actor)
   if (notification.type !== 'comment' && notification.type !== 'reply') throw Error('Invalid notification event')
   const recipient = text(notification.to), actorId = text(actor._openid)
   if (typeof notification.anonymous !== 'boolean') throw Error('Invalid notification visibility')
-  const id = store.identifier('notification', notification.type, recipient, actorId, text(target.comment_id))
+  // All inputs to a public ID are already visible to this recipient; no hidden actor oracle.
+  const id = store.identifier('notification', 'v2', notification.type, recipient, text(target.comment_id))
+  const legacyId = store.identifier('notification', notification.type, recipient, actorId, text(target.comment_id))
   await store.run(async tx => {
     const existing = await tx.read(id)
     if (existing !== null) return
-    await tx.put(id, { type: notification.type, to: recipient, anonymous: notification.anonymous,
-      actor: notification.anonymous ? { _openid: actorId } : { _openid: actorId, nickname: text(actor.nickname), avatar_url: actor.avatar_url, profile_version: actor.profile_version },
-      target: { post_id: text(target.post_id), comment_id: text(target.comment_id), post_title: text(target.post_title), comment_preview: text(target.comment_preview).slice(0, 100) },
-      read: false, created_at: store.now() })
+    const legacy = await tx.read(legacyId)
+    if (legacy !== null) {
+      const { _id: ignored, ...saved } = row(legacy)
+      await tx.put(id, saved)
+      await tx.remove(legacyId)
+      return
+    }
+    const source = await tx.source(text(target.post_id), text(target.comment_id))
+    if (!source) return
+    const post = row(source.post), comment = row(source.comment)
+    if (post.status !== 'published' || comment.status !== 'published' || comment.post_id !== post._id) return
+    const current = commentNotificationEvents(comment, post, source.parent)
+      .find(event => event.to === recipient && event.type === notification.type)
+    if (!current || row(current.actor)._openid !== actorId) return
+    const anonymous = notification.anonymous === true || current.anonymous
+    await tx.put(id, { type: current.type, to: recipient, anonymous,
+      actor: anonymous ? { _openid: actorId } : current.actor,
+      target: current.target, read: false, created_at: comment.created_at || store.now(), delivered_at: store.now() })
   })
 }

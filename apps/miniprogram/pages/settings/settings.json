@@ -1,1 +1,1 @@
-{"usingComponents":{"nav-bar":"/components/nav-bar/nav-bar"},"navigationStyle":"custom"}
+{"usingComponents":{"nav-bar":"/components/nav-bar/nav-bar","avatar":"/components/avatar/avatar"},"navigationStyle":"custom"}

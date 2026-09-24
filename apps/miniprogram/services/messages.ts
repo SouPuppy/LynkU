@@ -8,10 +8,30 @@ import { READ_BATCH_SIZE, parseReadMessageIds, parseReadResult, parseReadReceipt
 import { parseSendMessageResponse } from '../generated/contracts/index'
 import { parseConversationDirectoryPage, parseMessageHistoryPage, parseMessageSyncPage } from '../generated/contracts/index'
 import type { ConversationDirectoryCursor, ConversationDirectoryPage } from '../generated/contracts/index'
+import { parseContactBlockPage, parseConversationDisplay } from '../generated/contracts/index'
 export type { ConversationDirectoryCursor } from '../generated/contracts/index'
+
+export async function getConversationDisplay(peer: string | undefined, target: IAnonymousChatTarget | null) {
+  return parseConversationDisplay(await callCloud<unknown>('messages', { action: 'getConversationDisplay', peer, anonymous_target: target || undefined }))
+}
+
+export async function listContactBlocks(cursor?: string) {
+  return parseContactBlockPage(await callCloud<unknown>('messages', { action: 'listContactBlocks', cursor }))
+}
+export async function unblockContactOperation(id: string): Promise<void> {
+  const response = await callCloud<unknown>('messages', { action: 'unblockContact', operation_id: id })
+  if (!response || typeof response !== 'object' || !('blocked' in response) || response.blocked !== false) throw Error('解除屏蔽未能确认')
+}
 
 function anonymousTargetPayload(target?: IAnonymousChatTarget | null) {
   return target || undefined
+}
+
+export async function getSendResult(data: { to?: string; target?: IAnonymousChatTarget | null; content: string; msgId: string }): Promise<IMessage | null> {
+  const response = await callCloud<unknown>('messages', { action: 'getSendResult', to: data.to,
+    anonymous_target: anonymousTargetPayload(data.target), content: data.content, msg_id: data.msgId })
+  if (!response || typeof response !== 'object' || !('result' in response)) throw new Error('无法确认发送结果')
+  return response.result === null ? null : parseSendMessageResponse(response.result).message
 }
 
 export async function setContactBlocked(peer: string | undefined, target: IAnonymousChatTarget | null | undefined, blocked: boolean): Promise<void> {

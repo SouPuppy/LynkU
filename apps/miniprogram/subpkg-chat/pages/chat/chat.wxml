@@ -1,10 +1,10 @@
 <nav-bar title="{{chatTitle}}" showBack="{{true}}" />
-<view class="chat-page" style="height: calc(100vh - {{navHeight}}px);">
-  <view class="chat-identity-note">{{anonymousTarget ? "独立匿名会话 · 双方身份隐藏" : "实名会话 · 对方可见你的昵称"}}</view>
+<view class="chat-page" style="height: calc(100vh - {{navHeight + keyboardHeight}}px);">
+  <view class="chat-identity-note {{selfAnonymous ? 'chat-identity-anonymous' : ''}}" bindtap="onIdentityRetry">{{identityNote}}</view>
   <view wx:if="{{blocked}}" class="chat-protection" bindtap="onUnblockContact">已屏蔽，点击解除</view>
   <view wx:else class="chat-protection" bindtap="onBlockContact">屏蔽此用户</view>
   <view wx:if="{{pollingActive}}" class="sync-warning">连接不稳定，正在重试</view>
-  <scroll-view class="chat-scroll" scroll-y scroll-into-view="{{scrollTo}}" enhanced show-scrollbar="{{false}}">
+  <scroll-view class="chat-scroll" scroll-y scroll-into-view="{{scrollTo}}" bindscroll="onScroll" enhanced show-scrollbar="{{false}}">
     <view wx:if="{{state === 'loading'}}" class="chat-skeleton">
       <view class="chat-sk-row chat-sk-peer">
         <view class="sk-block chat-sk-bubble chat-sk-bubble-wide"></view>
@@ -21,7 +21,7 @@
     </view>
 
     <view wx:elif="{{state === 'error'}}" class="chat-empty" bindtap="loadMessages">
-      <text class="text-secondary">加载失败，点击重试</text>
+      <text class="text-secondary">{{loadError || '聊天暂时无法加载，点击重试'}}</text>
     </view>
 
     <view wx:elif="{{messages.length === 0}}" class="chat-empty">
@@ -32,26 +32,35 @@
       <view wx:if="{{hasMoreHistory}}" class="history-control" bindtap="onLoadEarlier">
         {{loadingHistory ? '加载中...' : historyError ? '加载失败，点击重试' : '查看更早消息'}}
       </view>
-      <view wx:for="{{messages}}" wx:key="_id" id="msg-{{item._id}}">
+      <view wx:for="{{messages}}" wx:key="_id" id="msg-{{item._id}}" class="message-row" data-id="{{item._id}}">
+        <view wx:if="{{item._id === firstUnreadId}}" class="history-control">以下为新消息</view>
         <chat-bubble
           message="{{item}}"
           mine="{{item.from === myOpenid}}"
         />
       </view>
     </block>
+    <view wx:for="{{pending}}" wx:key="id" class="pending-message" id="pending-{{item.id}}">
+      <text selectable class="pending-body">{{item.text}}</text>
+      <view class="pending-state" data-id="{{item.id}}" bindtap="onRetrySend">{{item.state === 'sending' ? '正在发送…' : item.error || '发送结果未确认，点击检查'}}</view>
+    </view>
+    <view id="chat-bottom" style="height: 1px;"></view>
   </scroll-view>
+  <view wx:if="{{newMessages}}" class="history-control" bindtap="scrollToBottom">{{newMessages}} 条新消息 ↓</view>
 
   <view wx:if="{{blocked}}" class="chat-blocked-note">你已屏蔽此用户，不能发送新消息。</view>
   <view wx:else class="chat-input-bar flex-row">
-    <input
+    <textarea
       class="chat-input flex-1"
       placeholder="输入消息..."
       value="{{inputText}}"
       bindinput="onInput"
-      bindconfirm="onSend"
-      confirm-type="send"
+      auto-height
+      maxlength="5000"
+      disabled="{{!identityReady}}"
+      bindkeyboardheightchange="onKeyboardHeight"
       adjust-position="{{false}}"
     />
-    <button class="chat-send-btn" bindtap="onSend" size="mini" disabled="{{sending || inputText === ''}}" loading="{{sending}}">发送</button>
+    <button class="chat-send-btn" bindtap="onSend" size="mini" disabled="{{!identityReady || inputText === ''}}">发送</button>
   </view>
 </view>

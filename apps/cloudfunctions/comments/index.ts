@@ -185,12 +185,35 @@ async function drainNotificationOutbox(ids?: string[]) {
 }
 
 async function createNotification(notification: unknown) {
+  if (!notification || typeof notification !== 'object' || !('actor' in notification)
+    || !notification.actor || typeof notification.actor !== 'object' || !('_openid' in notification.actor)
+    || typeof notification.actor._openid !== 'string') throw Error('Invalid notification actor')
+  const actorId = notification.actor._openid
+  const profiles = (await db.collection('users').where({ _openid: actorId }).limit(2).get()).data
+  const accountId = profiles.length === 1 ? text(profiles[0]!._id) : null
   return deliverCommentNotification({
     identifier: stableDocumentId,
     now: () => db.serverDate(),
     run: work => db.runTransaction(transaction => work({
       read: async id => (await transaction.collection('notifications').doc(id).get()).data,
       put: (id, data) => transaction.collection('notifications').doc(id).set({ data }),
+      remove: async id => { await transaction.collection('notifications').doc(id).remove() },
+      source: async (postId, commentId) => {
+        const post = (await transaction.collection('posts').doc(postId).get()).data
+        const comment = (await transaction.collection('comments').doc(commentId).get()).data
+        if (!post || !comment) return null
+        const parent = comment.depth === 1 && typeof comment.parent_id === 'string'
+          ? (await transaction.collection('comments').doc(comment.parent_id).get()).data : null
+        if (comment.depth === 1 && !parent) return null
+        if (comment.anonymous !== true) {
+          if (!accountId) throw Error('Notification actor unavailable')
+          const profile = (await transaction.collection('users').doc(accountId).get()).data
+          if (!profile || profile._openid !== comment._openid) throw Error('Notification actor unavailable')
+          comment.author = { _openid: comment._openid, nickname: profile.nickname,
+            avatar_url: profile.avatar_url, profile_version: profile.profile_version }
+        }
+        return { post, comment, parent }
+      },
     })),
   }, notification)
 }

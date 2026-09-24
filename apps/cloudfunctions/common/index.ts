@@ -60,6 +60,9 @@ export const ACTION_ACCESS = Object.freeze({
   messages: Object.freeze({
     getUnreadMessageCount: 'verified',
     getReadReceipts: 'verified',
+    getSendResult: 'verified',
+    getConversationDisplay: 'verified',
+    listContactBlocks: 'verified',
     send: 'verified', listConversations: 'verified', getConversation: 'verified',
     syncConversation: 'verified', markRead: 'verified', listNotifications: 'verified',
     getUnreadNotificationCount: 'verified', markNotificationsRead: 'verified',

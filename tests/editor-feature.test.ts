@@ -46,6 +46,7 @@ function fixture(route: EditorRoute = createRoute) {
       remove: owner => { storage.delete(owner) } },
     anonymous: { get: () => anonymous, set: value => { anonymous = value } },
     requestId: () => `request-${++nextId}`,
+    confirmIdentityDisclosure: async () => true,
     schedule: (_delay, action) => { scheduled.add(action); return () => { scheduled.delete(action) } },
   }
   const observer: EditorObserver = { state: state => { states.push(state) }, event: event => { events.push(event) } }
@@ -59,6 +60,33 @@ function fixture(route: EditorRoute = createRoute) {
   }
 }
 function input(editor: EditorController, title = 'title'): void { editor.edit('title', title); editor.edit('content', 'body') }
+
+test('editor identity stays local across foreground changes and disclosure confirmation is bound to the edited snapshot', async () => {
+  const f = fixture({ mode: 'edit', postId: 'post-one', draftId: '' })
+  f.ports.content.post = async () => ({ title: 'title', content: 'body', category_id: '', anonymous: true, revision: 1 })
+  let confirmations = 0, writes = 0, accepted = false
+  f.ports.confirmIdentityDisclosure = async () => { confirmations++; return accepted }
+  f.ports.content.update = async () => { writes++; throw Error('temporary failure') }
+  await f.editor.initialize()
+  f.editor.setAnonymous(false)
+  assert.equal(f.ports.anonymous.get(), false)
+  await f.editor.submit()
+  assert.equal(writes, 0); assert.equal(f.editor.snapshot().anonymousMode, true)
+  accepted = true; f.editor.setAnonymous(false)
+  await f.editor.submit(); await f.editor.submit()
+  assert.equal(confirmations, 2)
+  assert.equal(writes, 2)
+  f.editor.edit('content', 'changed'); await f.editor.submit()
+  assert.equal(confirmations, 3)
+  f.editor.dispose()
+  const fresh = fixture()
+  await fresh.editor.initialize()
+  fresh.editor.setAnonymous(true)
+  assert.equal(fresh.ports.anonymous.get(), false)
+  fresh.editor.hide(); fresh.editor.show()
+  assert.equal(fresh.editor.snapshot().anonymousMode, true)
+  fresh.editor.dispose()
+})
 
 test('editor feature retries frozen draft creation before saving newer input', async () => {
   const f = fixture()

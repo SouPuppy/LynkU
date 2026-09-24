@@ -25,8 +25,9 @@
 }
 .chat-input {
   min-width: 0;
-  height: 68rpx;
-  padding: 0 24rpx;
+  min-height: 40rpx;
+  max-height: 160rpx;
+  padding: 14rpx 24rpx;
   background: var(--color-bg);
   border-radius: var(--radius-round);
   font-size: var(--font-sm);
@@ -65,3 +66,7 @@
 .history-control { text-align: center; padding: 24rpx; color: var(--text-secondary); font-size: 24rpx; }
 
 .chat-identity-note { padding: 12rpx 24rpx; color: var(--text-secondary, #666); font-size: 22rpx; text-align: center; }
+.chat-identity-anonymous { background: #242A32; color: #fff; }
+.pending-message { margin: 16rpx 24rpx; display: flex; flex-direction: column; align-items: flex-end; }
+.pending-body { max-width: 75%; white-space: pre-wrap; word-break: break-word; padding: 20rpx 24rpx; border-radius: 16rpx; background: var(--color-primary); color: #fff; }
+.pending-state { font-size: 22rpx; color: var(--color-text-secondary); padding-top: 8rpx; }

@@ -11,5 +11,5 @@
       "@lynku/adapters": ["../packages/adapters/src/index.ts"]
     }
   },
-  "include": ["*.test.ts", "../apps/miniprogram/typings/**/*.d.ts"]
+  "include": ["*.test.ts", "../apps/miniprogram/typings/**/*.d.ts", "../tooling/migrate-notification-identifiers.ts"]
 }

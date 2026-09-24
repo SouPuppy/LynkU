@@ -21,6 +21,9 @@ export function createEditor(route: EditorRoute, observer: EditorObserver): Edit
     recovery: editorStorage,
     anonymous: { get: anonymous.isAnonymous, set: value => { if (value !== anonymous.isAnonymous()) anonymous.toggle() } },
     requestId: createRequestId,
+    confirmIdentityDisclosure: async () => (await wx.showModal({ title: '显示昵称并保存？',
+      content: '保存后，这篇原本匿名的帖子将与你的昵称和头像关联，其他人可能据此识别原匿名作者。',
+      confirmText: '显示并保存', cancelText: '继续匿名' })).confirm,
     schedule: (delay, action) => { const timer = setTimeout(action, delay); return () => clearTimeout(timer) },
   }, observer)
 }

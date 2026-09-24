@@ -10,6 +10,10 @@
           <view class="setting-arrow"></view>
         </view>
       </view>
+      <view class="setting-row" bindtap="onEditAvatar">
+        <view class="avatar-setting-label"><text>头像</text><text class="text-xs text-secondary">用于非匿名展示</text></view>
+        <view class="setting-value flex-row"><avatar src="{{user.avatar_url}}" size="sm" /><view class="setting-arrow"></view></view>
+      </view>
       <view class="setting-row" bindtap="onEditProfile">
         <text>修改昵称</text>
         <view class="setting-value flex-row">
@@ -27,6 +31,35 @@
         <view class="setting-arrow"></view>
       </view>
       <view class="setting-row" bindtap="onReports"><text>我的举报</text><view class="setting-arrow"></view></view>
+      <view wx:if="{{user.verified}}" class="setting-row" bindtap="onBlocks"><text>屏蔽记录</text><view class="setting-arrow"></view></view>
+      <block wx:if="{{blocksOpen}}">
+        <view wx:for="{{blocks}}" wx:key="id" class="setting-row" data-id="{{item.id}}" bindtap="onUnblock">
+          <text>{{item.label}}</text><text class="text-xs text-secondary">解除这次屏蔽</text>
+        </view>
+        <view wx:if="{{blocksError}}" class="setting-row" bindtap="loadBlocks">加载失败，点击重试</view>
+        <view wx:elif="{{blocksLoading}}" class="setting-row text-secondary">加载中…</view>
+        <view wx:elif="{{blocksMore}}" class="setting-row" bindtap="loadBlocks">查看更多</view>
+        <view wx:elif="{{!blocks.length}}" class="setting-row text-secondary">暂无屏蔽记录</view>
+      </block>
+    </view>
+  </view>
+
+  <view wx:if="{{avatarEditing}}" class="edit-overlay" bindtap="onAvatarCancel">
+    <view class="edit-card" catchtap="">
+      <text class="edit-title">选择头像</text>
+      <text class="text-xs text-secondary">用于非匿名展示，匿名时仍显示统一头像。</text>
+      <view class="avatar-options">
+        <button wx:for="{{avatarOptions}}" wx:key="id" class="avatar-option {{selectedAvatar === item.src ? 'avatar-option-selected' : ''}}"
+          data-src="{{item.src}}" bindtap="onAvatarSelect" disabled="{{saving}}" aria-label="{{item.label}}{{selectedAvatar === item.src ? '，已选中' : ''}}">
+          <avatar src="{{item.src}}" size="lg" />
+          <text class="avatar-option-check">{{selectedAvatar === item.src ? '✓' : ''}}</text>
+        </button>
+      </view>
+      <text wx:if="{{avatarError}}" class="text-xs setting-warn">{{avatarError}}</text>
+      <view class="edit-actions flex-row">
+        <button class="edit-cancel-btn" bindtap="onAvatarCancel" disabled="{{saving}}">取消</button>
+        <button class="edit-save-btn" bindtap="onAvatarSave" disabled="{{saving || !selectedAvatar || selectedAvatar === user.avatar_url}}" loading="{{saving}}">{{saving ? '保存中' : '保存'}}</button>
+      </view>
     </view>
   </view>
 

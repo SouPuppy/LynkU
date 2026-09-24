@@ -81,6 +81,7 @@ export async function resolveConversationTarget(store: TargetStore, owner: strin
     if (parent._id !== source.post_id || parent.status !== 'published') throw new ConversationTargetNotFound('Source not found')
   }
   const targetVisibility = target.type === 'user' ? 'real' : source.anonymous === true ? 'anonymous' : 'real'
+  if (target.expected_target_visibility !== undefined && target.expected_target_visibility !== targetVisibility) throw new InvalidConversationTarget('Conversation visibility changed')
   return { peer: source._openid, anonymousContext: { protocol_version: 3, source_type: target.type, source_id: target.id,
     target_openid: source._openid, initiator_openid: owner, thread_id: threadId,
     initiator_visibility: target.initiator_visibility, target_visibility: targetVisibility } }

@@ -1,3 +1,4 @@
+import { ANONYMOUS_AVATAR } from '@lynku/contracts'
 import { parseCreatePostRequest, parsePostMutationReceipt, type PostMutationReceipt } from '@lynku/contracts'
 import { categoryNameAllowed } from './categories'
 import { currentPostAuthor } from './post-author'
@@ -67,7 +68,7 @@ export async function createUserPost(store: PostCreateStore, owner: string, inpu
     const post = { _id: id, _openid: owner, title: request.title, content: request.content,
       category_id: request.category_id, category, anonymous: request.anonymous, status, revision: 1,
       author: { _openid: owner, nickname: request.anonymous ? '匿名用户' : author.nickname,
-        avatar_url: request.anonymous ? '/assets/anonymous.png' : author.avatar_url, profile_version: author.profile_version },
+        avatar_url: request.anonymous ? ANONYMOUS_AVATAR : author.avatar_url, profile_version: author.profile_version },
       view_count: 0, comment_count: 0, created_at: timestamp, updated_at: timestamp,
       request_id: request.request_id, request_fingerprint: fingerprint }
     await transaction.putPost(id, post)

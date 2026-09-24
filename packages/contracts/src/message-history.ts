@@ -1,4 +1,5 @@
 import type { MessageSyncCursor } from './messages'
+import { ANONYMOUS_AVATAR } from './avatar'
 import { parseAnonymousChatTarget, type AnonymousChatTarget } from './conversation-target'
 
 export interface PublicMessage {
@@ -19,6 +20,26 @@ export interface MessageHistoryPage {
   nextBefore: MessageSyncCursor | null
   sync_cursor: MessageSyncCursor
   chat_target?: AnonymousChatTarget
+  display?: ConversationDisplay
+  first_unread_id?: string
+}
+
+export interface ConversationDisplay {
+  selfVisibility: 'real' | 'anonymous'
+  peerVisibility: 'real' | 'anonymous'
+  peerName: string
+  peerAvatar: string
+  blockedHere: boolean
+}
+
+export function parseConversationDisplay(value: unknown): ConversationDisplay {
+  const input = object(value)
+  if ((input.selfVisibility !== 'real' && input.selfVisibility !== 'anonymous')
+    || (input.peerVisibility !== 'real' && input.peerVisibility !== 'anonymous')
+    || typeof input.peerAvatar !== 'string' || input.peerAvatar.length > 2048
+    || typeof input.blockedHere !== 'boolean') throw new Error('Invalid conversation display')
+  return { selfVisibility: input.selfVisibility, peerVisibility: input.peerVisibility,
+    peerName: text(input.peerName, 128), peerAvatar: input.peerVisibility === 'anonymous' ? ANONYMOUS_AVATAR : input.peerAvatar, blockedHere: input.blockedHere }
 }
 
 function object(value: unknown): Record<string, unknown> {
@@ -83,5 +104,11 @@ export function parseMessageHistoryPage(value: unknown): MessageHistoryPage {
   }
   const result: MessageHistoryPage = { messages, hasMore: input.hasMore, nextBefore: before, sync_cursor: sync }
   if (input.chat_target !== undefined) result.chat_target = parseAnonymousChatTarget(input.chat_target)
+  if (input.display !== undefined) result.display = parseConversationDisplay(input.display)
+  if (input.first_unread_id !== undefined) {
+    const id = text(input.first_unread_id)
+    if (!messages.some(message => message._id === id)) throw Error('Unread anchor outside page')
+    result.first_unread_id = id
+  }
   return result
 }

@@ -81,7 +81,7 @@ test('anonymous comment entry creates, deduplicates, counts and projects notific
   assert.equal(first.code, undefined, JSON.stringify(first))
   assert.equal(first.data.status, 'created')
   assert.equal(first.data.comment.author.nickname, '匿名用户')
-  assert.equal(first.data.comment.author.avatar_url, '/assets/anonymous.png')
+  assert.equal(first.data.comment.author.avatar_url, '/assets/avatar/runtime/anonymous.png')
   assert.equal(first.data.comment.is_mine, true)
   assert.equal(first.data.comment.anonymous, true)
   for (const secret of [owner, 'Private nickname', '/private-avatar']) {

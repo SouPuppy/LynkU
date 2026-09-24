@@ -1,3 +1,4 @@
+import { ANONYMOUS_AVATAR } from '@lynku/contracts'
 import { parseCommentView, type CommentView } from '@lynku/contracts'
 /** Explicit public projection: stored retry keys and future private fields never cross this boundary. */
 
@@ -28,7 +29,7 @@ export function projectComment(value: unknown, viewer: string): CommentView {
     is_mine: !!viewer && viewer === owner, status, created_at: created.toISOString(),
     ...(!hidden && !row.anonymous ? { _openid: owner } : {}),
     author: hidden ? { nickname: '已删除', avatar_url: '' }
-      : row.anonymous ? { nickname: '匿名用户', avatar_url: '/assets/anonymous.png' }
+      : row.anonymous ? { nickname: '匿名用户', avatar_url: ANONYMOUS_AVATAR }
         : { nickname: text(author?.nickname), avatar_url: text(author?.avatar_url) },
   })
 }

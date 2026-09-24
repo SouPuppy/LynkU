@@ -19,6 +19,7 @@ function runtime() {
     cloud: { init() {}, callFunction: async args => { calls.push(args); return { result: { data: {} } } } },
     getNetworkType: async () => ({ networkType: 'wifi' }),
     onNetworkStatusChange() {},
+    nextTick: work => work(),
   }
   for (const name of ['navigateBack', 'navigateTo', 'switchTab', 'reLaunch', 'showModal', 'removeTabBarBadge', 'setTabBarBadge', 'setTabBarStyle']) {
     wx[name] = args => calls.push({ name, ...args })
@@ -28,7 +29,14 @@ function runtime() {
     setInterval: fn => { timers.set(++nextTimer, fn); return nextTimer },
     clearInterval: id => timers.delete(id),
     setTimeout, clearTimeout,
-    Page: page => { env.page = page; page.setData = data => Object.assign(page.data, data) },
+    observers: [],
+    Page: page => {
+      env.page = page; page.setData = data => Object.assign(page.data, data)
+      page.createIntersectionObserver = () => {
+        const observer = { relativeTo() { return this }, observe(_selector, callback) { env.observers.push(callback) }, disconnect() {} }
+        return observer
+      }
+    },
     App: value => { Object.assign(app, value) },
   }
   const modules = new Map()
@@ -861,6 +869,7 @@ test('comment creation persists and drains one idempotent notification outbox ev
     })
     return {
       doc,
+      where: condition => ({ limit: () => ({ get: async () => ({ data: [...store.values()].filter(item => item._openid === condition._openid) }) }) }),
       add: async ({ data }) => {
         const id = `${name}-${++generated}`
         store.set(id, { ...data, _id: id })
@@ -1203,6 +1212,7 @@ test('chat loads earlier pages and ignores history errors after hiding', async (
   r.load('apps/miniprogram/services/session.ts').set({ ...profile, verified: true })
   r.load('apps/miniprogram/subpkg-chat/pages/chat/chat.ts')
   const page = r.env.page
+  page._visible = true
   page.data.peerOpenid = 'bob-user'
   page.data.myOpenid = 'alice'
   page.startPolling = () => {}
@@ -1211,10 +1221,11 @@ test('chat loads earlier pages and ignores history errors after hiding', async (
     status: 'read', created_at: '2026-09-21T01:00:00.000Z', conversation_id: 'conversation', sync_sequence: sequence })
   r.wx.cloud.callFunction = async args => ({ result: { data: args.data.before
     ? { messages: [message(1), message(2)], hasMore: false, nextBefore: null, sync_cursor: cursor(2) }
-    : { messages: [message(3), message(4)], hasMore: true, nextBefore: cursor(3), sync_cursor: cursor(4) } } })
+    : { messages: [message(3), message(4)], hasMore: true, nextBefore: cursor(3), sync_cursor: cursor(4),
+      display: { selfVisibility: 'real', peerVisibility: 'real', peerName: 'Bob', peerAvatar: '', blockedHere: false } } } })
   await page.loadMessages()
   assert.equal(page._syncCursor.sequence, 4)
-  assert.equal(page.data.scrollTo, 'msg-m4')
+  assert.equal(page.data.scrollTo, 'chat-bottom')
   await page.onLoadEarlier()
   assert.equal(page.data.messages.map(m => m.sync_sequence).join(','), '1,2,3,4')
   assert.equal(page.data.scrollTo, 'msg-m3')
@@ -1237,6 +1248,10 @@ test('chat send does not render or notify after page disposal', async () => {
   const page = r.env.page
   page.data.peerOpenid = 'bob-user'
   page.data.inputText = 'hello'
+  page._visible = true
+  page.data.identityReady = true
+  page._syncCursor = { version: 2, conversation_id: 'conversation', sequence: 0 }
+  page.restoreSendOperations()
   let resolve
   r.wx.cloud.callFunction = () => new Promise(done => { resolve = done })
   const pending = page.onSend()
@@ -1251,13 +1266,16 @@ test('cloud history adapter scopes sequence queries and returns a usable history
   const conversationId = stableDocumentId('conversation', 'direct', 'alice', 'bob-user')
   const messages = [1, 2, 3].map(sequence => ({ _id: `h${sequence}`, msg_id: `r${sequence}`, from: 'alice', to: 'bob-user',
     content: 'hello', status: 'sent', created_at: new Date('2026-09-21T01:00:00.000Z'), conversation_id: conversationId, sync_sequence: sequence }))
-  const db = { command: { lt: value => ({ lt: value }) }, collection(name) {
+  const db = { command: { lt: value => ({ lt: value }), in: value => ({ in: value }), neq: value => ({ neq: value }) }, collection(name) {
+    if (name === 'messaging_blocks') return { doc: () => ({ get: async () => ({ data: null }) }) }
+    if (name === 'users') return { where: () => ({ field: () => ({ get: async () => ({ data: [{ _openid: 'bob-user', nickname: 'Bob', avatar_url: '' }] }) }) }) }
     assert.equal(name, 'messages')
     let condition, take
     return { where(value) { condition = value; return this }, orderBy(field, direction) {
-      assert.equal(field, 'sync_sequence'); assert.equal(direction, 'desc'); return this
+      assert.equal(field, 'sync_sequence'); assert.equal(direction, condition.to ? 'asc' : 'desc'); return this
     }, limit(value) { take = value; return this }, async get() {
       assert.equal(condition.conversation_id, conversationId)
+      if (condition.to) return { data: messages.filter(message => message.to === condition.to && message.status !== condition.status.neq).slice(0, take) }
       return { data: [...messages].reverse().filter(m => !condition.sync_sequence || m.sync_sequence < condition.sync_sequence.lt).slice(0, take) }
     } }
   } }
@@ -1509,7 +1527,8 @@ test('anonymous history returns a stable public target without consulting delete
   const { stableDocumentId: hash } = require('../apps/cloudfunctions/common')
   const thread = hash('anonymous_chat', 'post', 'post', 'alice', 'bob-user')
   const conversationId = hash('conversation', 'anonymous', thread)
-  const db = { command: {}, collection(name) {
+  const db = { command: { neq: value => ({ neq: value }) }, collection(name) {
+    if (name === 'messaging_blocks') return { doc: () => ({ get: async () => ({ data: null }) }) }
     if (name === 'conversation_entries') return { doc: id => {
       assert.equal(id, hash('conversation_entry', 'alice', conversationId))
       return { get: async () => ({ data: { owner_openid: 'alice', peer_openid: 'bob-user', conversation_id: conversationId,
@@ -1535,18 +1554,20 @@ test('anonymous history returns a stable public target without consulting delete
   assert.equal(r.env.page.data.anonymousTarget.thread_id, thread)
 })
 
-test('both notification pages append tied-time pages and acknowledge only loaded IDs', async () => {
+test('both notification pages append tied-time pages and acknowledge only visibly rendered IDs', async () => {
   for (const file of ['messages/messages', 'notifications/notifications']) {
     const r = runtime()
     r.load('apps/miniprogram/services/session.ts').set({ ...profile, verified: true })
     r.load(`apps/miniprogram/pages/${file}.ts`)
     const page = r.env.page
+    page._visible = true
     page.data.activeTab = 'notif'
     page.loadNotifBadge = async () => {}
     const date = '2026-09-21T00:00:00.000Z'
     const row = id => ({ _id: id, type: 'comment', actor: { nickname: 'Alice', avatar_url: '' }, anonymous: false, read: false, created_at: date })
     const batches = []
     r.wx.cloud.callFunction = async ({ data }) => {
+      if (data.action === 'getUnreadMessageCount' || data.action === 'getUnreadNotificationCount') return { result: { data: { count: 0 } } }
       if (data.action === 'markNotificationsRead') {
         batches.push(Array.from(data.notificationIds))
         return { result: { data: { updated: data.notificationIds.length } } }
@@ -1560,8 +1581,14 @@ test('both notification pages append tied-time pages and acknowledge only loaded
     await page.loadNotifications(true)
     await page.loadNotifications()
     assert.deepEqual(Array.from(page.data.notifications, row => row._id), ['n3', 'n2', 'n1'])
+    assert.equal(batches.length, 0)
+    assert.ok(page.data.notifications.every(row => !row.read))
+    for (const id of ['n3', 'n2', 'n1']) {
+      r.env.observers.at(-1)({ dataset: { id }, intersectionRatio: 1 })
+      await tick(); await tick()
+    }
     assert.ok(page.data.notifications.every(row => row.read))
-    assert.deepEqual(batches, [['n3', 'n2'], ['n1']])
+    assert.deepEqual(batches, [['n3'], ['n2'], ['n1']])
     let complete
     r.wx.cloud.callFunction = () => new Promise(resolve => { complete = resolve })
     const pending = page.loadNotifications(true)

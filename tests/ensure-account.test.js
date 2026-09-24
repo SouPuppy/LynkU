@@ -23,6 +23,7 @@ test('new account defaults are unverified and the confirmed record owns the resp
   assert.equal(result.verified, false)
   assert.equal(result.role, 'user')
   assert.equal(result.nickname, '微信用户')
+  assert.equal(result.avatar_url, require('@lynku/contracts').DEFAULT_AVATAR)
   const raced = await ensureAccount({ ...store, createIfAbsent: async () => existing }, 'alice')
   assert.equal(raced.verified, true)
   await assert.rejects(ensureAccount({ ...store, createIfAbsent: async () => ({ ...existing, _openid: 'bob' }) }, 'alice'), /ownership/)

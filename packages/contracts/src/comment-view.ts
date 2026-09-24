@@ -1,3 +1,4 @@
+import { ANONYMOUS_AVATAR } from './avatar'
 export interface CommentView {
   _id: string
   _openid?: string
@@ -27,7 +28,7 @@ export function parseCommentView(value: unknown): CommentView {
   if (new Date(created).toISOString() !== created) throw new Error('Invalid comment time')
   const hidden = row.status !== 'published'
   const author = hidden ? { nickname: '已删除', avatar_url: '' }
-    : row.anonymous ? { nickname: '匿名用户', avatar_url: '/assets/anonymous.png' } : object(row.author)
+    : row.anonymous ? { nickname: '匿名用户', avatar_url: ANONYMOUS_AVATAR } : object(row.author)
   const result: CommentView = { _id: text(row._id, 128), post_id: text(row.post_id, 128),
     parent_id: row.parent_id === null ? null : text(row.parent_id, 128), depth: row.depth,
     content: hidden ? '' : text(row.content, 2000), anonymous: row.anonymous, is_mine: row.is_mine,

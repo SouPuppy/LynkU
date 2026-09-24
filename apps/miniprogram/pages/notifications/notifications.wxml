@@ -29,22 +29,20 @@
     class="notif-feed"
     scroll-y
     refresher-enabled
-    refresher-triggered="{{false}}"
+    refresher-triggered="{{loadingMore}}"
     bindrefresherrefresh="onRefresh"
     bindscrolltolower="onLoadMore"
     lower-threshold="100"
   >
-    <notification-card
-      wx:for="{{notifications}}"
-      wx:key="_id"
-      notification="{{item}}"
-    />
+    <view wx:for="{{notifications}}" wx:key="_id" class="notification-row" data-id="{{item._id}}">
+      <notification-card notification="{{item}}" />
+    </view>
 
     <view wx:if="{{loadingMore}}" class="notif-footer text-secondary text-sm">
       <text>加载中...</text>
     </view>
 
-    <view wx:elif="{{loadError}}" class="notif-footer text-secondary text-sm" bindtap="onLoadMore">加载失败，点击重试</view>
+    <view wx:elif="{{loadError}}" class="notif-footer text-secondary text-sm" bindtap="onRetryFailed">加载失败，点击重试</view>
     <view wx:elif="{{!hasMore && notifications.length > 0}}" class="notif-footer text-secondary text-sm">
       <text>没有更多了</text>
     </view>

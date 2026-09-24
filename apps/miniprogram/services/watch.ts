@@ -92,7 +92,7 @@ export function pollMessages(
   onChanges: (messages: IMessage[]) => void,
   onError: ErrorCallback,
   target?: IAnonymousChatTarget | null,
-  receipts?: { pending: () => string[]; apply: (readIds: string[]) => void },
+  receipts?: { pending: () => string[]; apply: (readIds: string[]) => void; healthy?: (cursor: IMessageSyncCursor) => void },
 ): MessagePoller {
   const owner = session.getOpenid()
   let cursor = initialCursor
@@ -130,6 +130,7 @@ export function pollMessages(
           receiptOffset = (receiptOffset + ids.length) % pending.length
         }
       }
+      receipts?.healthy?.(cursor)
     } catch (error) {
       if (!stopped && session.getState() === 'verified' && session.getOpenid() === owner) {
         onError(error instanceof Error ? error : new Error('poll error'))
@@ -140,6 +141,7 @@ export function pollMessages(
   }
 
   const timer = setInterval(poll, MESSAGE_POLL_INTERVAL)
+  if (receipts?.healthy) void poll()
   const stop = () => {
     stopped = true
     clearInterval(timer)

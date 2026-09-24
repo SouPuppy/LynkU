@@ -1,5 +1,6 @@
 import { parseConversationTarget } from '@lynku/contracts'
 import { AccountRestrictionFailure } from '@lynku/server'
+import { findSentMessage, projectConversationDisplay, blockedInConversation } from '@lynku/server'
 // cloud function: messages - Private messaging and notification reads
 import * as cloud from 'wx-server-sdk'
 import { connectDatabase, CLOUD_DATABASE_OPTIONS, type Row } from '../common/database'
@@ -45,10 +46,13 @@ export const main = withAuth(cloud, async (openid, event) => {
   if (!authorization.allowed) return authorization.response
   switch (event.action) {
     case 'send': return sendMessage(openid, event)
+    case 'getSendResult': return getSendResult(openid, event)
+    case 'listContactBlocks': return listContactBlocks(openid, event)
     case 'listConversations': return listConversations(openid, event)
     case 'getUnreadMessageCount': return getUnreadMessageCount(openid)
     case 'getReadReceipts': return getReadReceipts(openid, event)
     case 'getConversation': return getConversation(openid, event)
+    case 'getConversationDisplay': return getConversationDisplay(openid, event)
     case 'syncConversation': return syncConversation(openid, event)
     case 'markRead': return markRead(openid, event)
     case 'listNotifications': return listNotifications(openid, event)
@@ -89,7 +93,7 @@ async function sendMessage(openid: string, event: CloudEvent) {
   const resolved = await resolveConversationPeer(openid, event)
   if (!isResolved(resolved)) return resolved.error
   const conversationId = conversationIdFor(openid, resolved)
-  const store = adaptersFor(openid).createSendStore(conversationId, openid, resolved.peer)
+  const store = adaptersFor(openid).createSendStore(conversationId, openid, resolved.peer, resolved.anonymousContext)
   try {
     return ok(await sendNewMessage(store, authorizedConversation(openid, resolved), resolved.anonymousContext, event))
   } catch (error) {
@@ -102,6 +106,20 @@ async function sendMessage(openid: string, event: CloudEvent) {
     if (error instanceof SendRateRejected) return fail(error.unavailable ? '服务繁忙，请稍后重试' : '发送太频繁，请稍后再试', error.unavailable ? 'RATE_LIMIT_UNAVAILABLE' : 'RATE_LIMITED')
     console.error('[messages] send failed:', error instanceof Error ? error.message : error)
     return fail('发送失败', 'SEND_ERROR')
+  }
+}
+
+async function getSendResult(openid: string, event: CloudEvent) {
+  const resolved = await resolveConversationPeer(openid, event)
+  if (!isResolved(resolved)) return resolved.error
+  try {
+    const result = await findSentMessage(adaptersFor(openid).createSendStore(conversationIdFor(openid, resolved), openid, resolved.peer),
+      authorizedConversation(openid, resolved), resolved.anonymousContext, event)
+    return ok({ result })
+  } catch (error) {
+    if (error instanceof InvalidSendRequest) return fail('消息参数无效', 'INVALID_INPUT')
+    if (error instanceof MessageIdConflict) return fail('消息请求不一致', 'CONFLICT')
+    return fail('暂时无法确认发送结果', 'QUERY_ERROR')
   }
 }
 
@@ -131,12 +149,27 @@ async function getConversation(openid: string, event: CloudEvent) {
   try {
     const page = await readMessageHistory(adaptersFor(openid).historyStore, authorizedConversation(openid, resolved), event)
     const target = parseConversationTarget(event)
-    return ok({ ...page, chat_target: 'target' in target ? target.target : undefined })
+    const display = await conversationDisplay(openid, resolved)
+    return ok({ ...page, display, chat_target: 'target' in target ? target.target : undefined })
   } catch (error) {
     if (error instanceof InvalidHistoryRequest) return fail('分页参数无效', 'INVALID_INPUT')
     console.error('[messages] conversation query failed:', error instanceof Error ? error.message : error)
     return fail('查询失败', 'QUERY_ERROR')
   }
+}
+
+async function conversationDisplay(openid: string, resolved: ResolvedConversation) {
+  const context = resolved.anonymousContext
+  const peerVisibility = context ? openid === context.initiator_openid ? context.target_visibility : context.initiator_visibility : 'real'
+  const profiles = peerVisibility === 'real' ? await adaptersFor(openid).directoryStore.profiles([resolved.peer]) : []
+  const block = (await safeDb.collection('messaging_blocks').doc(blockIdFor(openid, resolved.peer)).get()).data
+  return projectConversationDisplay(openid, context, profiles[0], blockedInConversation(block, openid, conversationIdFor(openid, resolved)))
+}
+
+async function getConversationDisplay(openid: string, event: CloudEvent) {
+  const resolved = await resolveConversationPeer(openid, event)
+  if (!isResolved(resolved)) return resolved.error
+  try { return ok(await conversationDisplay(openid, resolved)) } catch (_) { return fail('会话身份暂不可用', 'QUERY_ERROR') }
 }
 
 async function syncConversation(openid: string, event: CloudEvent) {
@@ -202,13 +235,28 @@ async function blockContact(openid: string, event: CloudEvent) {
   const resolved = await resolveConversationPeer(openid, event)
   if (!isResolved(resolved)) return resolved.error
   const id = blockIdFor(openid, resolved.peer)
+  const conversation = conversationIdFor(openid, resolved)
+  const operationId = stableDocumentId('block-operation', openid, conversation)
   try {
+    const context = resolved.anonymousContext
+    const peerAnonymous = context && (context.initiator_openid === openid ? context.target_visibility : context.initiator_visibility) === 'anonymous'
+    const profiles = peerAnonymous ? [] : await adaptersFor(openid).directoryStore.profiles([resolved.peer])
+    const label = projectConversationDisplay(openid, context, profiles[0], true).peerName
     await safeDb.runTransaction(async transaction => {
       const reference = transaction.collection('messaging_blocks').doc(id)
-      const state = blockRow((await reference.get()).data)
+      const row = (await reference.get()).data
+      const state = blockRow(row)
+      const operations: Row = row?.operations && typeof row.operations === 'object' && !Array.isArray(row.operations) ? { ...row.operations as Row } : {}
+      const own = Array.isArray(operations[openid]) ? operations[openid] as unknown[] : []
+      operations[openid] = [...new Set([...own, conversation])]
+      if ((operations[openid] as unknown[]).length > 100) throw Error('Too many block operations')
+      const operation = transaction.collection('messaging_block_operations').doc(operationId)
+      const previous = (await operation.get()).data
       const blockedBy = [...new Set([...state.blockedBy, openid])]
-      await reference.set({ data: { blockedBy, version: state.version + (blockedBy.length === state.blockedBy.length ? 0 : 1),
+      await reference.set({ data: { blockedBy, operations, version: state.version + 1,
         updatedAt: new Date(), tombstone: false } })
+      await operation.set({ data: { owner: openid, peer: resolved.peer, blockId: id, conversation, label,
+        active: true, createdAt: previous?.createdAt || new Date() } })
     })
     return ok({ blocked: true })
   } catch (error) {
@@ -218,20 +266,57 @@ async function blockContact(openid: string, event: CloudEvent) {
 }
 
 async function unblockContact(openid: string, event: CloudEvent) {
-  const resolved = await resolveConversationPeer(openid, event)
+  let resolved: ResolveResult
+  let requestedOperation: Row | null = null
+  if (event.operation_id !== undefined) {
+    if (typeof event.operation_id !== 'string' || !/^[a-f0-9]{64}$/.test(event.operation_id)) return fail('屏蔽记录无效', 'INVALID_INPUT')
+    try { requestedOperation = (await safeDb.collection('messaging_block_operations').doc(event.operation_id).get()).data } catch (_) { return fail('查询失败', 'QUERY_ERROR') }
+    if (!requestedOperation || requestedOperation.owner !== openid || typeof requestedOperation.blockId !== 'string' || !/^[a-f0-9]{64}$/.test(requestedOperation.blockId)
+      || typeof requestedOperation.conversation !== 'string') return fail('屏蔽记录不存在', 'NOT_FOUND')
+    resolved = { peer: '', anonymousContext: null }
+  } else resolved = await resolveConversationPeer(openid, event)
   if (!isResolved(resolved)) return resolved.error
-  const id = blockIdFor(openid, resolved.peer)
+  const id = requestedOperation ? String(requestedOperation.blockId) : blockIdFor(openid, resolved.peer)
+  const conversation = requestedOperation ? String(requestedOperation.conversation) : conversationIdFor(openid, resolved)
+  const operationId = stableDocumentId('block-operation', openid, conversation)
+  if (event.operation_id !== undefined && event.operation_id !== operationId) return fail('屏蔽记录无效', 'INVALID_INPUT')
   try {
     await safeDb.runTransaction(async transaction => {
       const reference = transaction.collection('messaging_blocks').doc(id)
-      const state = blockRow((await reference.get()).data)
-      const blockedBy = state.blockedBy.filter(owner => owner !== openid)
-      await reference.set({ data: { blockedBy, version: state.version + (blockedBy.length === state.blockedBy.length ? 0 : 1),
+      const row = (await reference.get()).data
+      const state = blockRow(row)
+      const operations: Row = row?.operations && typeof row.operations === 'object' && !Array.isArray(row.operations) ? { ...row.operations as Row } : {}
+      const own = operations[openid]
+      const operation = transaction.collection('messaging_block_operations').doc(operationId)
+      const record = (await operation.get()).data
+      if (!record || record.owner !== openid || record.conversation !== conversation || record.blockId !== id) throw new ContactBlocked()
+      if (record.active === false) return
+      if (!Array.isArray(own) || !own.includes(conversation)) throw new ContactBlocked()
+      const remaining = own.filter(item => item !== conversation)
+      if (remaining.length) operations[openid] = remaining
+      else delete operations[openid]
+      const blockedBy = remaining.length ? state.blockedBy : state.blockedBy.filter(owner => owner !== openid)
+      await reference.set({ data: { blockedBy, operations, version: state.version + 1,
         updatedAt: new Date(), tombstone: blockedBy.length === 0 } })
+      await operation.update({ data: { active: false } })
     })
     return ok({ blocked: false })
   } catch (error) {
     console.error('[messages] unblock failed:', error instanceof Error ? error.message : error)
     return fail('解除屏蔽未完成，请稍后重试', 'UPDATE_ERROR')
   }
+}
+
+async function listContactBlocks(openid: string, event: CloudEvent) {
+  if (event.cursor !== undefined && (typeof event.cursor !== 'string' || !/^[a-f0-9]{64}$/.test(event.cursor))) return fail('分页参数无效', 'INVALID_INPUT')
+  try {
+    const condition: Row = { owner: openid, active: true }
+    if (typeof event.cursor === 'string') condition._id = safeDb.command.lt(event.cursor)
+    const rows = (await safeDb.collection('messaging_block_operations').where(condition).orderBy('_id', 'desc').limit(21).get()).data
+    const items = rows.slice(0, 20).map(row => {
+      if (row.owner !== openid || typeof row._id !== 'string' || typeof row.label !== 'string') throw Error('Invalid block record')
+      return { id: row._id, label: row.label }
+    })
+    return ok({ items, nextCursor: rows.length > 20 ? items[items.length - 1]!.id : null })
+  } catch (_) { return fail('屏蔽记录暂时无法读取', 'QUERY_ERROR') }
 }

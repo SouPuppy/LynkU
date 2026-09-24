@@ -1,3 +1,4 @@
+import { ANONYMOUS_AVATAR } from './avatar'
 import { POST_CONTENT_LIMIT } from './content-limits'
 export interface PostView {
   _id: string
@@ -37,7 +38,7 @@ export function parsePostView(value: unknown): PostView {
   const input = object(value)
   if ((input.status !== 'published' && input.status !== 'flagged') || typeof input.anonymous !== 'boolean'
     || typeof input.is_mine !== 'boolean') throw new Error('Invalid post state')
-  const actor = input.anonymous ? { nickname: '匿名用户', avatar_url: '/assets/anonymous.png' } : object(input.author)
+  const actor = input.anonymous ? { nickname: '匿名用户', avatar_url: ANONYMOUS_AVATAR } : object(input.author)
   const result: PostView = { _id: text(input._id, 128), is_mine: input.is_mine, title: text(input.title, 200),
     content: text(input.content, POST_CONTENT_LIMIT), category_id: text(input.category_id, 128, true), category: null,
     status: input.status, anonymous: input.anonymous,

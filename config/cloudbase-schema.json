@@ -8,7 +8,7 @@
     { "name": "comments", "clientPermission": "admin-only", "indexes": [{ "fields": ["post_id", "status", "created_at", "_id"] }, { "fields": ["post_id", "created_at", "_id"] }] },
     { "name": "comment_counters", "clientPermission": "admin-only", "documentId": "post_id" },
     { "name": "comment_changes", "clientPermission": "admin-only", "indexes": [{ "fields": ["post_id", "sequence"], "unique": true }] },
-    { "name": "messages", "clientPermission": "admin-only", "indexes": [{ "fields": ["from", "created_at"] }, { "fields": ["to", "created_at"] }, { "fields": ["to", "status"] }, { "fields": ["conversation_id", "from", "status", "_id"] }, { "fields": ["conversation_id", "sync_sequence"], "unique": true }] },
+    { "name": "messages", "clientPermission": "admin-only", "indexes": [{ "fields": ["from", "created_at"] }, { "fields": ["to", "created_at"] }, { "fields": ["to", "status"] }, { "fields": ["conversation_id", "to", "status", "sync_sequence"] }, { "fields": ["conversation_id", "from", "status", "_id"] }, { "fields": ["conversation_id", "sync_sequence"], "unique": true }] },
     { "name": "conversation_counters", "clientPermission": "admin-only", "documentId": "conversation_id" },
     { "name": "conversation_entries", "clientPermission": "admin-only", "documentId": "owner-scoped conversation key", "indexes": [{ "fields": ["owner_openid", "updated_at", "_id"] }] },
     { "name": "notifications", "clientPermission": "admin-only", "indexes": [{ "fields": ["to", "created_at", "_id"] }, { "fields": ["to", "read", "created_at", "_id"] }] },
@@ -26,6 +26,7 @@
     { "name": "agreement_assents", "clientPermission": "admin-only", "documentId": "hashed account epoch, operation and document key", "indexes": [{ "fields": ["accountId", "documentKey", "acceptedAt"] }] },
     { "name": "governance_cases", "clientPermission": "admin-only", "documentId": "deterministic reporter request key", "indexes": [{ "fields": ["updatedAt", "_id"] }, { "fields": ["status", "updatedAt", "_id"] }, { "fields": ["targetType", "updatedAt", "_id"] }, { "fields": ["targetId", "updatedAt", "_id"] }, { "fields": ["status", "targetType", "updatedAt", "_id"] }, { "fields": ["reporterAccountId", "createdAt", "_id"] }, { "fields": ["status", "createdAt", "_id"] }, { "fields": ["targetType", "targetId", "createdAt"] }] },
     { "name": "messaging_blocks", "clientPermission": "admin-only", "documentId": "stable opaque pair key", "indexes": [{ "fields": ["blockedBy", "updatedAt", "_id"] }] },
+    { "name": "messaging_block_operations", "clientPermission": "admin-only", "documentId": "owner and conversation scoped operation key", "indexes": [{ "fields": ["owner", "active", "_id"] }] },
     { "name": "admin_members", "clientPermission": "admin-only", "documentId": "operator-created opaque ID; never auto-created by browser login", "indexes": [{ "fields": ["web_uid"], "unique": true }, { "fields": ["account_id"], "unique": true }, { "fields": ["status", "role", "_id"] }] }
   ]
 }

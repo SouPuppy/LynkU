@@ -99,7 +99,7 @@ async function verify() {
         peer: { _openid: peer, nickname: 'Artifact peer', avatar_url: '' },
         lastMessage: { _id: 'message-public', content: 'bundle directory probe', created_at: timestamp }, unreadCount: 2,
       }, {
-        peer: { nickname: '匿名用户', avatar_url: '/assets/anonymous.png' },
+        peer: { nickname: '匿名会话 · CCCCCC', avatar_url: '/assets/avatar/runtime/anonymous.png' },
         lastMessage: { _id: 'message-anonymous', content: 'anonymous bundle probe', created_at: timestamp }, unreadCount: 1,
         chat_target: { anonymous: true, thread_id: 'c'.repeat(64) },
       }],

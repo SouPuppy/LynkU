@@ -1,6 +1,6 @@
 <nav-bar title="帖子详情" showBack="{{true}}" />
 <!-- post: post detail + comments -->
-<scroll-view wx:if="{{state !== 'loading' && post}}" class="post-page {{replyingTo ? 'post-page-replying' : ''}}" scroll-y style="height: calc(100vh - {{navHeight}}px);" bindscrolltolower="onCommentLoadMore" lower-threshold="120">
+<scroll-view wx:if="{{state !== 'loading' && post}}" class="post-page {{replyingTo ? 'post-page-replying' : ''}}" scroll-y scroll-into-view="{{commentScrollTo}}" style="height: calc(100vh - {{navHeight}}px);" bindscrolltolower="onCommentLoadMore" lower-threshold="120">
   <!-- Post header -->
   <view class="post-header">
     <text class="post-title">{{post.title}}</text>
@@ -54,6 +54,7 @@
         wx:key="_id"
         wx:for-item="comment"
         class="comment-wrapper"
+        id="comment-{{comment._id}}"
         data-id="{{comment._id}}"
       >
         <comment-item comment="{{comment}}" bind:reply="onReplyTap" bind:delete="onCommentLongPress" bind:report="onReportComment" />

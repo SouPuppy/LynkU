@@ -4,7 +4,7 @@ import { formatTime } from '../../utils/util'
 import type { IComment, ICommentWithReplies } from '../../typings/cloudbase'
 
 const ANONYMOUS_NAME = '匿名用户'
-const ANONYMOUS_AVATAR = '/assets/anonymous.png'
+import { ANONYMOUS_AVATAR } from '../../generated/contracts/index'
 
 interface CommentForView extends IComment {
   display_time: string

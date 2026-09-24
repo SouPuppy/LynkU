@@ -43,8 +43,50 @@
   },
   "libVersion": "3.17.3",
   "packOptions": {
-    "ignore": [],
-    "include": []
+    "ignore": [
+      {
+        "type": "file",
+        "value": "assets/avatar/anonymous.png"
+      },
+      {
+        "type": "file",
+        "value": "assets/avatar/avatar_01.png"
+      },
+      {
+        "type": "file",
+        "value": "assets/avatar/avatar_02.png"
+      },
+      {
+        "type": "file",
+        "value": "assets/avatar/avatar_03.png"
+      },
+      {
+        "type": "file",
+        "value": "assets/avatar/avatar_04.png"
+      }
+    ],
+    "include": [
+      {
+        "type": "file",
+        "value": "assets/avatar/runtime/anonymous.png"
+      },
+      {
+        "type": "file",
+        "value": "assets/avatar/runtime/avatar_01.png"
+      },
+      {
+        "type": "file",
+        "value": "assets/avatar/runtime/avatar_02.png"
+      },
+      {
+        "type": "file",
+        "value": "assets/avatar/runtime/avatar_03.png"
+      },
+      {
+        "type": "file",
+        "value": "assets/avatar/runtime/avatar_04.png"
+      }
+    ]
   },
   "appid": "wxba2bcb0c71a5f33d",
   "cloudfunctionRoot": "dist/cloudfunctions/",

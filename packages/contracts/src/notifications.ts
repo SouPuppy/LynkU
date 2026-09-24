@@ -1,3 +1,4 @@
+import { ANONYMOUS_AVATAR } from './avatar'
 export interface NotificationCursor { version: 1; scope: string; id: string; createdAt: string }
 export type NotificationKind = 'comment' | 'reply' | 'like' | 'follow' | 'system'
 export interface PublicNotification {
@@ -43,7 +44,7 @@ export function parsePublicNotification(value: unknown): PublicNotification {
   const type = input.type
   if (typeof type !== 'string' || !['comment', 'reply', 'like', 'follow', 'system'].includes(type)
     || typeof input.anonymous !== 'boolean' || typeof input.read !== 'boolean') throw new Error('Invalid notification state')
-  const actor = input.anonymous ? { nickname: '匿名用户', avatar_url: '/assets/anonymous.png' } : object(input.actor)
+  const actor = input.anonymous ? { nickname: '匿名用户', avatar_url: ANONYMOUS_AVATAR } : object(input.actor)
   const result: PublicNotification = {
     _id: text(input._id, 128), type: type as NotificationKind, anonymous: input.anonymous, read: input.read,
     actor: { nickname: text(actor.nickname, 100), avatar_url: text(actor.avatar_url, 2048, true) },

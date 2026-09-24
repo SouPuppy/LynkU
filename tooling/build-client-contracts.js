@@ -17,3 +17,5 @@ const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf
 fs.writeFileSync(path.join(root, 'apps/miniprogram/generated/version.ts'), `// Generated from the root package version.\nexport const APP_VERSION = ${JSON.stringify(version)}\n`)
 process.stdout.write('Materialized shared TypeScript contracts for WeChat.\n')
 generateLegalBundle(root)
+const { buildAvatarAssets } = require('./build-avatar-assets.cjs')
+process.stdout.write(`Built avatar runtime assets: ${buildAvatarAssets(root)} bytes.\n`)

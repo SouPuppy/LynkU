@@ -38,3 +38,9 @@
 .edit-actions button { flex: 1; border-radius: var(--radius-round); font-size: var(--font-md); }
 .edit-cancel-btn { background: var(--color-bg); color: var(--color-text); }
 .edit-save-btn { background: var(--color-primary); color: #fff; }
+.avatar-setting-label { display: flex; flex-direction: column; gap: 6rpx; }
+.avatar-options { display: flex; flex-wrap: wrap; justify-content: center; gap: 20rpx; }
+.avatar-option { position: relative; display: flex; justify-content: center; align-items: center; width: 44%; min-height: 156rpx; margin: 0; padding: 12rpx; background: transparent; border: 3rpx solid transparent; border-radius: 20rpx; box-sizing: border-box; }
+.avatar-option::after { border: none; }
+.avatar-option-selected { border-color: var(--color-primary); }
+.avatar-option-check { position: absolute; right: 8rpx; bottom: 0; color: var(--color-primary); font-size: 28rpx; line-height: 36rpx; }

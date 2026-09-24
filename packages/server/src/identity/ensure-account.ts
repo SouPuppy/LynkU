@@ -1,4 +1,5 @@
 import type { SelfProfile } from '@lynku/contracts'
+import { DEFAULT_AVATAR } from '@lynku/contracts'
 import { projectSelfProfile } from './self-profile'
 export interface NewAccount {
   _id: string
@@ -25,7 +26,7 @@ export async function ensureAccount(store: AccountStore, owner: string): Promise
   if (existing !== null) return projectSelfProfile(existing, owner)
   const now = store.now()
   if (new Date(now).toISOString() !== now) throw new Error('Invalid account clock')
-  const account: NewAccount = { _id: store.identifier(owner), _openid: owner, nickname: '微信用户', avatar_url: '',
+  const account: NewAccount = { _id: store.identifier(owner), _openid: owner, nickname: '微信用户', avatar_url: DEFAULT_AVATAR,
     email: '', role: 'user', verified: false, profile_version: 0, created_at: now, updated_at: now }
   return projectSelfProfile(await store.createIfAbsent(account), owner)
 }

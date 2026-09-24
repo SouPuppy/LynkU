@@ -1,4 +1,5 @@
 import type { SelfProfile } from '@lynku/contracts'
+import { isPresetAvatar } from '@lynku/contracts'
 import { projectSelfProfile } from './self-profile'
 import { ModerationFailure } from '../shared'
 export class ProfileUpdateFailure extends Error {
@@ -29,8 +30,8 @@ function patch(value: unknown): ProfilePatch {
     result.nickname = row.nickname.trim()
   }
   if (row.avatar_url !== undefined) {
-    if (typeof row.avatar_url !== 'string' || row.avatar_url.trim().length > 2048) throw Error('Invalid avatar')
-    result.avatar_url = row.avatar_url.trim()
+    if (!isPresetAvatar(row.avatar_url)) throw Error('Invalid avatar')
+    result.avatar_url = row.avatar_url
   }
   if (Object.keys(result).length === 0) throw Error('Empty profile update')
   return result

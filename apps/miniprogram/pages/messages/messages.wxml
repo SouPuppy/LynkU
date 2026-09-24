@@ -21,7 +21,7 @@
 
   <!-- Tab: 私信 (conversations) -->
   <view wx:if="{{activeTab === 'chat'}}" class="tab-panel">
-    <view wx:if="{{chatState === 'loading'}}" class="list-loading">
+    <view wx:if="{{chatState === 'loading' && !pendingConversations.length}}" class="list-loading">
       <view class="conversation-skeleton">
         <view wx:for="{{skRows5}}" wx:key="*this" class="conv-sk-row">
           <view class="sk-circle conv-sk-avatar"></view>
@@ -36,17 +36,26 @@
       </view>
     </view>
 
-    <view wx:elif="{{chatState === 'error'}}" class="list-empty" bindtap="onRetry">
+    <view wx:elif="{{chatState === 'error' && !pendingConversations.length}}" class="list-empty" bindtap="onRetry">
       <text class="text-secondary">加载失败，点击重试</text>
     </view>
 
     <scroll-view
-      wx:elif="{{conversations.length}}"
+      wx:elif="{{conversations.length || pendingConversations.length}}"
       class="conv-scroll"
       scroll-y
+      refresher-enabled
+      refresher-triggered="{{chatLoadingMore}}"
+      bindrefresherrefresh="onRetry"
       bindscrolltolower="onChatLoadMore"
       lower-threshold="100"
     >
+      <view wx:for="{{pendingConversations}}" wx:key="id" class="conv-row flex-row" data-recovery="{{item.id}}" bindtap="onPendingConversation">
+        <view class="conv-info flex-1">
+          <view class="flex-row"><text class="conv-name">{{item.name}}</text><text class="conv-time text-xs text-secondary">发送结果待确认</text></view>
+          <text class="conv-preview text-sm text-secondary text-ellipsis">{{item.preview}}</text>
+        </view>
+      </view>
       <view
         wx:for="{{conversations}}" wx:key="conversationKey"
         class="conv-row flex-row"
@@ -66,11 +75,11 @@
         </view>
       </view>
       <view wx:if="{{chatLoadingMore}}" class="list-footer text-secondary text-sm">加载中...</view>
-      <view wx:elif="{{chatLoadError}}" class="list-footer text-secondary text-sm" bindtap="onChatLoadMore">加载失败，点击重试</view>
+      <view wx:elif="{{chatLoadError}}" class="list-footer text-secondary text-sm" bindtap="onChatRetryFailed">加载失败，点击重试</view>
       <view wx:elif="{{!chatHasMore}}" class="list-footer text-secondary text-sm">没有更多了</view>
     </scroll-view>
 
-    <view wx:else class="list-empty">
+    <view wx:elif="{{!pendingConversations.length}}" class="list-empty">
       <text class="text-secondary">暂无消息</text>
     </view>
   </view>
@@ -97,22 +106,20 @@
       class="notif-feed"
       scroll-y
       refresher-enabled
-      refresher-triggered="{{false}}"
+      refresher-triggered="{{notifLoadingMore}}"
       bindrefresherrefresh="onNotifRefresh"
       bindscrolltolower="onNotifLoadMore"
       lower-threshold="100"
     >
-      <notification-card
-        wx:for="{{notifications}}"
-        wx:key="_id"
-        notification="{{item}}"
-      />
+      <view wx:for="{{notifications}}" wx:key="_id" class="notification-row" data-id="{{item._id}}">
+        <notification-card notification="{{item}}" />
+      </view>
 
       <view wx:if="{{notifLoadingMore}}" class="list-footer text-secondary text-sm">
         <text>加载中...</text>
       </view>
 
-      <view wx:elif="{{notifLoadError}}" class="list-footer text-secondary text-sm" bindtap="onNotifLoadMore">加载失败，点击重试</view>
+      <view wx:elif="{{notifLoadError}}" class="list-footer text-secondary text-sm" bindtap="onNotifRetryFailed">加载失败，点击重试</view>
       <view wx:elif="{{!notifHasMore && notifications.length > 0}}" class="list-footer text-secondary text-sm">
         <text>没有更多了</text>
       </view>

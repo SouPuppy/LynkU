@@ -1,12 +1,27 @@
 // subpkg-chat/pages/chat — 1:1 chat room with polling-based real-time
 import type { IMessage, LoadState, IAnonymousChatTarget, IMessageSyncCursor } from '../../../typings/cloudbase'
-import { getConversation, sendMessage, setContactBlocked } from '../../../services/messages'
+import { getConversation, getConversationDisplay, setContactBlocked } from '../../../services/messages'
+import { createSendRecovery, listPendingConversations } from '../../../services/send-recovery'
+import type { SendOperations, SendOperation } from '../../../features/messaging/send-operations'
+import { refreshMessageBadge } from '../../../services/badge'
 import { acknowledgeMessages } from '../../../services/read-queue'
 import { getOpenid, getState, onChange } from '../../../services/session'
 import { pollMessages, type MessagePoller } from '../../../services/watch'
 import { requireVerified } from '../../../utils/guard'
 import { isAnonymous } from '../../../services/anonymous'
 import { mergeChatMessages } from '../../../services/message-state'
+import { CloudCallError } from '../../../services/cloud'
+
+function chatLoadError(error: unknown): string {
+  if (error instanceof CloudCallError) {
+    // Codes only: never log peer identities, message bodies or raw SDK responses.
+    console.warn('[chat] load failed', error.code)
+    if (error.code === 'CHAT_SERVICE_OUTDATED' || error.code === 'UNKNOWN_ACTION') return '聊天服务正在更新，请稍后再试'
+    if (error.code === 'NETWORK_ERROR') return '网络连接失败，点击重试'
+    if (error.code === 'NOT_FOUND') return '该会话暂不可用，请返回重试'
+  }
+  return '聊天暂时无法加载，点击重试'
+}
 
 Page({
   data: {
@@ -18,9 +33,17 @@ Page({
     messages: [] as IMessage[],
     inputText: '',
     state: 'idle' as LoadState,
+    loadError: '',
     sending: false,
     pollingActive: false,
     blocked: false,
+    identityReady: false,
+    selfAnonymous: false,
+    identityNote: '正在确认会话身份…',
+    pending: [] as SendOperation[],
+    newMessages: 0,
+    firstUnreadId: '',
+    keyboardHeight: 0,
     navHeight: 0,
     scrollTo: '',
     historyCursor: null as IMessageSyncCursor | null,
@@ -32,8 +55,11 @@ Page({
   _poller: null as MessagePoller | null,
   _requestSeq: 0,
   _syncCursor: null as IMessageSyncCursor | null,
-  _pendingMessageId: '',
-  _pendingMessageText: '',
+  _sendOperations: null as SendOperations<IMessage> | null,
+  _visible: false,
+  _nearBottom: true,
+  _observer: null as WechatMiniprogram.IntersectionObserver | null,
+  _observedIds: new Set<string>(),
   _owner: '',
   _unsubscribe: null as (() => void) | null,
 
@@ -43,11 +69,13 @@ Page({
     this.setData({ navHeight: (info.statusBarHeight || 44) + 40 })
 
     const name = options.name ? decodeURIComponent(options.name) : '聊天'
-    const anonymousTarget = this.buildAnonymousTarget(options)
+    const recovery = options.recover ? listPendingConversations().find(item => item.id === options.recover) : null
+    if (options.recover && !recovery) { wx.showToast({ title: '待确认记录已处理', icon: 'none' }); return }
+    const anonymousTarget = recovery ? recovery.target : this.buildAnonymousTarget(options)
     this.setData({
-      peerOpenid: anonymousTarget ? '' : options.peer || '',
-      otherName: anonymousTarget ? '匿名用户' : name,
-      chatTitle: anonymousTarget ? '匿名聊天' : name,
+      peerOpenid: anonymousTarget ? '' : recovery?.peer || options.peer || '',
+      otherName: name,
+      chatTitle: '聊天',
       anonymousTarget,
     })
     const myOpenid = getOpenid()
@@ -58,19 +86,51 @@ Page({
   },
 
   onShow() {
+    this._visible = true
     if (this._owner && this._owner !== getOpenid()) this.clearPrivateView()
     this._unsubscribe?.()
     this._unsubscribe = onChange(() => {
       if (getState() !== 'verified' || getOpenid() !== this._owner) this.clearPrivateView()
     })
-    if (getState() === 'verified' && this.hasChatTarget()) this.loadMessages()
+    if (getState() === 'verified' && this.hasChatTarget()) {
+      if (this.data.state === 'loaded' && this._syncCursor) {
+        void this.resumeConversation()
+      } else this.loadMessages()
+    }
   },
 
   onHide() {
+    this.setData({ keyboardHeight: 0 })
     this.disposeView()
   },
 
+  async resumeConversation() {
+    const seq = this._requestSeq, owner = getOpenid()
+    this.setData({ identityReady: false })
+    try {
+      const display = await getConversationDisplay(this.data.peerOpenid || undefined, this.data.anonymousTarget)
+      if (!this._visible || seq !== this._requestSeq || getOpenid() !== owner || getState() !== 'verified') return
+      this.setData({ identityReady: true, blocked: display.blockedHere, chatTitle: display.peerName,
+        selfAnonymous: display.selfVisibility === 'anonymous',
+        identityNote: display.selfVisibility === 'anonymous' ? '你以匿名身份参与' : '对方可见你的昵称和头像' })
+      this.restoreSendOperations()
+      this.observeMessages()
+      this.startPolling()
+    } catch (_) {
+      if (this._visible && seq === this._requestSeq && getOpenid() === owner) this.setData({ identityReady: false, identityNote: '身份确认失败，点击重试' })
+    }
+  },
+
+  onIdentityRetry() {
+    if (this.data.identityReady || this.data.state === 'loading') return
+    if (!this._syncCursor || this.data.state !== 'loaded') void this.loadMessages()
+    else void this.resumeConversation()
+  },
+
   disposeView() {
+    this._visible = false
+    this._observer?.disconnect()
+    this._observer = null
     this._requestSeq += 1
     if (this._poller) this._poller.stop()
     this._poller = null
@@ -84,11 +144,13 @@ Page({
 
   clearPrivateView() {
     this.disposeView()
-    this._pendingMessageId = ''
-    this._pendingMessageText = ''
+    this._sendOperations = null
+    this._observedIds.clear()
     this._syncCursor = null
     this.setData({ messages: [], inputText: '', myOpenid: '', peerOpenid: '', anonymousTarget: null,
-      historyCursor: null, hasMoreHistory: false, loadingHistory: false, sending: false })
+      historyCursor: null, hasMoreHistory: false, loadingHistory: false, sending: false,
+      pending: [], identityReady: false, selfAnonymous: false, blocked: false, firstUnreadId: '',
+      chatTitle: '聊天', otherName: '', identityNote: '', newMessages: 0 })
   },
 
   buildAnonymousTarget(options: Record<string, string | undefined>): IAnonymousChatTarget | null {
@@ -117,7 +179,7 @@ Page({
     if (!this.hasChatTarget()) return
     this._poller?.stop()
     this._poller = null
-    this.setData({ state: 'loading', loadingHistory: false, historyError: false, sending: false })
+    this.setData({ state: 'loading', loadError: '', identityReady: false, identityNote: '正在确认会话身份…', loadingHistory: false, historyError: false, sending: false })
     try {
       const result = await getConversation(
         this.data.peerOpenid || undefined,
@@ -126,26 +188,28 @@ Page({
         this.data.anonymousTarget,
       )
       if (seq !== this._requestSeq || getState() !== 'verified' || getOpenid() !== owner) return
+      if (!result.display) throw new CloudCallError('聊天服务尚未更新', 'CHAT_SERVICE_OUTDATED', 'messages', 'getConversation')
       this.setData({ messages: result.messages, state: 'loaded', historyCursor: result.nextBefore, hasMoreHistory: result.hasMore,
-        anonymousTarget: result.chat_target || this.data.anonymousTarget })
+        anonymousTarget: result.chat_target || this.data.anonymousTarget, identityReady: true,
+        chatTitle: result.display.peerName, otherName: result.display.peerName, blocked: result.display.blockedHere,
+        selfAnonymous: result.display.selfVisibility === 'anonymous',
+        identityNote: result.display.selfVisibility === 'anonymous' ? '你以匿名身份参与' : '对方可见你的昵称和头像' })
       this._syncCursor = result.sync_cursor
-      this.scrollToBottom()
-
-      // Mark received messages as read
-      const unreadIds = result.messages
-        .filter(m => m.to === this.data.myOpenid && m.status !== 'read')
-        .map(m => m._id)
-      if (unreadIds.length > 0) {
-        acknowledgeMessages(this.data.peerOpenid || undefined, unreadIds, this.data.anonymousTarget).catch(() => {
-          if (seq === this._requestSeq && getOpenid() === owner) this.setData({ pollingActive: true })
-        })
-      }
+      if (this.data.anonymousTarget && 'type' in this.data.anonymousTarget) this.setData({ anonymousTarget: {
+        ...this.data.anonymousTarget, expected_target_visibility: result.display.peerVisibility,
+      } })
+      this.restoreSendOperations()
+      if (result.first_unread_id) {
+        this._nearBottom = false
+        this.setData({ firstUnreadId: result.first_unread_id, scrollTo: `msg-${result.first_unread_id}` })
+      } else this.scrollToBottom()
+      this.observeMessages()
 
       // Start polling for new messages
       this.startPolling()
-    } catch (_) {
+    } catch (error) {
       if (seq !== this._requestSeq || getState() !== 'verified' || getOpenid() !== owner) return
-      this.setData({ state: 'error' })
+      this.setData({ state: 'error', identityReady: false, loadError: chatLoadError(error), identityNote: '会话身份尚未确认' })
     }
   },
 
@@ -161,10 +225,7 @@ Page({
       this.setData({ messages: mergeChatMessages(this.data.messages, result.messages),
         historyCursor: result.nextBefore, hasMoreHistory: result.hasMore, loadingHistory: false,
         scrollTo: anchor ? `msg-${anchor}` : '' })
-      const unreadIds = result.messages.filter(message => message.to === owner && message.status !== 'read').map(message => message._id)
-      if (unreadIds.length) acknowledgeMessages(this.data.peerOpenid || undefined, unreadIds, this.data.anonymousTarget).catch(() => {
-        if (seq === this._requestSeq && getOpenid() === owner) this.setData({ pollingActive: true })
-      })
+      this.observeMessages()
     } catch (_) {
       if (seq !== this._requestSeq || getOpenid() !== owner || getState() !== 'verified') return
       this.setData({ loadingHistory: false, historyError: true })
@@ -184,17 +245,14 @@ Page({
       (changes) => {
         if (seq !== this._requestSeq || getOpenid() !== owner || getState() !== 'verified') return
         this.setData({ pollingActive: false })
+        const known = new Set(this.data.messages.map(message => message._id))
+        const arrived = changes.filter(message => !known.has(message._id) && message.to === owner).length
         const messages = mergeChatMessages(this.data.messages, changes)
         this.setData({ messages })
-        const unreadIds = changes
-          .filter(message => message.to === this.data.myOpenid && message.status !== 'read')
-          .map(message => message._id)
-        if (unreadIds.length > 0) {
-          acknowledgeMessages(this.data.peerOpenid || undefined, unreadIds, this.data.anonymousTarget).catch(() => {
-            if (seq === this._requestSeq && getOpenid() === owner) this.setData({ pollingActive: true })
-          })
-        }
-        this.scrollToBottom()
+        for (const message of changes) if (message.from === owner) this._sendOperations?.accept(message)
+        if (this._nearBottom) this.scrollToBottom()
+        else if (arrived) this.setData({ newMessages: this.data.newMessages + arrived })
+        this.observeMessages()
       },
       (_err) => {
         if (seq !== this._requestSeq || getOpenid() !== owner || getState() !== 'verified') return
@@ -202,6 +260,12 @@ Page({
       },
       this.data.anonymousTarget,
       {
+        healthy: cursor => {
+          if (seq !== this._requestSeq || !this._visible || getOpenid() !== owner) return
+          this._syncCursor = cursor
+          this.setData({ pollingActive: false })
+          void this._sendOperations?.recover().catch(() => {})
+        },
         pending: () => this.data.messages.filter(message => message.from === owner && message.status !== 'read').map(message => message._id),
         apply: readIds => {
           if (seq !== this._requestSeq || getOpenid() !== owner || getState() !== 'verified') return
@@ -214,66 +278,104 @@ Page({
   },
 
   onInput(e: WechatMiniprogram.Input) {
-    if (e.detail.value !== this._pendingMessageText) {
-      this._pendingMessageId = ''
-      this._pendingMessageText = ''
-    }
     this.setData({ inputText: e.detail.value })
   },
 
   async onSend() {
     if (!requireVerified()) return
     const text = this.data.inputText.trim()
-    if (!text || this.data.sending) return
+    if (!text || !this.data.identityReady || this.data.blocked || !this._sendOperations) return
 
     const myOpenid = getOpenid()
     if (!myOpenid) return
 
-    if (!this._pendingMessageId || this._pendingMessageText !== text) {
-      this._pendingMessageId = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
-      this._pendingMessageText = text
-    }
-    const msgId = this._pendingMessageId
+    const msgId = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`
     const seq = this._requestSeq
-
-    this.setData({ sending: true })
-
     try {
-      const result = await sendMessage({
-        to: this.data.peerOpenid || undefined,
-        target: this.data.anonymousTarget,
-        content: text,
-        msgId,
-      })
-      if (seq !== this._requestSeq || getOpenid() !== myOpenid || getState() !== 'verified') return
-      if (result.message) {
-        this.setData({
-          messages: mergeChatMessages(this.data.messages, [result.message]),
-          inputText: this.data.inputText.trim() === text ? '' : this.data.inputText,
-        })
-        this._pendingMessageId = ''
-        this._pendingMessageText = ''
-        this.scrollToBottom()
-      }
+      const sending = this._sendOperations.submit(msgId, text)
+      if (this._sendOperations.snapshot().some(item => item.id === msgId)) this.setData({ inputText: '' })
+      this.scrollToBottom()
+      await sending
     } catch (e: unknown) {
       if (seq !== this._requestSeq || getOpenid() !== myOpenid || getState() !== 'verified') return
       const msg = e instanceof Error ? e.message : '发送失败'
       wx.showToast({ title: msg, icon: 'none' })
-    } finally {
-      if (seq === this._requestSeq && getOpenid() === myOpenid && getState() === 'verified') this.setData({ sending: false })
     }
+  },
+
+  restoreSendOperations() {
+    if (!this._syncCursor) return
+    const seq = this._requestSeq
+    this._sendOperations = createSendRecovery(this._syncCursor.conversation_id, this.data.peerOpenid || undefined,
+      this.data.anonymousTarget, () => this._visible && seq === this._requestSeq,
+      pending => this.setData({ pending }), message => {
+        this.setData({ messages: mergeChatMessages(this.data.messages, [message]) })
+        refreshMessageBadge().catch(() => {})
+      }, this.data.chatTitle)
+    this.setData({ pending: this._sendOperations.snapshot() })
+    for (const message of this.data.messages) if (message.from === this.data.myOpenid) this._sendOperations.accept(message)
+    void this._sendOperations.recover().catch(() => {})
+  },
+
+  onRetrySend(e: WechatMiniprogram.TouchEvent) {
+    if (!this._visible || !this.data.identityReady || this.data.blocked || !requireVerified()) return
+    const seq = this._requestSeq
+    const id = e.currentTarget.dataset.id
+    if (typeof id === 'string' && !this.data.inputText) {
+      try {
+        const text = this._sendOperations?.editFailed(id)
+        if (text) { this.setData({ inputText: text }); return }
+      } catch (_) {
+        wx.showToast({ title: '发送状态暂未保存，请重试', icon: 'none' }); return
+      }
+    }
+    if (typeof id === 'string') void this._sendOperations?.retry(id).catch(() => {
+      if (this._visible && seq === this._requestSeq) wx.showToast({ title: '发送状态暂未保存，请重试', icon: 'none' })
+    })
+  },
+
+  observeMessages() {
+    this._observer?.disconnect()
+    const seq = this._requestSeq
+    wx.nextTick(() => {
+      if (!this._visible || seq !== this._requestSeq) return
+      this._observer = this.createIntersectionObserver({ observeAll: true, thresholds: [0, 0.01] })
+      this._observer.relativeTo('.chat-scroll').observe('.message-row', result => {
+        if (!this._visible || seq !== this._requestSeq || result.intersectionRatio <= 0) return
+        const id = result.dataset.id
+        const message = this.data.messages.find(item => item._id === id)
+        if (!message || message.to !== this.data.myOpenid || message.status === 'read' || this._observedIds.has(message._id)) return
+        this._observedIds.add(message._id)
+        acknowledgeMessages(this.data.peerOpenid || undefined, [message._id], this.data.anonymousTarget)
+          .then(() => refreshMessageBadge()).catch(() => { this._observedIds.delete(message._id) })
+      })
+    })
+  },
+
+  onScroll(e: WechatMiniprogram.ScrollViewScroll) {
+    const seq = this._requestSeq
+    this.createSelectorQuery().select('.chat-scroll').boundingClientRect(rect => {
+      if (seq !== this._requestSeq || !this._visible || !rect || Array.isArray(rect)) return
+      this._nearBottom = e.detail.scrollHeight - e.detail.scrollTop - rect.height < 80
+      if (this._nearBottom && this.data.newMessages) this.setData({ newMessages: 0 })
+    }).exec()
+  },
+
+  onKeyboardHeight(e: WechatMiniprogram.CustomEvent<{ height: number }>) {
+    this.setData({ keyboardHeight: Math.max(0, e.detail.height) })
+    if (this._nearBottom) this.scrollToBottom()
   },
 
   onBlockContact() {
     if (!requireVerified() || this.data.blocked || !this.hasChatTarget()) return
+    const owner = getOpenid(), seq = this._requestSeq
     wx.showModal({ title: '屏蔽用户', content: '屏蔽后双方均不能继续通过该用户的普通或匿名会话发送新消息。',
       confirmText: '屏蔽', confirmColor: '#c33', success: async result => {
-        if (!result.confirm) return
-        const owner = getOpenid(), seq = this._requestSeq
+        if (!result.confirm || !this._visible || seq !== this._requestSeq || getOpenid() !== owner) return
         try {
           await setContactBlocked(this.data.peerOpenid || undefined, this.data.anonymousTarget, true)
           if (seq === this._requestSeq && owner === getOpenid()) {
-            this.setData({ blocked: true, inputText: '' })
+            this.setData({ blocked: true })
             wx.showToast({ title: '已屏蔽', icon: 'success' })
           }
         } catch (error) {
@@ -294,10 +396,8 @@ Page({
   },
 
   scrollToBottom() {
-    // Trigger scroll-into-view via data update
-    const len = this.data.messages.length
-    if (len > 0) {
-      this.setData({ scrollTo: `msg-${this.data.messages[len - 1]._id}` })
-    }
+    this._nearBottom = true
+    this.setData({ scrollTo: '', newMessages: 0 })
+    wx.nextTick(() => { if (this._visible) this.setData({ scrollTo: 'chat-bottom' }) })
   },
 })

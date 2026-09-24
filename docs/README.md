@@ -9,6 +9,10 @@
 | 启动 LynkU 与演示 | [演示入口](DEMO.md) → [迁移决策](architecture/decisions/002-lynku-cutover.md) → [实际证据](plans/refactor/status.md) |
 | 执行完整重构 | [总计划](plans/refactor/plan.md) → [进度与证据](plans/refactor/status.md) |
 | 查阅全项目深查与微信官方依据 | [LynkU 升级评估](diagnosis/lynku-upgrade-review-2026-09-21.md) → [既有计划中的实施顺序](plans/refactor/plan.md) |
+| 查阅聊天界面、未读与消息提醒问题 | [聊天与通知诊断](diagnosis/chat-and-notification-review-2026-09-23.md)（历史复现；修复状态见唯一状态表） |
+| 精修现有聊天交互细节 | [聊天 UI 体验调查](diagnosis/chat-ui-experience-review-2026-09-24.md)（调查建议；保持原位置和设计范式） |
+| 精进匿名参与、聊天结构与视觉 | [匿名与消息体验方案](product/anonymous-messaging-experience.md) → [本地审核及配套迁移](runbooks/anonymous-messaging-refinement.md)（保持原 UI 范式） |
+| 修复默认与匿名头像体系 | [头像系统分析与设计](product/avatar-system.md)（1 张匿名 + 4 张普通默认；已本地实现，待设备审核） |
 | 开启后续长任务 | [可直接使用的任务指令](plans/refactor/goal-prompt.md) |
 | 实施用户协议、举报、屏蔽和注销等上线保护 | [后续 goal 指令与顺序](plans/community-safety-goal.md) → [页面与功能边界](product/community-safety.md) → [完整协议文案](product/community-policies.md) → [技术契约与迁移](architecture/community-governance.md) |
 | 了解目标结构 | [架构总览](architecture/target-architecture.md) → [模块边界](architecture/module-boundaries.md) |

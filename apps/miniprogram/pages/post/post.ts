@@ -22,9 +22,11 @@ Page({
     state: 'idle' as LoadState,
     commentState: 'idle' as LoadState,
     postId: '',
+    commentScrollTo: '',
     inputValue: '',
     inputPlaceholder: '写评论...',
     inputFocus: false,
+    commentAnonymous: false,
     submitting: false,
     replyingTo: null as string | null,
     replyingToName: '',
@@ -42,6 +44,7 @@ Page({
     return this._thread
   },
   _postSeq: 0,
+  _focusComment: '',
   _commentRequestId: '',
   _scope: null as ViewScope | null,
 
@@ -58,6 +61,8 @@ Page({
 
   onLoad(options: Record<string, string | undefined>) {
     this.scope()
+    this.setData({ commentAnonymous: isAnonymous() })
+    this._focusComment = options.comment || ''
     const windowInfo = wx.getWindowInfo()
     this.setData({ navHeight: (windowInfo.statusBarHeight || 44) + 40 })
     if (options.id) {
@@ -100,6 +105,7 @@ Page({
         postDisplayTime: post ? formatTime(post.created_at) : '',
         state: post ? 'loaded' : 'empty',
       })
+      if (!this.data.inputValue && post?.is_mine && post.anonymous) this.setData({ commentAnonymous: true, inputPlaceholder: '以匿名身份评论…' })
     } catch (_) {
       if (seq !== this._postSeq || !this.scope().current(token)) return
       this.setData({ state: 'error' })
@@ -109,6 +115,17 @@ Page({
   async loadComments(reset = true) {
     if (reset) await this.thread().refresh(this.data.postId)
     else await this.thread().more()
+    if (this._focusComment) {
+      const token = this.scope().capture()
+      const limit = reset ? 10 : 0
+      for (let pages = 0; pages <= limit && this.scope().current(token); pages++) {
+        const parent = this.data.comments.find(item => item._id === this._focusComment || item.replies.some(reply => reply._id === this._focusComment))
+        if (parent) { this.setData({ commentScrollTo: `comment-${parent._id}` }); this._focusComment = ''; return }
+        if (!this.data.commentHasMore || pages === limit) break
+        await this.thread().more()
+      }
+      if (this.scope().current(token)) wx.showToast({ title: this.data.commentHasMore ? '目标较早，请继续加载评论' : '该评论已不可用', icon: 'none' })
+    }
   },
 
   onRequestAccess() { requireVerified() },
@@ -116,7 +133,7 @@ Page({
   // ── Comment input (top-level) ──
 
   onCommentInput(e: WechatMiniprogram.Input) {
-    this._commentRequestId = ''
+    if (e.detail.value.trim() !== this.data.inputValue.trim()) this._commentRequestId = ''
     this.setData({ inputValue: e.detail.value })
   },
 
@@ -134,7 +151,7 @@ Page({
     this.setData({ submitting: true })
     try {
       if (!this._commentRequestId) this._commentRequestId = createRequestId()
-      const result = await createComment({ postId: this.data.postId, content, anonymous: isAnonymous(), requestId: this._commentRequestId })
+      const result = await createComment({ postId: this.data.postId, content, anonymous: this.data.commentAnonymous, requestId: this._commentRequestId })
       if (!this.scope().current(token)) return
       this._commentRequestId = ''
       this.setData({ inputValue: '', inputFocus: false })
@@ -158,12 +175,14 @@ Page({
 
     const comment = this.findComment(commentId)
     const authorName = e.detail.authorName || (comment && comment.author && comment.author.nickname) || '用户'
+    const anonymous = !!(comment?.is_mine && comment.anonymous) || !!(this.data.post?.is_mine && this.data.post.anonymous) || isAnonymous()
     this._commentRequestId = ''
     this.setData({
       replyingTo: commentId,
+      commentAnonymous: anonymous,
       replyingToName: authorName,
       inputValue: '',
-      inputPlaceholder: `回复 ${authorName}...`,
+      inputPlaceholder: `${anonymous ? '匿名回复' : '回复'} ${authorName}...`,
       inputFocus: true,
     })
   },
@@ -188,7 +207,7 @@ Page({
     this.setData({ submitting: true })
     try {
       if (!this._commentRequestId) this._commentRequestId = createRequestId()
-      const result = await createComment({ postId: this.data.postId, content, parentId, anonymous: isAnonymous(), requestId: this._commentRequestId })
+      const result = await createComment({ postId: this.data.postId, content, parentId, anonymous: this.data.commentAnonymous, requestId: this._commentRequestId })
       if (!this.scope().current(token)) return
       this._commentRequestId = ''
       this.setData({

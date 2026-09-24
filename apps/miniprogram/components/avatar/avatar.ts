@@ -1,6 +1,4 @@
-// components/avatar — avatar with default fallback
-const DEFAULT = '/assets/default-avatar.png'
-const ANONYMOUS = '/assets/anonymous.png'
+import { DEFAULT_AVATAR, resolveAvatarSource } from '../../generated/contracts/index'
 
 Component({
   properties: {
@@ -10,18 +8,31 @@ Component({
   },
 
   data: {
-    displaySrc: DEFAULT,
+    displaySrc: '',
+    generation: 0,
+    frames: [] as { src: string; generation: number }[],
   },
 
   observers: {
     'src, anonymous'(src: string, anonymous: boolean) {
-      this.setData({ displaySrc: anonymous ? ANONYMOUS : (src || DEFAULT) })
+      this.showSource(resolveAvatarSource(src, anonymous))
     },
   },
 
+  lifetimes: {
+    attached() { this.showSource(resolveAvatarSource(this.properties.src, this.properties.anonymous)) },
+  },
+
   methods: {
-    onError() {
-      this.setData({ displaySrc: this.properties.anonymous ? ANONYMOUS : DEFAULT })
+    showSource(src: string) {
+      const generation = this.data.generation + 1
+      this.setData({ displaySrc: src, generation, frames: [{ src, generation }] })
+    },
+    onError(e: WechatMiniprogram.CustomEvent) {
+      if (Number(e.currentTarget.dataset.generation) !== this.data.generation) return
+      if (this.properties.anonymous || this.data.displaySrc === DEFAULT_AVATAR) {
+        this.setData({ displaySrc: '', frames: [], generation: this.data.generation + 1 })
+      } else this.showSource(DEFAULT_AVATAR)
     },
   },
 })

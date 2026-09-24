@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
 const { updateAccountProfile } = require('@lynku/server')
+const { PRESET_AVATARS, ANONYMOUS_AVATAR } = require('@lynku/contracts')
 const original = { _id: 'old-account', _openid: 'alice', nickname: 'Alice', avatar_url: '', role: 'admin',
   email: 'fixture@nottingham.edu.cn', verified: true, profile_version: 0 }
 function fixture() {
@@ -29,6 +30,31 @@ function fixture() {
   }
   return { store, state }
 }
+
+test('all four account avatars save atomically and retries do not duplicate profile events', async () => {
+  const { store, state } = fixture()
+  for (const [index, avatar] of PRESET_AVATARS.entries()) {
+    await updateAccountProfile(store, 'alice', { avatar_url: avatar.src })
+    const again = await updateAccountProfile(store, 'alice', { avatar_url: avatar.src })
+    assert.equal(state.user.avatar_url, avatar.src)
+    assert.equal(state.user.profile_version, index + 1)
+    assert.equal(state.events.size, index + 1)
+    assert.equal(again.outboxId, null)
+    assert.equal(again.user.verified, true)
+    assert.equal(again.user.email, original.email)
+  }
+  state.failEnqueue = true
+  await assert.rejects(updateAccountProfile(store, 'alice', { avatar_url: PRESET_AVATARS[0].src }), /outbox/)
+  assert.equal(state.user.avatar_url, PRESET_AVATARS[3].src)
+})
+
+test('avatar writes reject anonymous, remote and temporary sources before any data access', async () => {
+  const { store } = fixture()
+  for (const avatar_url of [ANONYMOUS_AVATAR, '/assets/anonymous.png', '', 'https://example.com/a.png',
+    'cloud://external/avatar.png', 'wxfile://tmp/a.png', '/assets/avatar/avatar_01.png', PRESET_AVATARS[0].src + '?id=secret']) {
+    await assert.rejects(updateAccountProfile({ ...store, find: async () => { throw Error('must not read') } }, 'alice', { avatar_url }), { code: 'INVALID_INPUT' })
+  }
+})
 test('profile and projection event roll back together; concurrent equal edits create one event', async () => {
   const { store, state } = fixture()
   state.failEnqueue = true

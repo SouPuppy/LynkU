@@ -235,7 +235,7 @@ test('every anonymous initiation isolates history, unread, receipts and director
   const initiatorDirectory = await listConversationDirectory(f.adapters.directoryStore, { ownerId: 'alice', scope: 'e'.repeat(64) }, {})
   const anonymousRows = initiatorDirectory.conversations.filter(row => row.chat_target)
   assert.equal(anonymousRows.length, 2)
-  assert.ok(anonymousRows.every(row => row.peer.nickname === '匿名用户' && row.peer._openid === undefined))
+  assert.ok(anonymousRows.every(row => /^匿名会话 · [A-F0-9]{6}$/.test(row.peer.nickname) && row.peer._openid === undefined))
   f.seed('posts', 'source', { _openid: 'bob', status: 'deleted' })
   assert.equal((await resolveConversationTarget(f.adapters.targetStore, 'alice', targets[0])).anonymousContext?.thread_id, first.anonymousThread)
   assert.equal((await resolveConversationTarget(f.adapters.targetStore, 'bob', { anonymous_target: { thread_id: first.anonymousThread } })).peer, 'alice')

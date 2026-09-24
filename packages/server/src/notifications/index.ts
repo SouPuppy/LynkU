@@ -21,6 +21,12 @@ export async function listUserNotifications(store: NotificationStore, owner: str
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid notification record')
     const row = value as Record<string, unknown>
     if (row.to !== owner || (request.unreadOnly && row.read !== false)) throw new Error('Notification scope mismatch')
+    if ((row.type === 'comment' || row.type === 'reply') && row.actor && typeof row.actor === 'object'
+      && row.target && typeof row.target === 'object' && '_openid' in row.actor && 'comment_id' in row.target
+      && typeof row.actor._openid === 'string' && typeof row.target.comment_id === 'string'
+      && row._id === store.identifier('notification', row.type, owner, row.actor._openid, row.target.comment_id)) {
+      throw new Error('Notification identifier migration required')
+    }
     if (!(row.created_at instanceof Date) && typeof row.created_at !== 'string') throw new Error('Invalid notification date')
     const createdAt = new Date(row.created_at).toISOString()
     if (request.cursor && (createdAt > request.cursor.createdAt

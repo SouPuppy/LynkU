@@ -1,5 +1,7 @@
 # 接口、数据与一致性规则
 
+2026-09-23 头像协议：继续使用 `avatar_url`，新写入只接受共享 `PRESET_AVATARS` 中四个规范路径；匿名路径、任意远程地址、临时路径和空值写入拒绝。`ensure` 新账号存 `DEFAULT_AVATAR`，已有字段不读时迁移。客户端只加载预设或固定匿名本地素材，未知旧值回退但不修改存储；所有匿名 DTO 使用同一共享匿名路径，聊天 display 对匿名 peerAvatar 再次覆盖。保存事务、版本与 outbox 不变，部署需匹配客户端运行素材和相关云函数。资源派生与打包规则见[头像设计](../product/avatar-system.md)。
+
 状态：目标规范。字段的最终 schema、集合及索引由实施阶段落地；本文件确定不能省略的语义。
 
 2026-09-21 上线保护的新协议、生命周期／同意／屏蔽／个案治理与数据清理，按 [治理技术设计](community-governance.md) 实施。用户明确不兼容旧协议，历史段落中 v1/OPENID 别名只描述旧实现，不构成继续保留要求。正常内容同步自动检查通过就提交，不建设人工预审候选库。保留表以 [协议文案](../product/community-policies.md) 为唯一目标来源，不能把“同步记录到期”误用于兼作聊天历史的 messages 正文。
@@ -22,6 +24,15 @@
 - 每种 DTO 以明确字段构造，不将数据库记录展开到响应、日志或页面状态。
 
 ## 协议演进
+
+### 2026-09-23 匿名消息精修协议（本地，待配套发布）
+
+- `getConversation` 增加显式 `display`：本人／对端各自的可见性、合法昵称头像及 `blockedHere`。匿名对端不查询真实资料投影；客户端在 display 未确认时禁用发送。`getConversationDisplay` 提供独立前台恢复读取，不替换已有消息。首次历史可带页内 `first_unread_id`，服务端按最早未读序号选择有界窗口，后续由现有序号同步追赶最新消息。
+- 新匿名发起目标可携带 `expected_target_visibility`。来源在预览后发生变化时失败关闭；已有通道仍以已保存成员可见性为准。首次写入事务再次读取来源及父帖，防止外部审核耗时期间来源改变。
+- `getSendResult` 是已认证、当前通道成员范围内的只读请求确认；请求包含原 msg_id 和正文，用原消息编号算法及 payload fingerprint 核验。返回 `{ result: SendMessageResponse | null }`；null 不触发后台重发。未提交操作本地持久化键为账号与 conversation_id，旧页面结果不能清理新页面的操作。
+- `messaging_block_operations` 是 messaging 私有集合；主键为 owner + 独立 conversation 派生的操作编号，保存 owner、内部 blockId、合法操作别名、conversation、active。`listContactBlocks` 只返回本人 `{id,label}`，按 `_id DESC` 每页 20 条、独占游标继续，过滤 owner/active；公开游标不是账户对哈希。`unblockContact` 接受原会话或本人 operation_id，事务重新校验归属并只移除当前通道操作；账号对的 blockedBy 是各本人操作集合的并集。新索引见 schema manifest。
+- 新互动通知编号为 `identifier('notification','v2',type,recipient,comment_id)`，不再包含隐藏 actor。投递事务重新读取帖子、评论、必要父评论及当前作者资料；无效内容不产生新通知，原事件匿名状态不可被扩大。created_at 使用评论发生时间，delivered_at 单独记录。旧通知重投可在事务内转移旧编号并保留已读；常规列表不修库，发现危险旧编号直接失败关闭。
+- 通知编号及历史屏蔽操作迁移必须先于恢复新版读写；未执行迁移不能将旧编号直接继续公开，也不能声称旧屏蔽均已有解除入口。详见[本地交付及发布检查](../runbooks/anonymous-messaging-refinement.md)。本次没有执行真实迁移或部署。
 
 当前原型采用直接切换：可以重新设计云函数与 action，由唯一部署清单同步构建和更新调用者，不为旧客户端维护接口兼容层。函数名是否保留由职责边界决定。
 

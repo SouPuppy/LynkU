@@ -23,6 +23,23 @@ export interface MessageSendStore {
 export class InvalidSendRequest extends Error {}
 export class MessageIdConflict extends Error {}
 
+/** Read-only recovery: absence is not permission to automatically resubmit. */
+export async function findSentMessage(store: MessageSendStore, conversation: AuthorizedConversation,
+  anonymousContext: unknown, input: unknown): Promise<SendMessageResponse | null> {
+  let request
+  try { request = parseSendMessageRequest(input) } catch (_) { throw new InvalidSendRequest('Invalid send request') }
+  const id = conversation.anonymousThread
+    ? store.identifier('anonymous-message', conversation.id,
+      record(anonymousContext).initiator_openid === conversation.viewer ? 'initiator' : 'recipient', request.msg_id)
+    : store.identifier(conversation.viewer, request.msg_id)
+  const value = await store.existing(id)
+  if (value === null) return null
+  const saved = record(value)
+  const fingerprint = store.identifier('message:payload', conversation.peer, request.content, conversation.anonymousThread || '')
+  if (saved._id !== id || saved.from !== conversation.viewer || saved.request_fingerprint !== fingerprint) throw new MessageIdConflict()
+  return { message: projectMessage(saved, conversation), status: 'duplicate' }
+}
+
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid stored message state')
   return value as Record<string, unknown>

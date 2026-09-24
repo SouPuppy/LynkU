@@ -9,7 +9,8 @@ import * as session from './services/session'
 import { ensureLogin } from './services/auth'
 
 import { applyTabBar } from './services/anonymous'
-import { refreshMessageBadge } from './services/badge'
+import { refreshMessageBadge, setMessageSummaryActive } from './services/badge'
+import { setNotificationReadsActive } from './services/notifications'
 import { setReadQueueActive } from './services/read-queue'
 
 import { setDraftCleanupActive } from './services/draft-cleanup'
@@ -77,6 +78,7 @@ App<IAppOption>({
     })
     wx.onNetworkStatusChange(res => {
       this.globalData.online = res.isConnected
+      if (foreground && res.isConnected) refreshMessageBadge().catch(() => {})
     })
 
     ensureLogin().catch(() => {
@@ -86,6 +88,8 @@ App<IAppOption>({
 
   onShow() {
     foreground = true
+    setMessageSummaryActive(true)
+    setNotificationReadsActive(true)
     setDraftCleanupActive(true)
     setReadQueueActive(true)
     if (session.getState() === 'verified') startBadgePolling()
@@ -93,6 +97,8 @@ App<IAppOption>({
 
   onHide() {
     foreground = false
+    setMessageSummaryActive(false)
+    setNotificationReadsActive(false)
     setDraftCleanupActive(false)
     setReadQueueActive(false)
     stopBadgePolling()

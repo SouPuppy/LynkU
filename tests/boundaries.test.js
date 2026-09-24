@@ -51,8 +51,9 @@ test('notification reads are side-effect free', () => {
 })
 
 test('anonymous identity uses the shared anonymous avatar', () => {
-  // Server response behavior is covered by comment-view.test.js.
-  assert.match(read('apps/miniprogram/components/avatar/avatar.ts'), /\/assets\/anonymous\.png/)
+  // Component failure/identity behavior is exercised in avatar-experience.test.ts.
+  assert.match(read('apps/miniprogram/components/avatar/avatar.ts'), /resolveAvatarSource\(src, anonymous\)/)
+  assert.match(read('packages/contracts/src/avatar.ts'), /\/assets\/avatar\/runtime\/anonymous\.png/)
   assert.match(read('apps/miniprogram/pages/profile/profile.wxml'), /anonymousMode \? anonymousName : user\.nickname/)
   assert.match(read('apps/miniprogram/pages/profile/profile.wxml'), /anonymous="\{\{anonymousMode\}\}"/)
 })
@@ -124,8 +125,8 @@ test('message idempotency keys bind to the original payload', () => {
   assert.match(send, /message:payload/)
   assert.match(messages, /相同消息ID不能用于不同内容/)
   assert.match(send, /request_fingerprint/)
-  assert.match(chat, /_pendingMessageId/)
-  assert.match(chat, /_pendingMessageText/)
+  assert.match(chat, /createSendRecovery/)
+  assert.match(read('apps/miniprogram/features/messaging/send-operations.ts'), /this\.ports\.send\(item\.id, item\.text\)/)
 })
 
 

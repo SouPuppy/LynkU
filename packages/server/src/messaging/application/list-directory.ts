@@ -1,3 +1,4 @@
+import { ANONYMOUS_AVATAR } from '@lynku/contracts'
 import {
   parseConversationDirectoryRequest,
   parseConversationDirectoryPage,
@@ -97,7 +98,7 @@ export async function listConversationDirectory(
       avatar_url: typeof profile?.avatar_url === 'string' ? profile.avatar_url : '',
     }
     return {
-    peer: entry.peerVisibility === 'anonymous' ? { nickname: '匿名用户', avatar_url: '/assets/anonymous.png' } : namedPeer,
+    peer: entry.peerVisibility === 'anonymous' ? { nickname: `匿名会话 · ${String(entry.target?.thread_id).slice(0, 6).toUpperCase()}`, avatar_url: ANONYMOUS_AVATAR } : namedPeer,
     lastMessage: entry.lastMessage,
     unreadCount: entry.unreadCount,
     chat_target: entry.target,

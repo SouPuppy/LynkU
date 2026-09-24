@@ -5,7 +5,7 @@ import { isLoggedIn } from './session'
 
 const MODE_KEY = 'anonymous_mode'
 export const ANONYMOUS_NAME = '匿名用户'
-export const ANONYMOUS_AVATAR = '/assets/anonymous.png'
+export { ANONYMOUS_AVATAR } from '../generated/contracts/index'
 
 /** Check if currently in anonymous mode. Defaults to false (real-name). */
 export function isAnonymous(): boolean {
@@ -30,8 +30,9 @@ export function toggle(): boolean {
 /** Apply TabBar color to match mode. Called on launch and on toggle. */
 export function applyTabBar(anonymous?: boolean): void {
   const anon = anonymous ?? isAnonymous()
-  const color = anon ? '#8E8E93' : '#1E4D8C'
   try {
-    wx.setTabBarStyle({ selectedColor: color })
+    wx.setTabBarStyle({ selectedColor: anon ? '#FFFFFF' : '#1E4D8C',
+      color: anon ? '#BBC3CC' : '#999999', backgroundColor: anon ? '#242A32' : '#FFFFFF',
+      borderStyle: anon ? 'black' : 'white' })
   } catch (_) { /* may fail if not on tab page */ }
 }
